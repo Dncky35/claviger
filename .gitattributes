@@ -1,0 +1,24 @@
+# Set default behavior to automatically normalize text files to LF (Linux standard)
+* text=auto eol=lf
+
+# Force specific text files to always use LF (Critical for Docker and Linux Servers)
+*.sh text eol=lf
+*.py text eol=lf
+*.go text eol=lf
+*.tsx text eol=lf
+*.ts text eol=lf
+*.js text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+wg0.conf text eol=lf
+
+# Denote binary files so Git doesn't try to parse them or change line endings
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
