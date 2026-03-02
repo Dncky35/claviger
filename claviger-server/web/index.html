@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claviger Edge Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen p-8 font-sans">
+    
+    <div class="max-w-3xl mx-auto mt-10">
+        <div class="flex items-center justify-between border-b border-gray-800 pb-6 mb-8">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-white">Claviger Hub</h1>
+                <p class="text-gray-400 text-sm mt-1">Local Edge Control Panel</p>
+            </div>
+            <div class="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-full text-sm font-medium border border-emerald-500/20">
+                <div class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                Daemon Online
+            </div>
+        </div>
+
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+            <h2 class="text-lg font-semibold mb-4 text-white">System Status</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div>
+                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Node ID</p>
+                    <p id="node-id" class="font-mono text-sm text-gray-300">Loading...</p>
+                </div>
+
+                <div>
+                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">API Token Status</p>
+                    <p id="token-status" class="font-mono text-sm text-gray-300">Loading...</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fetch the local status from our Go daemon
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                document.getElementById('node-id').textContent = data.node_id || "Not configured";
+                document.getElementById('token-status').textContent = data.has_token ? "Linked to Cloudrocean ✅" : "Missing ❌";
+            } catch (error) {
+                console.error("Failed to fetch node status:", error);
+                document.getElementById('node-id').textContent = "Error connecting to daemon";
+            }
+        }
+
+        // Run immediately
+        fetchStatus();
+    </script>
+</body>
+</html>

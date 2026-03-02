@@ -22,8 +22,8 @@ func main() {
 	case "reset":
 		cmd.RunReset() // Calls the logic from cmd/reset.go
 	case "start":
-		fmt.Println("Starting Claviger daemon...")
-		// cmd.RunStart()
+		//fmt.Println("Starting Claviger daemon...")
+		cmd.RunStart()
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		printUsage()
