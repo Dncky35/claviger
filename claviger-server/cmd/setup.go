@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"claviger-server/api"
+	"claviger-server/network"
 	"claviger-server/storage"
 
 	"github.com/google/uuid"
@@ -69,6 +70,56 @@ func RunSetup(args []string) {
 
 	// Save Secure Token
 	storage.SaveConfig(db, "api_token", apiToken)
-	fmt.Println("\n✅ Setup Complete! API Token saved securely.")
-	fmt.Println("✅ You can now run: claviger start")
+
+	// --- NEW: WIREGUARD PROVISIONING ---
+	fmt.Println("\n🛡️  Provisioning WireGuard VPN Interface...")
+
+	// 1. Install it
+	err := network.InstallWireGuard()
+	if err != nil {
+		log.Fatalf("❌ Failed to install WireGuard: %v", err)
+	}
+
+	// 2. Auto-detect the Public IP and sanitize it
+	fmt.Print("⚙️  Detecting Public IP... ")
+	serverIPRaw, err := network.GetPublicIP()
+	if err != nil {
+		log.Fatalf("❌ Failed. Ensure this server has internet access.")
+	}
+	serverIP := strings.TrimSpace(serverIPRaw) // FIX: Prevents trailing newline corruption
+	fmt.Printf("%s\n", serverIP)
+
+	// 3. Generate Keys for the Server AND the Admin with strict error checking
+	serverPriv, serverPub, err := network.GenerateKeys()
+	if err != nil {
+		log.Fatalf("❌ Failed to generate Server crypto keys: %v", err)
+	}
+
+	adminPriv, adminPub, err := network.GenerateKeys()
+	if err != nil {
+		log.Fatalf("❌ Failed to generate Admin crypto keys: %v", err)
+	}
+
+	// 4. Save Server keys to SQLite
+	storage.SaveConfig(db, "wg_private_key", serverPriv)
+	storage.SaveConfig(db, "wg_public_key", serverPub)
+
+	// 5. Write the server config (Adding the Admin as Peer 1)
+	if err = network.WriteConfigWithAdmin(serverPriv, adminPub); err != nil {
+		log.Printf("⚠️ Could not write /etc/wireguard/wg0.conf (Are you running as root?): %v\n", err)
+	}
+
+	// 6. Generate the Base64 Copy-Paste Token for the Client
+	adminToken := network.GenerateAdminToken(adminPriv, serverPub, serverIP)
+
+	// --- THE TERMINAL REVEAL ---
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("🎉 NODE PROVISIONED SUCCESSFULLY!")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println("1. Run 'sudo claviger-server start' to boot the daemon.")
+	fmt.Println("2. Copy the token below and paste it into your Claviger Client.")
+	fmt.Println("3. Once connected, open http://10.8.0.1:18080 to access the Hub.")
+	fmt.Println("\n🔑 YOUR ADMIN ACCESS TOKEN:")
+	fmt.Printf("\n%s\n\n", adminToken)
+	fmt.Println(strings.Repeat("=", 60))
 }

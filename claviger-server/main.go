@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"claviger-server/cmd" // Imports your command package
+	"claviger-server/cmd"
 )
 
 func main() {
@@ -33,6 +33,7 @@ func main() {
 func printUsage() {
 	fmt.Println("=== Claviger Edge Node ===")
 	fmt.Println("Usage:")
-	fmt.Println("  claviger setup  - Initialize the server, create DB, and authenticate SaaS")
-	fmt.Println("  claviger start  - Run the VPN daemon and Local Admin Hub")
+	fmt.Println("  claviger-server setup [--key <key>]  - Provision the server, DB, and VPN keys")
+	fmt.Println("  claviger-server reset                - Safely wipe the local configuration")
+	fmt.Println("  claviger-server start                - Boot the VPN daemon and Local Web Hub")
 }
