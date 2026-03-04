@@ -10,7 +10,9 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
+	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -122,6 +124,37 @@ AllowedIPs = 10.8.0.2/32
 	// Strict directory permissions
 	os.MkdirAll("/etc/wireguard", 0700)
 	return os.WriteFile("/etc/wireguard/wg0.conf", []byte(configContent), 0600)
+}
+
+func GetPeerCounts() (total int, active int) {
+	if runtime.GOOS != "linux" {
+		return 0, 0
+	}
+
+	client, err := wgctrl.New()
+	if err != nil {
+		log.Printf("⚠️ Failed to connect to WireGuard interface: %v", err)
+		return 0, 0
+	}
+	defer client.Close()
+
+	device, err := client.Device("wg0")
+	if err != nil {
+		// Normal if the interface is temporarily down
+		return 0, 0
+	}
+
+	totalCount := len(device.Peers)
+	activeCount := 0
+
+	for _, peer := range device.Peers {
+		// A peer is considered "online" if it has communicated in the last 3 minutes
+		if !peer.LastHandshakeTime.IsZero() && time.Since(peer.LastHandshakeTime) < 3*time.Minute {
+			activeCount++
+		}
+	}
+
+	return totalCount, activeCount
 }
 
 // GenerateAdminToken creates the client config and wraps it in a Base64 token

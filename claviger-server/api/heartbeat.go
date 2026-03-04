@@ -46,13 +46,18 @@ func sendHeartbeat(db *sql.DB, apiURL, nodeID, apiToken, version string) {
 	// 1. Gather Telemetry
 	// For now, we hardcode wg_status to "up" and clients to 0.
 	// We will write the Linux commands to fetch real stats in the next step!
+
+	totalClients, activeClients := network.GetPeerCounts()
+
 	payload := HeartbeatPayload{
 		NodeID:           nodeID,
 		Status:           "active",
 		WgStatus:         "up",
-		ConnectedClients: 0,
+		ConnectedClients: totalClients,
 		Version:          version,
 	}
+
+	log.Printf("%v", activeClients)
 
 	jsonData, err := json.Marshal(payload)
 	if err != nil {

@@ -1,60 +1,335 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claviger Edge Hub</title>
+    <title>Claviger Local Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gray: { 900: '#0f172a', 800: '#1e293b', 700: '#334155', }
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen p-8 font-sans">
+<body class="bg-gray-900 text-slate-300 min-h-screen font-sans selection:bg-blue-500/30">
     
-    <div class="max-w-3xl mx-auto mt-10">
-        <div class="flex items-center justify-between border-b border-gray-800 pb-6 mb-8">
-            <div>
-                <h1 class="text-3xl font-bold tracking-tight text-white">Claviger Hub</h1>
-                <p class="text-gray-400 text-sm mt-1">Local Edge Control Panel</p>
-            </div>
-            <div class="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-full text-sm font-medium border border-emerald-500/20">
-                <div class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                Daemon Online
-            </div>
+    <nav class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded flex items-center justify-center font-bold text-white shadow-lg text-xl">C</div>
+            <h1 class="text-xl font-bold tracking-wide text-white">Claviger <span class="text-blue-400 font-medium">Edge</span></h1>
         </div>
+        <div class="flex items-center space-x-4">
+            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/20 text-green-400 border border-green-500/30">
+                ● VPN Active
+            </span>
+        </div>
+    </nav>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
-            <h2 class="text-lg font-semibold mb-4 text-white">System Status</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <div>
-                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Node ID</p>
-                    <p id="node-id" class="font-mono text-sm text-gray-300">Loading...</p>
-                </div>
-
-                <div>
-                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">API Token Status</p>
-                    <p id="token-status" class="font-mono text-sm text-gray-300">Loading...</p>
-                </div>
-
-            </div>
+    <div class="border-b border-gray-700 bg-gray-800/80 backdrop-blur-md sticky top-[65px] z-40">
+        <div class="max-w-7xl mx-auto px-6 flex space-x-8">
+            <button onclick="switchTab('system')" id="btn-system" class="py-4 text-sm font-medium border-b-2 border-blue-500 text-blue-400 transition-colors">
+                System Overview
+            </button>
+            <button onclick="switchTab('security')" id="btn-security" class="py-4 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+                Security & Firewall
+            </button>
+            <button onclick="switchTab('containers')" id="btn-containers" class="py-4 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+                Containers & Apps
+            </button>
+            <button onclick="switchTab('clients')" id="btn-clients" class="py-4 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+                VPN Peers
+            </button>
         </div>
     </div>
 
-    <script>
-        // Fetch the local status from our Go daemon
-        async function fetchStatus() {
-            try {
-                const response = await fetch('/api/status');
-                const data = await response.json();
-                
-                document.getElementById('node-id').textContent = data.node_id || "Not configured";
-                document.getElementById('token-status').textContent = data.has_token ? "Linked to Cloudrocean ✅" : "Missing ❌";
-            } catch (error) {
-                console.error("Failed to fetch node status:", error);
-                document.getElementById('node-id').textContent = "Error connecting to daemon";
-            }
-        }
+    <main class="max-w-7xl mx-auto px-6 py-8 pb-20">
+        
+        <div id="tab-system" class="space-y-6 block animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
+                    <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">CPU Usage</h3>
+                    <div class="flex items-end justify-between mb-2">
+                        <span class="text-3xl font-bold text-white">12%</span>
+                        <span class="text-sm text-gray-400">4 Cores</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2 mt-4">
+                        <div class="bg-blue-500 h-2 rounded-full" style="width: 12%"></div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
+                    <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Memory</h3>
+                    <div class="flex items-end justify-between mb-2">
+                        <span class="text-3xl font-bold text-white">45%</span>
+                        <span class="text-sm text-gray-400">1.8 / 4.0 GB</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2 mt-4">
+                        <div class="bg-indigo-500 h-2 rounded-full" style="width: 45%"></div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
+                    <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Storage (/)</h3>
+                    <div class="flex items-end justify-between mb-2">
+                        <span class="text-3xl font-bold text-white">68%</span>
+                        <span class="text-sm text-gray-400">34 / 50 GB</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2 mt-4">
+                        <div class="bg-purple-500 h-2 rounded-full" style="width: 68%"></div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
+                    <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Network I/O</h3>
+                    <div class="space-y-3 mt-2">
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-400 flex items-center"><span class="text-green-400 mr-2">↓</span> Download</span>
+                            <span class="font-bold text-white">1.2 MB/s</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-400 flex items-center"><span class="text-blue-400 mr-2">↑</span> Upload</span>
+                            <span class="font-bold text-white">0.4 MB/s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        // Run immediately
-        fetchStatus();
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden col-span-1">
+                    <div class="p-5 border-b border-gray-700 bg-gray-900/50">
+                        <h3 class="text-white font-semibold">Core Services</h3>
+                    </div>
+                    <ul class="divide-y divide-gray-700 p-5 space-y-3">
+                        <li class="flex justify-between items-center pt-2">
+                            <span class="text-sm font-medium">sshd</span>
+                            <span class="px-2 py-1 text-xs rounded bg-green-500/20 text-green-400">active</span>
+                        </li>
+                        <li class="flex justify-between items-center pt-2">
+                            <span class="text-sm font-medium">ufw</span>
+                            <span class="px-2 py-1 text-xs rounded bg-green-500/20 text-green-400">active</span>
+                        </li>
+                        <li class="flex justify-between items-center pt-2">
+                            <span class="text-sm font-medium">docker</span>
+                            <span class="px-2 py-1 text-xs rounded bg-green-500/20 text-green-400">active</span>
+                        </li>
+                        <li class="flex justify-between items-center pt-2">
+                            <span class="text-sm font-medium">fail2ban</span>
+                            <span class="px-2 py-1 text-xs rounded bg-red-500/20 text-red-400">inactive</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="bg-[#0c1017] rounded-xl border border-gray-700 shadow-xl overflow-hidden col-span-2 flex flex-col">
+                    <div class="p-3 border-b border-gray-800 flex items-center space-x-2">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        <span class="text-xs text-gray-500 ml-4 font-mono">/var/log/claviger.log</span>
+                    </div>
+                    <div class="p-5 font-mono text-xs text-gray-400 overflow-y-auto h-48 space-y-1">
+                        <p><span class="text-blue-400">INFO</span> [14:02:01] 💖 Heartbeat sent successfully (Status: 200)</p>
+                        <p><span class="text-blue-400">INFO</span> [14:03:01] 💖 Heartbeat sent successfully (Status: 200)</p>
+                        <p><span class="text-green-400">SUCCESS</span> [14:03:45] Client 'Ercan-iPhone' connected (Handshake complete)</p>
+                        <p><span class="text-blue-400">INFO</span> [14:04:01] 💖 Heartbeat sent successfully (Status: 200)</p>
+                        <p class="animate-pulse">_</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-security" class="hidden animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center">
+                        Uncomplicated Firewall (UFW)
+                        <span class="ml-4 px-3 py-1 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/30">Active</span>
+                    </h2>
+                    <p class="text-gray-400 text-sm mt-1">Manage inbound network traffic rules</p>
+                </div>
+                <button class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition text-sm">
+                    + Add Rule
+                </button>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-900/50 border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider">
+                            <th class="p-4 font-medium">To (Port)</th>
+                            <th class="p-4 font-medium">Protocol</th>
+                            <th class="p-4 font-medium">Action</th>
+                            <th class="p-4 font-medium">From</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700 text-sm">
+                        <tr class="hover:bg-gray-750 transition-colors">
+                            <td class="p-4 font-mono text-blue-400">22</td>
+                            <td class="p-4 text-gray-300">TCP</td>
+                            <td class="p-4"><span class="text-green-400 font-medium">ALLOW</span></td>
+                            <td class="p-4 text-gray-400">Anywhere</td>
+                        </tr>
+                        <tr class="hover:bg-gray-750 transition-colors">
+                            <td class="p-4 font-mono text-blue-400">51820</td>
+                            <td class="p-4 text-gray-300">UDP</td>
+                            <td class="p-4"><span class="text-green-400 font-medium">ALLOW</span></td>
+                            <td class="p-4 text-gray-400">Anywhere</td>
+                        </tr>
+                        <tr class="hover:bg-gray-750 transition-colors">
+                            <td class="p-4 font-mono text-blue-400">80, 443</td>
+                            <td class="p-4 text-gray-300">TCP</td>
+                            <td class="p-4"><span class="text-green-400 font-medium">ALLOW</span></td>
+                            <td class="p-4 text-gray-400">Anywhere</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="bg-gray-900/50 p-3 border-t border-gray-700 text-center text-xs text-gray-500">
+                    Showing 1-3 of 3 rules
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-containers" class="hidden animate-fade-in space-y-8">
+            <div>
+                <h2 class="text-xl font-bold text-white flex items-center mb-4">
+                    Docker Containers
+                    <span class="ml-4 px-2 py-0.5 text-xs rounded bg-green-500/20 text-green-400">Running</span>
+                </h2>
+                <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-900/50 border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider">
+                                <th class="p-4 font-medium">Name</th>
+                                <th class="p-4 font-medium">Image</th>
+                                <th class="p-4 font-medium">Status</th>
+                                <th class="p-4 font-medium">Ports</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700 text-sm">
+                            <tr class="hover:bg-gray-750">
+                                <td class="p-4 font-medium text-white">nginx-proxy</td>
+                                <td class="p-4 text-gray-400 text-xs font-mono">nginx:latest</td>
+                                <td class="p-4"><span class="text-green-400">Up 3 days</span></td>
+                                <td class="p-4 text-gray-400 text-xs">0.0.0.0:80->80/tcp</td>
+                            </tr>
+                            <tr class="hover:bg-gray-750">
+                                <td class="p-4 font-medium text-white">postgres-db</td>
+                                <td class="p-4 text-gray-400 text-xs font-mono">postgres:15</td>
+                                <td class="p-4"><span class="text-green-400">Up 3 days</span></td>
+                                <td class="p-4 text-gray-400 text-xs">5432/tcp</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-bold text-white mb-4">Snap Packages</h2>
+                <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-900/50 border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider">
+                                <th class="p-4 font-medium">Name</th>
+                                <th class="p-4 font-medium">Version</th>
+                                <th class="p-4 font-medium">Publisher</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700 text-sm">
+                            <tr class="hover:bg-gray-750">
+                                <td class="p-4 font-medium text-white">core20</td>
+                                <td class="p-4 text-gray-400">20240111</td>
+                                <td class="p-4 text-gray-400">canonical✓</td>
+                            </tr>
+                            <tr class="hover:bg-gray-750">
+                                <td class="p-4 font-medium text-white">certbot</td>
+                                <td class="p-4 text-gray-400">2.9.0</td>
+                                <td class="p-4 text-gray-400">certbot-project✓</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-clients" class="hidden animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">VPN Peers</h2>
+                    <p class="text-gray-400 text-sm mt-1">Manage local subnet access (10.8.0.0/24)</p>
+                </div>
+                <button class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition shadow-lg text-sm flex items-center">
+                    + Provision New Peer
+                </button>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-900/50 border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider">
+                            <th class="p-4 font-medium">Device Name</th>
+                            <th class="p-4 font-medium">Assigned IP</th>
+                            <th class="p-4 font-medium">Last Seen</th>
+                            <th class="p-4 font-medium text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700 text-sm">
+                        <tr class="hover:bg-gray-750">
+                            <td class="p-4 font-medium text-white flex items-center">
+                                <div class="w-2 h-2 rounded-full bg-green-500 mr-3"></div>
+                                Ercan's iPhone
+                            </td>
+                            <td class="p-4 font-mono text-gray-300">10.8.0.2</td>
+                            <td class="p-4 text-gray-400">2 mins ago</td>
+                            <td class="p-4 text-right">
+                                <button class="text-red-400 hover:text-red-300 text-xs font-medium">Revoke</button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-750">
+                            <td class="p-4 font-medium text-white flex items-center">
+                                <div class="w-2 h-2 rounded-full bg-gray-500 mr-3"></div>
+                                Mint Notebook
+                            </td>
+                            <td class="p-4 font-mono text-gray-300">10.8.0.3</td>
+                            <td class="p-4 text-gray-400">Offline</td>
+                            <td class="p-4 text-right">
+                                <button class="text-red-400 hover:text-red-300 text-xs font-medium">Revoke</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            const tabs = ['system', 'security', 'containers', 'clients'];
+            
+            tabs.forEach(id => {
+                // Hide content
+                document.getElementById('tab-' + id).classList.add('hidden');
+                document.getElementById('tab-' + id).classList.remove('block');
+                
+                // Reset button style
+                document.getElementById('btn-' + id).className = 'py-4 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors';
+            });
+            
+            // Show active content
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            document.getElementById('tab-' + tabId).classList.add('block');
+            
+            // Highlight active button
+            document.getElementById('btn-' + tabId).className = 'py-4 text-sm font-medium border-b-2 border-blue-500 text-blue-400 transition-colors';
+        }
     </script>
+    
+    <style>
+        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 </body>
 </html>
