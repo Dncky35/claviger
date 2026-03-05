@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -57,18 +56,13 @@ func RunStart() {
 	// ---------------------------------------------------------
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+	// Wire up our clean API endpoints
+	mux.HandleFunc("/api/status", api.HandleStatus(nodeID, apiToken != ""))
+	mux.HandleFunc("/api/system", api.HandleSystemStats) // <-- The new hardware stats endpoint!
+	mux.HandleFunc("/api/security", api.HandleSecurityStats)
+	mux.HandleFunc("/api/security/action", api.HandleSecurityAction)
 
-		status := map[string]interface{}{
-			"node_id":   nodeID,
-			"has_token": apiToken != "",
-			"vpn_state": "active", // We will make this dynamically reflect "Paused" later
-		}
-
-		json.NewEncoder(w).Encode(status)
-	})
-
+	// Serve the static HTML UI
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)

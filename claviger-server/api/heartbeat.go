@@ -57,7 +57,7 @@ func sendHeartbeat(db *sql.DB, apiURL, nodeID, apiToken, version string) {
 		Version:          version,
 	}
 
-	log.Printf("%v", activeClients)
+	log.Printf("connected clients: %v", activeClients)
 
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
