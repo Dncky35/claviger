@@ -61,6 +61,7 @@ func RunStart() {
 	mux.HandleFunc("/api/system", api.HandleSystemStats) // <-- The new hardware stats endpoint!
 	mux.HandleFunc("/api/security", api.HandleSecurityStats)
 	mux.HandleFunc("/api/security/action", api.HandleSecurityAction)
+	mux.HandleFunc("/api/clients", api.HandleClients(db))
 
 	// Serve the static HTML UI
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

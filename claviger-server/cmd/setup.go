@@ -62,14 +62,14 @@ func RunSetup(args []string) {
 	fmt.Printf("\n⚙️  Generating Node Identity: %s\n", nodeID)
 	fmt.Printf("⚙️  Detecting Environment: %s (%s/%s)\n", hostname, nodeOS, nodeArch)
 
-	storage.SaveConfig(db, "node_id", nodeID)
+	storage.SetConfig(db, "node_id", nodeID)
 
 	// The SaaS Handshake
 	fmt.Println("\n🔄 Connecting to Cloudrocean API for Authorization...")
 	apiToken := api.Authenticate(setupKey, nodeID, hostname, nodeOS, nodeArch)
 
 	// Save Secure Token
-	storage.SaveConfig(db, "api_token", apiToken)
+	storage.SetConfig(db, "api_token", apiToken)
 
 	// --- NEW: WIREGUARD PROVISIONING ---
 	fmt.Println("\n🛡️  Provisioning WireGuard VPN Interface...")
@@ -101,8 +101,8 @@ func RunSetup(args []string) {
 	}
 
 	// 4. Save Server keys to SQLite
-	storage.SaveConfig(db, "wg_private_key", serverPriv)
-	storage.SaveConfig(db, "wg_public_key", serverPub)
+	storage.SetConfig(db, "wg_private_key", serverPriv)
+	storage.SetConfig(db, "wg_public_key", serverPub)
 
 	// 5. Write the server config (Adding the Admin as Peer 1)
 	if err = network.WriteConfigWithAdmin(serverPriv, adminPub); err != nil {
