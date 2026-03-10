@@ -62,6 +62,8 @@ func RunStart() {
 	mux.HandleFunc("/api/security", api.HandleSecurityStats)
 	mux.HandleFunc("/api/security/action", api.HandleSecurityAction)
 	mux.HandleFunc("/api/clients", api.HandleClients(db))
+	mux.HandleFunc("/api/invites", api.HandleInvites(db))
+	mux.HandleFunc("/api/enroll", api.HandleEnroll(db))
 
 	// Serve the static HTML UI
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

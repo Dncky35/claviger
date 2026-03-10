@@ -15,7 +15,7 @@ func InitDB() *sql.DB {
 		log.Fatalf("❌ Failed to open SQLite database: %v", err)
 	}
 
-	// 1. Config Table (Stores Node Identity & Settings)
+	// 1. Config Table
 	createConfigTable := `
 	CREATE TABLE IF NOT EXISTS config (
 		key TEXT PRIMARY KEY,
@@ -25,30 +25,33 @@ func InitDB() *sql.DB {
 		log.Fatalf("❌ Failed to create config table: %v", err)
 	}
 
-	// 2. Roles Table (For Micro-segmentation & Firewall rules)
+	// 2. Roles Table
 	createRolesTable := `
 	CREATE TABLE IF NOT EXISTS roles (
-		id TEXT PRIMARY KEY,          -- e.g., 'admin', 'developer', 'restricted'
-		name TEXT NOT NULL,           -- e.g., 'Administrator'
-		allowed_ports TEXT NOT NULL,  -- e.g., '22,80,443,18080' or 'ALL'
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		allowed_ports TEXT NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 	if _, err := db.Exec(createRolesTable); err != nil {
 		log.Fatalf("❌ Failed to create roles table: %v", err)
 	}
 
-	// Insert default roles if they don't exist
 	db.Exec(`INSERT OR IGNORE INTO roles (id, name, allowed_ports) VALUES ('admin', 'Administrator', 'ALL')`)
 	db.Exec(`INSERT OR IGNORE INTO roles (id, name, allowed_ports) VALUES ('standard', 'Standard User', '80,443')`)
 
-	// 3. Clients Table (Stores WireGuard Peers)
+	// 3. Clients Table
 	createClientsTable := `
 	CREATE TABLE IF NOT EXISTS clients (
-		id TEXT PRIMARY KEY,          -- UUID
-		name TEXT NOT NULL,           -- e.g., "Ercan's iPhone"
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
 		public_key TEXT UNIQUE NOT NULL, 
-		ip_address TEXT UNIQUE NOT NULL, -- e.g., "10.8.0.2"
-		role_id TEXT NOT NULL,        -- Links to roles table
+		ip_address TEXT UNIQUE,       -- Removed NOT NULL (assigned upon approval)
+		role_id TEXT NOT NULL,
+		platform TEXT,                
+		device_id TEXT,               
+		status TEXT DEFAULT 'pending',-- 'pending', 'active', or 'suspended'
+		last_seen DATETIME,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (role_id) REFERENCES roles(id)
 	);`
@@ -56,10 +59,24 @@ func InitDB() *sql.DB {
 		log.Fatalf("❌ Failed to create clients table: %v", err)
 	}
 
+	// 4. Invitations Table (NEW!)
+	// This stores the single-use tokens waiting to be claimed by the Desktop/Mobile app
+	createInvitationsTable := `
+	CREATE TABLE IF NOT EXISTS invitations (
+		token TEXT PRIMARY KEY,       -- e.g., 'clav-invite-xyz123'
+		role_id TEXT NOT NULL,        -- What role they get when they join
+		expires_at DATETIME NOT NULL, -- Tokens should expire for security
+		is_used BOOLEAN DEFAULT 0,    -- Becomes 1 once the user claims it
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (role_id) REFERENCES roles(id)
+	);`
+	if _, err := db.Exec(createInvitationsTable); err != nil {
+		log.Fatalf("❌ Failed to create invitations table: %v", err)
+	}
+
 	return db
 }
 
-// GetConfig reads a setting from the database.
 func GetConfig(db *sql.DB, key string) string {
 	var value string
 	err := db.QueryRow("SELECT value FROM config WHERE key = ?", key).Scan(&value)
@@ -69,7 +86,6 @@ func GetConfig(db *sql.DB, key string) string {
 	return value
 }
 
-// SetConfig saves or updates a setting in the database.
 func SetConfig(db *sql.DB, key, value string) error {
 	_, err := db.Exec(`
 		INSERT INTO config (key, value) VALUES (?, ?)
@@ -78,9 +94,8 @@ func SetConfig(db *sql.DB, key, value string) error {
 	return err
 }
 
-// ClearConfig wipes the database (used for the Poison Pill).
 func ClearConfig(db *sql.DB) {
 	db.Exec("DELETE FROM config")
 	db.Exec("DELETE FROM clients")
-	// We leave the roles table alone as it is structural
+	db.Exec("DELETE FROM invitations")
 }
