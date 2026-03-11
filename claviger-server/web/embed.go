@@ -1,8 +1,8 @@
 package web
 
 import (
-	_ "embed"
+	"embed"
 )
 
-//go:embed index.html
-var IndexHTML []byte
+//go:embed index.html components/*.html
+var TemplatesFS embed.FS

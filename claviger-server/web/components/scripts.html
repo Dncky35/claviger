@@ -1,0 +1,402 @@
+{{ define "scripts" }}
+<script>
+    // --- Global State Variables ---
+    let lastRxBytes = 0;
+    let lastTxBytes = 0;
+    let lastTimestamp = 0;
+
+    // --- Tab Navigation Logic ---
+    function switchTab(tabId) {
+        const tabs = ['system', 'security', 'clients'];
+        tabs.forEach(id => {
+            const tabEl = document.getElementById('tab-' + id);
+            const btnEl = document.getElementById('btn-' + id);
+            if (tabEl) {
+                tabEl.classList.add('hidden');
+                tabEl.classList.remove('block');
+            }
+            if (btnEl) {
+                btnEl.className = 'py-4 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors';
+            }
+        });
+        
+        const activeTab = document.getElementById('tab-' + tabId);
+        const activeBtn = document.getElementById('btn-' + tabId);
+        
+        if (activeTab) {
+            activeTab.classList.remove('hidden');
+            activeTab.classList.add('block');
+        }
+        if (activeBtn) {
+            activeBtn.className = 'py-4 text-sm font-medium border-b-2 border-blue-500 text-blue-400 transition-colors';
+        }
+        
+        // Fetch fresh data immediately when switching to a tab
+        if (tabId === 'security') fetchSecurityData();
+        if (tabId === 'clients') fetchPeersData();
+    }
+
+    // ==========================================
+    // 1. VPN PEERS & ENROLLMENT LOGIC
+    // ==========================================
+
+    async function generateInvite() {
+        const role = prompt("Enter the role for this invite (e.g., admin, standard, developer):", "standard");
+        if (!role) return;
+
+        try {
+            const res = await fetch('/api/invites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role_id: role })
+            });
+            const data = await res.json();
+            
+            prompt("✅ Invitation Generated!\nCopy this secure token and send it to the user:", data.token);
+            fetchPeersData();
+        } catch (err) { alert("Failed to generate invite."); }
+    }
+
+    async function approveClient(clientId, clientName) {
+        if(!confirm(`Do you want to approve ${clientName} and permanently assign them an IP address on the VPN?`)) return;
+
+        try {
+            const res = await fetch('/api/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ client_id: clientId })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                alert(`✅ Success! ${data.message}`);
+                fetchPeersData();
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        } catch (err) { alert("Approval failed."); }
+    }
+
+    async function revokeClient(clientId, clientName) {
+        if(!confirm(`🚨 DANGER: Are you sure you want to permanently revoke VPN access for ${clientName}? Their connection will drop instantly.`)) return;
+
+        try {
+            const res = await fetch('/api/revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ client_id: clientId })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                alert(`🚫 ${data.message}`);
+                fetchPeersData();
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        } catch (err) { alert("Revocation failed."); }
+    }
+
+    async function fetchPeersData() {
+        // --- 1. Fetch Clients (Independent Block) ---
+        try {
+            const clientRes = await fetch('/api/clients');
+            if (clientRes.ok) {
+                const clients = await clientRes.json();
+                const pendingTbody = document.getElementById('list-pending-peers');
+                const activeTbody = document.getElementById('list-active-peers');
+                let pendingCount = 0;
+
+                if(pendingTbody) pendingTbody.innerHTML = '';
+                if(activeTbody) activeTbody.innerHTML = '';
+
+                clients.forEach(c => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-750 transition-colors';
+                    if (c.status === 'pending') {
+                        pendingCount++;
+                        tr.innerHTML = `
+                            <td class="p-4 font-bold text-white">${c.name}</td>
+                            <td class="p-4 text-gray-400 uppercase text-xs tracking-wider">${c.platform || 'Unknown'}</td>
+                            <td class="p-4 text-blue-400 font-medium">${c.role_id}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="approveClient('${c.id}', '${c.name}')" class="bg-green-600/20 text-green-400 hover:bg-green-600/40 border border-green-500/50 px-3 py-1 rounded transition text-xs font-bold uppercase tracking-wide shadow-sm">Approve Access</button>
+                            </td>
+                        `;
+                        if(pendingTbody) pendingTbody.appendChild(tr);
+                    } else if (c.status === 'active') {
+                        tr.innerHTML = `
+                            <td class="p-4 font-bold text-white flex items-center"><div class="w-2 h-2 rounded-full bg-green-500 mr-3 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>${c.name}</td>
+                            <td class="p-4 font-mono text-gray-300">${c.ip_address}</td>
+                            <td class="p-4 text-blue-400 font-medium">${c.role_id}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-red-400 hover:text-red-300 text-xs font-medium bg-gray-800 px-3 py-1 rounded border border-gray-700 hover:border-red-500/50 transition-colors">Revoke</button>
+                            </td>
+                        `;
+                        if(activeTbody) activeTbody.appendChild(tr);
+                    }
+                });
+
+                const badgeWaiting = document.getElementById('badge-waiting');
+                if(badgeWaiting) badgeWaiting.innerText = `${pendingCount} Pending`;
+                if(pendingCount === 0 && pendingTbody) pendingTbody.innerHTML = '<tr><td class="p-6 text-center text-gray-500 italic" colspan="4">No devices waiting for approval.</td></tr>';
+                if(activeTbody && activeTbody.innerHTML === '') activeTbody.innerHTML = '<tr><td class="p-6 text-center text-gray-500 italic" colspan="4">No active peers found.</td></tr>';
+            }
+        } catch (err) { console.error("Error fetching clients:", err); }
+
+        // --- 2. Fetch Invites (Independent Block) ---
+        try {
+            const inviteRes = await fetch('/api/invites');
+            if (inviteRes.ok) {
+                const invites = await inviteRes.json();
+                const invitesTbody = document.getElementById('list-invites');
+                if(invitesTbody) invitesTbody.innerHTML = '';
+                
+                let activeInvites = 0;
+                if(invites) {
+                    invites.forEach(inv => {
+                        if(!inv.is_used) {
+                            activeInvites++;
+                            const tr = document.createElement('tr');
+                            tr.className = 'hover:bg-gray-800/80 transition-colors';
+                            tr.innerHTML = `
+                                <td class="p-4 font-mono text-gray-300">${inv.token}</td>
+                                <td class="p-4 text-gray-400 font-medium">${inv.role_id}</td>
+                                <td class="p-4 text-gray-500 text-xs">${new Date(inv.expires_at).toLocaleString()}</td>
+                            `;
+                            if(invitesTbody) invitesTbody.appendChild(tr);
+                        }
+                    });
+                }
+                if(activeInvites === 0 && invitesTbody) invitesTbody.innerHTML = '<tr><td class="p-4 text-center italic" colspan="3">No active unused invites.</td></tr>';
+            }
+        } catch (err) { console.error("Error fetching invites:", err); }
+    }
+
+    // ==========================================
+    // 2. SECURITY & FIREWALL LOGIC
+    // ==========================================
+
+    async function executeSecurityAction(payload) {
+        try {
+            const res = await fetch('/api/security/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                fetchSecurityData();
+            } else {
+                alert("Action failed. Check terminal logs for permissions.");
+            }
+        } catch (err) { console.error("Action failed:", err); }
+    }
+
+    function deleteRule(port, ruleAction) {
+        if(confirm(`🚨 WARNING: Are you sure you want to delete the rule for Port ${port}?\n\nIf this is your WireGuard or SSH port, you might drop your connection.`)) {
+            executeSecurityAction({ action: "delete", port: port, rule_action: ruleAction });
+        }
+    }
+
+    function toggleUFW(currentState) {
+        if (currentState === 'active') {
+            if(confirm(`🚨 DANGER: Are you sure you want to DISABLE the firewall? Your server will be fully exposed.`)) {
+                executeSecurityAction({ action: "disable" });
+            }
+        } else {
+            if(confirm(`🛡️ Enabling Firewall: Claviger will automatically inject safety rules for SSH and VPN before applying.`)) {
+                executeSecurityAction({ action: "enable" });
+            }
+        }
+    }
+
+    function addRule() {
+        const port = prompt("Enter the Port or Service to Allow (e.g., 80, 443, 8080/tcp):");
+        if (port) {
+            executeSecurityAction({ action: "add", port: port });
+        }
+    }
+
+    async function fetchSecurityData() {
+        try {
+            const res = await fetch('/api/security');
+            if (res.ok) {
+                const data = await res.json();
+                
+                // 1. Update Badge
+                const badge = document.getElementById('ufw-badge');
+                const toggleBtn = document.getElementById('btn-toggle-ufw');
+                
+                if (badge && toggleBtn) {
+                    if (data.ufw_status === 'active') {
+                        badge.className = 'ml-4 px-3 py-1 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/30';
+                        badge.innerText = 'Active';
+                        toggleBtn.innerText = 'Disable UFW';
+                        toggleBtn.className = 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 px-4 py-2 rounded-lg font-medium transition text-sm';
+                        toggleBtn.onclick = () => toggleUFW('active');
+                    } else {
+                        badge.className = 'ml-4 px-3 py-1 text-xs rounded-full bg-red-500/20 text-red-400 border border-red-500/30';
+                        badge.innerText = 'Inactive';
+                        toggleBtn.innerText = 'Enable UFW';
+                        toggleBtn.className = 'bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-500/30 px-4 py-2 rounded-lg font-medium transition text-sm';
+                        toggleBtn.onclick = () => toggleUFW('inactive');
+                    }
+                }
+
+                // 2. Render Insights
+                const insightsContainer = document.getElementById('security-insights-container');
+                if (insightsContainer) {
+                    insightsContainer.innerHTML = ''; 
+                    if (data.insights && data.insights.length > 0) {
+                        data.insights.forEach(insight => {
+                            let styles = ''; let icon = '';
+                            if (insight.level === 'critical') {
+                                styles = 'bg-red-500/10 border-red-500/30 text-red-400'; icon = '🚨';
+                            } else if (insight.level === 'warning') {
+                                styles = 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'; icon = '⚠️';
+                            } else {
+                                styles = 'bg-blue-500/10 border-blue-500/30 text-blue-400'; icon = '🛡️';
+                            }
+                            insightsContainer.innerHTML += `
+                                <div class="${styles} border rounded-lg p-4 flex items-start shadow-sm">
+                                    <div class="text-xl mr-3">${icon}</div>
+                                    <div>
+                                        <h4 class="font-bold text-sm uppercase tracking-wide mb-1">${insight.title}</h4>
+                                        <p class="text-gray-300 text-sm leading-relaxed">${insight.message}</p>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                }
+
+                // 3. Render Table
+                const tbody = document.getElementById('security-rules-list');
+                const countDiv = document.getElementById('security-rules-count');
+                
+                if (tbody && countDiv) {
+                    if (!data.rules || data.rules.length === 0) {
+                        tbody.innerHTML = '<tr><td class="p-8 text-center text-gray-500 italic" colspan="4">No active firewall rules found.</td></tr>';
+                        countDiv.innerText = "0 rules applied.";
+                        return;
+                    }
+
+                    tbody.innerHTML = '';
+                    data.rules.forEach(rule => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-gray-750 transition-colors';
+                        let actionColor = rule.action.includes('ALLOW') ? 'text-green-400' : 'text-red-400';
+
+                        tr.innerHTML = `
+                            <td class="p-4 font-mono text-blue-400">${rule.to}</td>
+                            <td class="p-4 font-bold ${actionColor}">${rule.action}</td>
+                            <td class="p-4 text-gray-400">${rule.from}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="deleteRule('${rule.to}', '${rule.action}')" class="text-gray-500 hover:text-red-400 transition-colors text-xs font-medium uppercase tracking-wider bg-gray-800 px-3 py-1 rounded border border-gray-700 hover:border-red-500/50">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    countDiv.innerText = `Showing ${data.rules.length} active rules`;
+                }
+            }
+        } catch (err) { console.error("Error fetching security:", err); }
+    }
+
+    // ==========================================
+    // 3. SYSTEM & HARDWARE LOGIC
+    // ==========================================
+
+    async function fetchSystemData() {
+        try {
+            // VPN Status
+            // VPN & Cloud Status
+            const statusRes = await fetch('/api/status');
+            if (statusRes.ok) {
+                const statusData = await statusRes.json();
+                
+                // Update VPN Badge
+                const vpnBadge = document.getElementById('vpn-status-badge');
+                if (vpnBadge && statusData.vpn_state === 'active') {
+                    vpnBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]';
+                    vpnBadge.innerText = '● VPN Active';
+                }
+
+                // Update Cloud Sync Badge
+                const cloudBadge = document.getElementById('cloud-sync-badge');
+                if (cloudBadge) {
+                    if (statusData.cloud_sync_status === 'Healthy') {
+                        cloudBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30';
+                        
+                        // Calculate relative time (e.g., "Just now", "45s ago")
+                        let timeStr = "Healthy";
+                        if (statusData.last_cloud_sync) {
+                            const secondsAgo = Math.floor((new Date() - new Date(statusData.last_cloud_sync)) / 1000);
+                            timeStr = secondsAgo < 60 ? 'Just now' : Math.floor(secondsAgo/60) + 'm ago';
+                        }
+                        cloudBadge.innerText = '☁️ Cloud: ' + timeStr;
+                    } else {
+                        // Error State
+                        cloudBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse';
+                        cloudBadge.innerText = '⚠️ Cloud: Offline';
+                    }
+                }
+            }
+
+            // Hardware Stats
+            const sysRes = await fetch('/api/system');
+            if (sysRes.ok) {
+                const sys = await sysRes.json();
+                
+                const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+                const safeStyle = (id, prop, val) => { const el = document.getElementById(id); if (el) el.style[prop] = val; };
+
+                safeSet('sys-cpu-val', sys.cpu_percent + '%');
+                safeStyle('sys-cpu-bar', 'width', sys.cpu_percent + '%');
+                safeSet('sys-cpu-cores', sys.cpu_cores + ' Cores');
+                
+                safeSet('sys-ram-val', sys.ram_percent + '%');
+                safeStyle('sys-ram-bar', 'width', sys.ram_percent + '%');
+                safeSet('sys-ram-text', sys.ram_used_gb + ' / ' + sys.ram_total_gb + ' GB');
+                
+                safeSet('sys-disk-val', sys.disk_percent + '%');
+                safeStyle('sys-disk-bar', 'width', sys.disk_percent + '%');
+                safeSet('sys-disk-text', sys.disk_used_gb + ' / ' + sys.disk_total_gb + ' GB');
+                
+                safeSet('sys-os', sys.os_name);
+                safeSet('sys-uptime', sys.uptime);
+
+                const currentTimestamp = Date.now();
+                const currentRx = parseInt(sys.net_rx_bytes) || 0;
+                const currentTx = parseInt(sys.net_tx_bytes) || 0;
+                
+                if (lastTimestamp > 0) {
+                    const timeDiffSeconds = (currentTimestamp - lastTimestamp) / 1000;
+                    const rxSpeedMB = ((currentRx - lastRxBytes) / timeDiffSeconds) / (1024 * 1024);
+                    const txSpeedMB = ((currentTx - lastTxBytes) / timeDiffSeconds) / (1024 * 1024);
+                    
+                    safeSet('sys-net-down', Math.max(0, rxSpeedMB).toFixed(2) + ' MB/s');
+                    safeSet('sys-net-up', Math.max(0, txSpeedMB).toFixed(2) + ' MB/s');
+                }
+                
+                lastRxBytes = currentRx; 
+                lastTxBytes = currentTx; 
+                lastTimestamp = currentTimestamp;
+            }
+        } catch (err) { console.error("Error fetching system info:", err); }
+    }
+
+    // ==========================================
+    // BOOT & POLLING
+    // ==========================================
+    fetchSystemData();
+    setInterval(fetchSystemData, 3000); // Fast hardware polling (3s)
+    setInterval(fetchSecurityData, 10000); // Slower security polling (10s)
+</script>
+
+<style>
+    .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { 
+        from { opacity: 0; transform: translateY(5px); } 
+        to { opacity: 1; transform: translateY(0); } 
+    }
+</style>
+{{ end }}

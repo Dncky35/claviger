@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,7 +16,69 @@ import (
 	"claviger-server/network"
 	"claviger-server/storage"
 	"claviger-server/web"
+	"text/template"
+
+	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
+
+// syncWireGuardPeers reads all active clients from SQLite and hot-injects them into wg0.
+// It also wipes any "ghost" peers from the kernel that shouldn't be there.
+func syncWireGuardPeers(db *sql.DB) {
+	log.Println("🔄 Synchronizing active peers to WireGuard interface...")
+
+	rows, err := db.Query("SELECT public_key, ip_address FROM clients WHERE status = 'active'")
+	if err != nil {
+		log.Printf("⚠️ Failed to query active clients: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	var peers []wgtypes.PeerConfig
+
+	for rows.Next() {
+		var pubKeyStr, ipStr string
+		if err := rows.Scan(&pubKeyStr, &ipStr); err != nil {
+			continue
+		}
+
+		pubKey, err := wgtypes.ParseKey(pubKeyStr)
+		if err != nil {
+			log.Printf("⚠️ Invalid public key for IP %s: %v", ipStr, err)
+			continue
+		}
+
+		_, ipNet, err := net.ParseCIDR(ipStr + "/32")
+		if err != nil {
+			continue
+		}
+
+		peers = append(peers, wgtypes.PeerConfig{
+			PublicKey:         pubKey,
+			ReplaceAllowedIPs: true,
+			AllowedIPs:        []net.IPNet{*ipNet},
+		})
+	}
+
+	// Apply the synchronized list directly to the Linux Kernel
+	wg, err := wgctrl.New()
+	if err != nil {
+		log.Printf("⚠️ Failed to open WireGuard control: %v", err)
+		return
+	}
+	defer wg.Close()
+
+	err = wg.ConfigureDevice("wg0", wgtypes.Config{
+		ReplacePeers: true, // Wipes the interface and replaces with our exact list
+		Peers:        peers,
+	})
+
+	if err != nil {
+		log.Printf("❌ Failed to sync peers to kernel: %v", err)
+	} else {
+		log.Printf("✅ Successfully synced %d active peers to wg0", len(peers))
+	}
+}
 
 func RunStart() {
 	fmt.Println("=== Starting Claviger Edge Daemon ===")
@@ -33,6 +97,9 @@ func RunStart() {
 
 	// If we pass the check, we are good to go!
 	log.Println("✅ Node Identity loaded.")
+
+	// 2. Synchronize the Kernel!
+	syncWireGuardPeers(db)
 
 	// ---------------------------------------------------------
 	// 2. NETWORK BOOT (MUST HAPPEN BEFORE HEARTBEAT)
@@ -64,16 +131,28 @@ func RunStart() {
 	mux.HandleFunc("/api/clients", api.HandleClients(db))
 	mux.HandleFunc("/api/invites", api.HandleInvites(db))
 	mux.HandleFunc("/api/enroll", api.HandleEnroll(db))
+	mux.HandleFunc("/api/approve", api.HandleApprove(db))
+	mux.HandleFunc("/api/revoke", api.HandleRevoke(db))
 
-	// Serve the static HTML UI
+	// Parse the embedded HTML templates on boot
+	tmpl, err := template.ParseFS(web.TemplatesFS, "index.html", "components/*.html")
+	if err != nil {
+		log.Fatalf("❌ Failed to parse HTML templates: %v", err)
+	}
+
+	// Serve the stitched UI
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
-
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(web.IndexHTML)
+
+		// Execute the template (this replaces w.Write(web.IndexHTML))
+		err := tmpl.ExecuteTemplate(w, "index.html", nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	port := "18080"
