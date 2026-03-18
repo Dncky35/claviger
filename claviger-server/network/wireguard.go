@@ -109,23 +109,41 @@ func WriteConfigWithAdmin(serverPrivKey, adminPubKey string) error {
 		return nil
 	}
 
+	// 1. Enable Kernel IP Forwarding
+	if err := EnableIPForwarding(); err != nil {
+		log.Printf("⚠️ Warning: %v", err)
+	}
+
+	// 2. Find the public interface (e.g., eth0)
+	pubInterface, err := GetDefaultInterface()
+	if err != nil {
+		log.Printf("⚠️ Warning: Could not find public interface. Defaulting to eth0. Error: %v", err)
+		pubInterface = "eth0"
+	}
+
+	// 3. Inject the NAT (Internet) Firewall Rules
+	// If you later add an "Internet Switch" to disable internet for clients,
+	// you would simply omit these PostUp/PostDown lines!
 	configContent := fmt.Sprintf(`[Interface]
 PrivateKey = %s
 Address = 10.8.0.1/24
 ListenPort = 51820
 SaveConfig = true
 
+# --- NAT Firewall Rules for Internet Access ---
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o %s -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o %s -j MASQUERADE
+
 # [Peer 1: Super Admin]
 [Peer]
 PublicKey = %s
 AllowedIPs = 10.8.0.2/32
-`, serverPrivKey, adminPubKey)
+`, serverPrivKey, pubInterface, pubInterface, adminPubKey)
 
 	// Strict directory permissions
 	os.MkdirAll("/etc/wireguard", 0700)
 	return os.WriteFile("/etc/wireguard/wg0.conf", []byte(configContent), 0600)
 }
-
 func GetPeerCounts() (total int, active int) {
 	if runtime.GOOS != "linux" {
 		return 0, 0
@@ -246,4 +264,43 @@ func StopWireGuard() error {
 
 	log.Println("✅ WireGuard interface is offline.")
 	return nil
+}
+
+// EnableIPForwarding tells the Linux kernel to allow routing packets between interfaces.
+// Without this, the server will drop all traffic coming from the VPN clients.
+func EnableIPForwarding() error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+	log.Println("⚙️ Enabling IPv4 Forwarding in the Linux kernel...")
+
+	// Temporarily enable it for the current session
+	err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1\n"), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to enable ip_forwarding: %v", err)
+	}
+
+	// Make it persistent across server reboots
+	exec.Command("sysctl", "-w", "net.ipv4.ip_forward=1").Run()
+	return nil
+}
+
+// GetDefaultInterface automatically finds the server's main public network interface (e.g., eth0, ens3, enp3s0)
+func GetDefaultInterface() (string, error) {
+	if runtime.GOOS != "linux" {
+		return "eth0", nil
+	}
+
+	cmd := exec.Command("sh", "-c", "ip route | grep default | awk '{print $5}' | head -n 1")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("could not determine default network interface: %v", err)
+	}
+
+	interfaceName := strings.TrimSpace(string(output))
+	if interfaceName == "" {
+		return "", fmt.Errorf("default network interface is empty")
+	}
+
+	return interfaceName, nil
 }

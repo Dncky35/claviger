@@ -6,18 +6,53 @@
     <title>Claviger Local Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0f172a', 800: '#1e293b', 700: '#334155', } } } } }
+        tailwind.config = { 
+            darkMode: 'class', 
+            theme: { 
+                extend: { 
+                    colors: { 
+                        // Bridging the Next.js semantic theme to the local Go Hub
+                        background: '#020617', // Extremely deep slate (Next.js dark bg)
+                        surface: '#0f172a',    // Elevated slate for cards
+                        border: '#1e293b',     // Crisp borders
+                        primary: '#3b82f6',    // Cyber Azure
+                        success: '#22c55e',    // Network Online Green
+                        warning: '#f59e0b',    // Alert Orange
+                        destructive: '#ef4444',// Offline/Revoke Red
+                        muted: {
+                            DEFAULT: '#1e293b',
+                            foreground: '#94a3b8' // Subtle text
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                } 
+            } 
+        }
     </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        /* Smooth tab transitions matching Framer Motion on Next.js */
+        .animate-fade-in {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
-<body class="bg-gray-900 text-slate-300 min-h-screen font-sans selection:bg-blue-500/30">
+<body class="bg-background text-slate-200 min-h-screen font-sans antialiased selection:bg-primary/30">
     
     {{ template "navbar" . }}
 
-    <main class="max-w-[1600px] w-full mx-auto px-6 py-8 pb-20">
+    <main class="max-w-[1200px] w-full mx-auto px-6 py-12 pb-20">
         {{ template "tab_system" . }}
         {{ template "tab_security" . }}
         {{ template "tab_peers" . }}
-        </main>
+    </main>
 
     {{ template "scripts" . }}
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -162,14 +163,20 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// --- SECURITY FIX: Block Command Injection ---
+	// Only allow numbers, or numbers followed by /tcp or /udp
+	matched, _ := regexp.MatchString(`^[0-9]+(/[a-z]+)?$`, req.Port)
+	if (req.Action == "add" || req.Action == "delete") && !matched {
+		http.Error(w, "Invalid port format rejected for security reasons", http.StatusBadRequest)
+		return
+	}
+
 	var err error
 
 	switch req.Action {
 	case "enable":
-		// THE GUARDRAILS: Never lock the user out!
 		exec.Command("ufw", "allow", "22/tcp").Run()
 		exec.Command("ufw", "allow", "51820/udp").Run()
-		// --force bypasses the "Are you sure?" terminal prompt
 		err = exec.Command("ufw", "--force", "enable").Run()
 
 	case "disable":

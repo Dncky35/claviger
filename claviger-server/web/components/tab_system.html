@@ -3,49 +3,59 @@
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-            <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">CPU Usage</h3>
-            <div class="flex items-end justify-between mb-2">
-                <span id="sys-cpu-val" class="text-3xl font-bold text-white">--%</span>
-                <span id="sys-cpu-cores" class="text-sm text-gray-400">-- Cores</span>
-            </div>
-            <div class="w-full bg-gray-700 rounded-full h-2 mt-4 overflow-hidden">
-                <div id="sys-cpu-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-        </div>
-
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-            <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Memory</h3>
-            <div class="flex items-end justify-between mb-2">
-                <span id="sys-ram-val" class="text-3xl font-bold text-white">--%</span>
-                <span id="sys-ram-text" class="text-sm text-gray-400">-- / -- GB</span>
-            </div>
-            <div class="w-full bg-gray-700 rounded-full h-2 mt-4 overflow-hidden">
-                <div id="sys-ram-bar" class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-        </div>
-
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-            <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Storage (/)</h3>
-            <div class="flex items-end justify-between mb-2">
-                <span id="sys-disk-val" class="text-3xl font-bold text-white">--%</span>
-                <span id="sys-disk-text" class="text-sm text-gray-400">-- / -- GB</span>
-            </div>
-            <div class="w-full bg-gray-700 rounded-full h-2 mt-4 overflow-hidden">
-                <div id="sys-disk-bar" class="bg-purple-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-        </div>
-
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-            <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Network Traffic</h3>
-            <div class="space-y-3 mt-2">
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-gray-400 flex items-center"><span class="text-green-400 mr-2 font-bold">↓</span> Download</span>
-                    <span id="sys-net-down" class="font-bold text-white font-mono">0.00 MB/s</span>
+        <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">CPU Usage</h3>
+            <div>
+                <div class="flex items-end justify-between mb-2">
+                    <span id="sys-cpu-val" class="text-3xl font-bold tracking-tight text-slate-100">--%</span>
+                    <span id="sys-cpu-cores" class="text-sm font-medium text-muted-foreground">-- Cores</span>
                 </div>
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-gray-400 flex items-center"><span class="text-blue-400 mr-2 font-bold">↑</span> Upload</span>
-                    <span id="sys-net-up" class="font-bold text-white font-mono">0.00 MB/s</span>
+                <div class="w-full bg-background rounded-full h-2 mt-2 overflow-hidden border border-border/50">
+                    <div id="sys-cpu-bar" class="bg-primary h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">Memory</h3>
+            <div>
+                <div class="flex items-end justify-between mb-2">
+                    <span id="sys-ram-val" class="text-3xl font-bold tracking-tight text-slate-100">--%</span>
+                    <span id="sys-ram-text" class="text-sm font-medium text-muted-foreground">-- / -- GB</span>
+                </div>
+                <div class="w-full bg-background rounded-full h-2 mt-2 overflow-hidden border border-border/50">
+                    <div id="sys-ram-bar" class="bg-success h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">Storage (/)</h3>
+            <div>
+                <div class="flex items-end justify-between mb-2">
+                    <span id="sys-disk-val" class="text-3xl font-bold tracking-tight text-slate-100">--%</span>
+                    <span id="sys-disk-text" class="text-sm font-medium text-muted-foreground">-- / -- GB</span>
+                </div>
+                <div class="w-full bg-background rounded-full h-2 mt-2 overflow-hidden border border-border/50">
+                    <div id="sys-disk-bar" class="bg-warning h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">Network Traffic</h3>
+            <div class="space-y-3 mt-2">
+                <div class="flex justify-between items-center text-sm bg-background/50 p-2 rounded-lg border border-border/50">
+                    <span class="text-muted-foreground font-medium flex items-center gap-2">
+                        <span class="text-success font-bold">↓</span> RX
+                    </span>
+                    <span id="sys-net-down" class="font-bold text-slate-200 font-mono tracking-tight">0.00 MB/s</span>
+                </div>
+                <div class="flex justify-between items-center text-sm bg-background/50 p-2 rounded-lg border border-border/50">
+                    <span class="text-muted-foreground font-medium flex items-center gap-2">
+                        <span class="text-primary font-bold">↑</span> TX
+                    </span>
+                    <span id="sys-net-up" class="font-bold text-slate-200 font-mono tracking-tight">0.00 MB/s</span>
                 </div>
             </div>
         </div>
@@ -53,21 +63,21 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         
-        <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden col-span-1 p-6">
-            <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Node Info</h3>
-            <div class="space-y-4">
+        <div class="bg-surface rounded-2xl border border-border shadow-sm col-span-1 p-6">
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-6">Node Info</h3>
+            <div class="space-y-5">
                 <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wide">Operating System</p>
-                    <p class="text-white font-medium mt-1" id="sys-os">Loading...</p>
+                    <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Operating System</p>
+                    <p class="text-slate-200 font-semibold tracking-tight" id="sys-os">Loading...</p>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wide">System Uptime</p>
-                    <p class="text-white font-medium mt-1" id="sys-uptime">--</p>
+                    <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">System Uptime</p>
+                    <p class="text-slate-200 font-semibold tracking-tight" id="sys-uptime">--</p>
                 </div>
-                <div class="pt-4 border-t border-gray-700">
-                    <p class="text-xs text-gray-500 flex items-center justify-between">
+                <div class="pt-5 border-t border-border">
+                    <p class="text-xs font-medium text-muted-foreground flex items-center justify-between">
                         <span>Daemon Version</span>
-                        <span class="font-mono text-gray-300">v1.0.0-edge</span>
+                        <span class="font-mono text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">v1.0.0-edge</span>
                     </p>
                 </div>
             </div>

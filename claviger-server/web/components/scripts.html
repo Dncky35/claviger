@@ -16,7 +16,7 @@
                 tabEl.classList.remove('block');
             }
             if (btnEl) {
-                btnEl.className = 'py-4 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors';
+                btnEl.className = 'py-4 text-sm font-semibold tracking-tight border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors';
             }
         });
         
@@ -28,7 +28,7 @@
             activeTab.classList.add('block');
         }
         if (activeBtn) {
-            activeBtn.className = 'py-4 text-sm font-medium border-b-2 border-blue-500 text-blue-400 transition-colors';
+            activeBtn.className = 'py-4 text-sm font-semibold tracking-tight border-b-2 border-primary text-primary transition-colors';
         }
         
         // Fetch fresh data immediately when switching to a tab
@@ -110,25 +110,25 @@
 
                 clients.forEach(c => {
                     const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-gray-750 transition-colors';
+                    tr.className = 'hover:bg-background/50 transition-colors';
                     if (c.status === 'pending') {
                         pendingCount++;
                         tr.innerHTML = `
-                            <td class="p-4 font-bold text-white">${c.name}</td>
-                            <td class="p-4 text-gray-400 uppercase text-xs tracking-wider">${c.platform || 'Unknown'}</td>
-                            <td class="p-4 text-blue-400 font-medium">${c.role_id}</td>
+                            <td class="p-4 font-bold text-slate-200">${c.name}</td>
+                            <td class="p-4 text-muted-foreground uppercase text-[10px] tracking-widest font-bold">${c.platform || 'Unknown'}</td>
+                            <td class="p-4 text-primary font-medium">${c.role_id}</td>
                             <td class="p-4 text-right">
-                                <button onclick="approveClient('${c.id}', '${c.name}')" class="bg-green-600/20 text-green-400 hover:bg-green-600/40 border border-green-500/50 px-3 py-1 rounded transition text-xs font-bold uppercase tracking-wide shadow-sm">Approve Access</button>
+                                <button onclick="approveClient('${c.id}', '${c.name}')" class="bg-success/10 text-success hover:bg-success/20 border border-success/30 px-3 py-1.5 rounded-lg transition-colors text-[10px] font-bold uppercase tracking-wider shadow-sm">Approve Access</button>
                             </td>
                         `;
                         if(pendingTbody) pendingTbody.appendChild(tr);
                     } else if (c.status === 'active') {
                         tr.innerHTML = `
-                            <td class="p-4 font-bold text-white flex items-center"><div class="w-2 h-2 rounded-full bg-green-500 mr-3 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>${c.name}</td>
-                            <td class="p-4 font-mono text-gray-300">${c.ip_address}</td>
-                            <td class="p-4 text-blue-400 font-medium">${c.role_id}</td>
+                            <td class="p-4 font-bold text-slate-200 flex items-center"><div class="w-2 h-2 rounded-full bg-success mr-3 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>${c.name}</td>
+                            <td class="p-4 font-mono text-muted-foreground">${c.ip_address}</td>
+                            <td class="p-4 text-primary font-medium">${c.role_id}</td>
                             <td class="p-4 text-right">
-                                <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-red-400 hover:text-red-300 text-xs font-medium bg-gray-800 px-3 py-1 rounded border border-gray-700 hover:border-red-500/50 transition-colors">Revoke</button>
+                                <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
                             </td>
                         `;
                         if(activeTbody) activeTbody.appendChild(tr);
@@ -137,8 +137,8 @@
 
                 const badgeWaiting = document.getElementById('badge-waiting');
                 if(badgeWaiting) badgeWaiting.innerText = `${pendingCount} Pending`;
-                if(pendingCount === 0 && pendingTbody) pendingTbody.innerHTML = '<tr><td class="p-6 text-center text-gray-500 italic" colspan="4">No devices waiting for approval.</td></tr>';
-                if(activeTbody && activeTbody.innerHTML === '') activeTbody.innerHTML = '<tr><td class="p-6 text-center text-gray-500 italic" colspan="4">No active peers found.</td></tr>';
+                if(pendingCount === 0 && pendingTbody) pendingTbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="4">No devices waiting for approval.</td></tr>';
+                if(activeTbody && activeTbody.innerHTML === '') activeTbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="4">No active peers found.</td></tr>';
             }
         } catch (err) { console.error("Error fetching clients:", err); }
 
@@ -156,17 +156,17 @@
                         if(!inv.is_used) {
                             activeInvites++;
                             const tr = document.createElement('tr');
-                            tr.className = 'hover:bg-gray-800/80 transition-colors';
+                            tr.className = 'hover:bg-surface/80 transition-colors';
                             tr.innerHTML = `
-                                <td class="p-4 font-mono text-gray-300">${inv.token}</td>
-                                <td class="p-4 text-gray-400 font-medium">${inv.role_id}</td>
-                                <td class="p-4 text-gray-500 text-xs">${new Date(inv.expires_at).toLocaleString()}</td>
+                                <td class="p-4 font-mono text-slate-300">${inv.token}</td>
+                                <td class="p-4 text-muted-foreground font-medium">${inv.role_id}</td>
+                                <td class="p-4 text-muted-foreground/70 text-xs">${new Date(inv.expires_at).toLocaleString()}</td>
                             `;
                             if(invitesTbody) invitesTbody.appendChild(tr);
                         }
                     });
                 }
-                if(activeInvites === 0 && invitesTbody) invitesTbody.innerHTML = '<tr><td class="p-4 text-center italic" colspan="3">No active unused invites.</td></tr>';
+                if(activeInvites === 0 && invitesTbody) invitesTbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="3">No active unused invites.</td></tr>';
             }
         } catch (err) { console.error("Error fetching invites:", err); }
     }
@@ -227,16 +227,16 @@
                 
                 if (badge && toggleBtn) {
                     if (data.ufw_status === 'active') {
-                        badge.className = 'ml-4 px-3 py-1 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/30';
+                        badge.className = 'ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-success/10 text-success border border-success/20';
                         badge.innerText = 'Active';
                         toggleBtn.innerText = 'Disable UFW';
-                        toggleBtn.className = 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 px-4 py-2 rounded-lg font-medium transition text-sm';
+                        toggleBtn.className = 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border border-destructive/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
                         toggleBtn.onclick = () => toggleUFW('active');
                     } else {
-                        badge.className = 'ml-4 px-3 py-1 text-xs rounded-full bg-red-500/20 text-red-400 border border-red-500/30';
+                        badge.className = 'ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-destructive/10 text-destructive border border-destructive/20';
                         badge.innerText = 'Inactive';
                         toggleBtn.innerText = 'Enable UFW';
-                        toggleBtn.className = 'bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-500/30 px-4 py-2 rounded-lg font-medium transition text-sm';
+                        toggleBtn.className = 'bg-success/10 text-success hover:bg-success hover:text-white border border-success/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
                         toggleBtn.onclick = () => toggleUFW('inactive');
                     }
                 }
@@ -249,18 +249,18 @@
                         data.insights.forEach(insight => {
                             let styles = ''; let icon = '';
                             if (insight.level === 'critical') {
-                                styles = 'bg-red-500/10 border-red-500/30 text-red-400'; icon = '🚨';
+                                styles = 'bg-destructive/10 border-destructive/20 text-destructive'; icon = '🚨';
                             } else if (insight.level === 'warning') {
-                                styles = 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'; icon = '⚠️';
+                                styles = 'bg-warning/10 border-warning/20 text-warning'; icon = '⚠️';
                             } else {
-                                styles = 'bg-blue-500/10 border-blue-500/30 text-blue-400'; icon = '🛡️';
+                                styles = 'bg-primary/10 border-primary/20 text-primary'; icon = '🛡️';
                             }
                             insightsContainer.innerHTML += `
-                                <div class="${styles} border rounded-lg p-4 flex items-start shadow-sm">
-                                    <div class="text-xl mr-3">${icon}</div>
+                                <div class="${styles} border rounded-xl p-5 flex items-start shadow-sm mb-3">
+                                    <div class="text-xl mr-4">${icon}</div>
                                     <div>
                                         <h4 class="font-bold text-sm uppercase tracking-wide mb-1">${insight.title}</h4>
-                                        <p class="text-gray-300 text-sm leading-relaxed">${insight.message}</p>
+                                        <p class="text-slate-300 text-sm leading-relaxed">${insight.message}</p>
                                     </div>
                                 </div>
                             `;
@@ -274,7 +274,7 @@
                 
                 if (tbody && countDiv) {
                     if (!data.rules || data.rules.length === 0) {
-                        tbody.innerHTML = '<tr><td class="p-8 text-center text-gray-500 italic" colspan="4">No active firewall rules found.</td></tr>';
+                        tbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="4">No active firewall rules found.</td></tr>';
                         countDiv.innerText = "0 rules applied.";
                         return;
                     }
@@ -282,15 +282,15 @@
                     tbody.innerHTML = '';
                     data.rules.forEach(rule => {
                         const tr = document.createElement('tr');
-                        tr.className = 'hover:bg-gray-750 transition-colors';
-                        let actionColor = rule.action.includes('ALLOW') ? 'text-green-400' : 'text-red-400';
+                        tr.className = 'hover:bg-background/50 transition-colors';
+                        let actionColor = rule.action.includes('ALLOW') ? 'text-success' : 'text-destructive';
 
                         tr.innerHTML = `
-                            <td class="p-4 font-mono text-blue-400">${rule.to}</td>
-                            <td class="p-4 font-bold ${actionColor}">${rule.action}</td>
-                            <td class="p-4 text-gray-400">${rule.from}</td>
-                            <td class="p-4 text-right">
-                                <button onclick="deleteRule('${rule.to}', '${rule.action}')" class="text-gray-500 hover:text-red-400 transition-colors text-xs font-medium uppercase tracking-wider bg-gray-800 px-3 py-1 rounded border border-gray-700 hover:border-red-500/50">Delete</button>
+                            <td class="p-5 font-mono text-primary">${rule.to}</td>
+                            <td class="p-5 font-bold ${actionColor}">${rule.action}</td>
+                            <td class="p-5 text-muted-foreground">${rule.from}</td>
+                            <td class="p-5 text-right">
+                                <button onclick="deleteRule('${rule.to}', '${rule.action}')" class="text-muted-foreground hover:text-white hover:bg-destructive hover:border-destructive transition-colors text-[10px] font-bold uppercase tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border">Delete</button>
                             </td>
                         `;
                         tbody.appendChild(tr);
@@ -308,7 +308,6 @@
     async function fetchSystemData() {
         try {
             // VPN Status
-            // VPN & Cloud Status
             const statusRes = await fetch('/api/status');
             if (statusRes.ok) {
                 const statusData = await statusRes.json();
@@ -316,7 +315,7 @@
                 // Update VPN Badge
                 const vpnBadge = document.getElementById('vpn-status-badge');
                 if (vpnBadge && statusData.vpn_state === 'active') {
-                    vpnBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]';
+                    vpnBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-success/10 text-success border border-success/20 shadow-[0_0_10px_rgba(34,197,94,0.2)] transition-colors';
                     vpnBadge.innerText = '● VPN Active';
                 }
 
@@ -324,9 +323,8 @@
                 const cloudBadge = document.getElementById('cloud-sync-badge');
                 if (cloudBadge) {
                     if (statusData.cloud_sync_status === 'Healthy') {
-                        cloudBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30';
+                        cloudBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 transition-colors';
                         
-                        // Calculate relative time (e.g., "Just now", "45s ago")
                         let timeStr = "Healthy";
                         if (statusData.last_cloud_sync) {
                             const secondsAgo = Math.floor((new Date() - new Date(statusData.last_cloud_sync)) / 1000);
@@ -334,8 +332,7 @@
                         }
                         cloudBadge.innerText = '☁️ Cloud: ' + timeStr;
                     } else {
-                        // Error State
-                        cloudBadge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse';
+                        cloudBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-destructive/10 text-destructive border border-destructive/20 animate-pulse';
                         cloudBadge.innerText = '⚠️ Cloud: Offline';
                     }
                 }
@@ -391,12 +388,4 @@
     setInterval(fetchSystemData, 3000); // Fast hardware polling (3s)
     setInterval(fetchSecurityData, 10000); // Slower security polling (10s)
 </script>
-
-<style>
-    .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
-    @keyframes fadeIn { 
-        from { opacity: 0; transform: translateY(5px); } 
-        to { opacity: 1; transform: translateY(0); } 
-    }
-</style>
 {{ end }}

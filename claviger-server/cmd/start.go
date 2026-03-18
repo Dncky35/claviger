@@ -98,9 +98,6 @@ func RunStart() {
 	// If we pass the check, we are good to go!
 	log.Println("✅ Node Identity loaded.")
 
-	// 2. Synchronize the Kernel!
-	syncWireGuardPeers(db)
-
 	// ---------------------------------------------------------
 	// 2. NETWORK BOOT (MUST HAPPEN BEFORE HEARTBEAT)
 	// ---------------------------------------------------------
@@ -112,10 +109,12 @@ func RunStart() {
 		log.Fatalf("❌ Failed to start WireGuard: %v\n(If it is already running, run 'sudo wg-quick down wg0' to reset it)", err)
 	}
 
+	syncWireGuardPeers(db)
+
 	// ---------------------------------------------------------
 	// 3. START HEARTBEAT ENGINE
 	// ---------------------------------------------------------
-	log.Println("💓 Starting Cloudrocean Heartbeat Engine...")
+	log.Println("Starting Cloudrocean Heartbeat Engine...")
 	go api.StartHeartbeatLoop(db, nodeID, apiToken, daemonVersion)
 
 	// ---------------------------------------------------------
