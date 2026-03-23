@@ -1,6 +1,7 @@
 package api
 
 import (
+	"claviger-server/internal/firewall"
 	"database/sql"
 	"encoding/json"
 	"log"
@@ -31,13 +32,21 @@ func HandleRevoke(db *sql.DB) http.HandlerFunc {
 
 		// 1. Fetch the client's public key before we delete them
 		var pubKeyStr, clientName string
-		err := db.QueryRow("SELECT public_key, name FROM clients WHERE id = ?", req.ClientID).Scan(&pubKeyStr, &clientName)
+		var clientIP sql.NullString // FIX: Safely handles NULL values for pending users
+
+		err := db.QueryRow("SELECT public_key, name, ip_address FROM clients WHERE id = ?", req.ClientID).Scan(&pubKeyStr, &clientName, &clientIP)
 		if err == sql.ErrNoRows {
 			http.Error(w, "Client not found", http.StatusNotFound)
 			return
 		} else if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
+		}
+
+		// --- NEW: Clean up the Firewall ---
+		// .Valid checks if it's not NULL, .String gets the actual IP
+		if clientIP.Valid && clientIP.String != "" {
+			firewall.RemoveRoleRules(clientIP.String)
 		}
 
 		// 2. Hot-Remove from the Linux Kernel

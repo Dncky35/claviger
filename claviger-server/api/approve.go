@@ -1,6 +1,7 @@
 package api
 
 import (
+	"claviger-server/internal/firewall"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -99,6 +100,13 @@ func HandleApprove(db *sql.DB) http.HandlerFunc {
 					Peers: []wgtypes.PeerConfig{peerConfig},
 				})
 				log.Printf("✅ Access Granted: %s injected into kernel at %s", clientName, assignIP)
+
+				// --- NEW: Enforce Micro-segmentation ---
+				// We need to fetch the allowed_ports for their assigned role
+				var allowedPorts string
+				db.QueryRow("SELECT allowed_ports FROM roles WHERE id = (SELECT role_id FROM clients WHERE id = ?)", req.ClientID).Scan(&allowedPorts)
+
+				firewall.ApplyRoleRules(assignIP, allowedPorts) // Call the Enforcer!
 			} else {
 				log.Printf("⚠️ Failed to parse public key for %s: %v", clientName, parseErr)
 			}

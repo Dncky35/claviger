@@ -132,6 +132,8 @@ func RunStart() {
 	mux.HandleFunc("/api/enroll", api.HandleEnroll(db))
 	mux.HandleFunc("/api/approve", api.HandleApprove(db))
 	mux.HandleFunc("/api/revoke", api.HandleRevoke(db))
+	mux.HandleFunc("/api/access/ssh", api.HandleSSHKeys)
+	mux.HandleFunc("/api/roles", api.HandleRoles(db))
 
 	// Parse the embedded HTML templates on boot
 	tmpl, err := template.ParseFS(web.TemplatesFS, "index.html", "components/*.html")

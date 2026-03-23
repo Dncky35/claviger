@@ -1,0 +1,61 @@
+{{ define "tab_access" }}
+<div id="tab-access" class="hidden animate-fade-in space-y-10">
+    
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h2 class="text-3xl font-bold text-slate-100 tracking-tight">System Access</h2>
+            <p class="text-muted-foreground text-sm mt-1">Manage OS-level SSH keys and root-level administrative access.</p>
+        </div>
+        <button onclick="addSSHKey()" class="bg-primary hover:bg-primary/90 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)] px-5 py-2.5 rounded-xl font-semibold transition-all text-sm flex items-center gap-2 active:scale-95 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            Add SSH Key
+        </button>
+    </div>
+
+    <div class="bg-warning/5 border border-warning/20 rounded-2xl p-6 flex gap-4 shadow-sm">
+        <div class="text-warning mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div>
+            <h4 class="text-warning font-bold text-sm mb-1">Root Access Warning</h4>
+            <p class="text-warning/80 text-sm leading-relaxed max-w-3xl">
+                SSH keys grant direct OS-level access to this server. Anyone with a corresponding private key can bypass the Claviger Hub and execute terminal commands. Only grant SSH access to trusted system administrators. 
+                <br><br>
+                <em>Note: If Shield Mode is active, users must be connected to the Claviger VPN to use their SSH keys.</em>
+            </p>
+        </div>
+    </div>
+
+    <div>
+        <h3 class="text-lg font-bold text-slate-100 mb-4 tracking-tight flex items-center gap-2">
+            Authorized SSH Keys 
+            <span class="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded border border-border bg-surface text-muted-foreground">~/.ssh/authorized_keys</span>
+        </h3>
+        <div class="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse whitespace-nowrap">
+                    <thead>
+                        <tr class="bg-background border-b border-border text-muted-foreground text-[10px] uppercase tracking-widest font-bold">
+                            <th class="p-5">Identifier / Comment</th>
+                            <th class="p-5">Key Type</th>
+                            <th class="p-5">Fingerprint preview</th>
+                            <th class="p-5 text-right">Controls</th>
+                        </tr>
+                    </thead>
+                    <tbody id="list-ssh-keys" class="divide-y divide-border/50 text-sm text-slate-300">
+                        <tr class="hover:bg-background/50 transition-colors">
+                            <td class="p-5 font-bold text-slate-200">ercan@macbook-pro</td>
+                            <td class="p-5 text-primary font-mono text-xs">ssh-ed25519</td>
+                            <td class="p-5 font-mono text-muted-foreground text-xs truncate max-w-[200px]">AAAAC3NzaC1lZDI1NTE5...</td>
+                            <td class="p-5 text-right">
+                                <button onclick="revokeSSHKey('ercan@macbook-pro')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{{ end }}

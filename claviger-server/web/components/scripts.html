@@ -7,7 +7,7 @@
 
     // --- Tab Navigation Logic ---
     function switchTab(tabId) {
-        const tabs = ['system', 'security', 'clients'];
+        const tabs = ['system', 'security', 'clients', "access", "roles"];
         tabs.forEach(id => {
             const tabEl = document.getElementById('tab-' + id);
             const btnEl = document.getElementById('btn-' + id);
@@ -34,6 +34,8 @@
         // Fetch fresh data immediately when switching to a tab
         if (tabId === 'security') fetchSecurityData();
         if (tabId === 'clients') fetchPeersData();
+        if (tabId === 'access') fetchSSHKeys();
+        if (tabId === 'roles') fetchRolesData();
     }
 
     // ==========================================
@@ -387,5 +389,176 @@
     fetchSystemData();
     setInterval(fetchSystemData, 3000); // Fast hardware polling (3s)
     setInterval(fetchSecurityData, 10000); // Slower security polling (10s)
+    setInterval(fetchPeersData, 5000); // Poll for new enrollments every 5 seconds
+
+
+    // ==========================================
+    // SERVER AUTHENTICATION
+    // ==========================================
+
+    async function fetchSSHKeys() {
+        try {
+            const res = await fetch('/api/access/ssh');
+            if (res.ok) {
+                const keys = await res.json();
+                const tbody = document.getElementById('list-ssh-keys');
+                if (!tbody) return;
+                
+                if (!keys || keys.length === 0) {
+                    tbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="4">No authorized SSH keys found.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                keys.forEach(k => {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-background/50 transition-colors">
+                            <td class="p-5 font-bold text-slate-200">${k.comment}</td>
+                            <td class="p-5 text-primary font-mono text-xs">${k.key_type}</td>
+                            <td class="p-5 font-mono text-muted-foreground text-xs truncate max-w-[200px]">${k.preview}</td>
+                            <td class="p-5 text-right">
+                                <button onclick="revokeSSHKey('${k.comment}')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        } catch (err) { console.error("Error fetching SSH keys:", err); }
+    }
+
+    async function addSSHKey() {
+        const rawKey = prompt("Paste the full public SSH key (e.g., ssh-ed25519 AAAAC3... user@machine):");
+        if (!rawKey) return;
+
+        try {
+            const res = await fetch('/api/access/ssh?action=add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ raw_key: rawKey })
+            });
+            const data = await res.json();
+            alert(data.message);
+            fetchSSHKeys();
+        } catch (err) { alert("Failed to add key."); }
+    }
+
+    async function revokeSSHKey(comment) {
+        if (!confirm(`🚨 Are you sure you want to revoke SSH access for '${comment}'?`)) return;
+
+        try {
+            const res = await fetch('/api/access/ssh?action=revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comment: comment })
+            });
+            const data = await res.json();
+            alert(data.message);
+            fetchSSHKeys();
+        } catch (err) { alert("Failed to revoke key."); }
+    }
+
+    // ==========================================
+    // ROLE MANAGEMENT LOGIC
+    // ==========================================
+
+    async function fetchRolesData() {
+        try {
+            const res = await fetch('/api/roles');
+            if (res.ok) {
+                const roles = await res.json();
+                const tbody = document.getElementById('list-roles');
+                if (!tbody) return;
+
+                tbody.innerHTML = '';
+                roles.forEach(r => {
+                    const isSystemRole = (r.id === 'admin' || r.id === 'standard');
+                    const deleteBtn = isSystemRole 
+                        ? `<span class="text-muted-foreground/50 text-xs italic px-3">System</span>` 
+                        : `<button onclick="deleteRole('${r.id}', '${r.name}')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors ml-2">Delete</button>`;
+
+                    const editBtn = `<button onclick="editRole('${r.id}', '${r.name}', '${r.allowed_ports}')" class="text-muted-foreground hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-primary hover:border-primary transition-colors">Edit</button>`;
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-background/50 transition-colors">
+                            <td class="p-5">
+                                <div class="font-bold text-slate-200">${r.name}</div>
+                                <div class="font-mono text-[10px] text-muted-foreground mt-0.5">${r.id}</div>
+                            </td>
+                            <td class="p-5 font-mono text-primary font-medium tracking-tight">${r.allowed_ports}</td>
+                            <td class="p-5 text-muted-foreground text-xs">${new Date(r.created_at).toLocaleDateString()}</td>
+                            <td class="p-5 text-right flex justify-end items-center">
+                                ${editBtn}
+                                ${deleteBtn}
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        } catch (err) { console.error("Error fetching roles:", err); }
+    }
+
+    async function createRole() {
+        const name = prompt("Enter Role Name (e.g., 'Database Admin'):");
+        if (!name) return;
+        
+        const ports = prompt("Enter Allowed Ports/IPs (e.g., 'ALL', '80,443', or '10.8.0.50:5432'):", "80,443");
+        if (!ports) return;
+
+        try {
+            const res = await fetch('/api/roles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, allowed_ports: ports })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                fetchRolesData(); // Instantly refresh UI!
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        } catch (err) { alert("Failed to create role."); }
+    }
+
+    async function editRole(id, currentName, currentPorts) {
+        const newName = prompt("Edit Role Name:", currentName);
+        if (!newName) return;
+
+        const newPorts = prompt("Edit Allowed Ports/IPs:", currentPorts);
+        if (!newPorts) return;
+
+        try {
+            const res = await fetch('/api/roles', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, name: newName, allowed_ports: newPorts })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                fetchRolesData(); // Instantly refresh UI!
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        } catch (err) { alert("Failed to update role."); }
+    }
+
+    async function deleteRole(id, name) {
+        if (!confirm(`🚨 Are you sure you want to delete the '${name}' role?\n\nThis will fail if users are currently assigned to it.`)) return;
+
+        try {
+            const res = await fetch('/api/roles', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                fetchRolesData(); // Instantly refresh UI!
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        } catch (err) { alert("Failed to delete role."); }
+    }
+
+
 </script>
 {{ end }}
