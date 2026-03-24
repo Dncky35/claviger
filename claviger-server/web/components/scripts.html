@@ -559,6 +559,69 @@
         } catch (err) { alert("Failed to delete role."); }
     }
 
+    // ==========================================
+    // GLOBAL ROUTING LOGIC
+    // ==========================================
+    
+    // Global state for the toggle
+    let isGlobalRoutingEnabled = false;
+
+    async function fetchNetworkStatus() {
+        try {
+            const res = await fetch('/api/network/internet');
+            if (res.ok) {
+                const data = await res.json();
+                isGlobalRoutingEnabled = data.internet_enabled;
+                updateRoutingUI();
+            }
+        } catch (err) { console.error("Error fetching network status:", err); }
+    }
+
+    function updateRoutingUI() {
+        const badge = document.getElementById('badge-routing-status');
+        const bg = document.getElementById('btn-toggle-routing');
+        const knob = document.getElementById('toggle-routing-knob');
+
+        if (!badge || !bg || !knob) return;
+
+        if (isGlobalRoutingEnabled) {
+            badge.className = 'px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-bold rounded-full bg-success/10 text-success border border-success/20';
+            badge.innerText = 'Routed';
+            bg.className = 'relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background bg-success shrink-0';
+            knob.className = 'inline-block h-5 w-5 transform rounded-full bg-white transition-transform translate-x-8 shadow-sm';
+        } else {
+            badge.className = 'px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-bold rounded-full bg-destructive/10 text-destructive border border-destructive/20';
+            badge.innerText = 'Isolated';
+            bg.className = 'relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background bg-slate-700 shrink-0';
+            knob.className = 'inline-block h-5 w-5 transform rounded-full bg-white transition-transform translate-x-1 shadow-sm';
+        }
+    }
+
+    async function toggleGlobalRouting() {
+        // Optimistically flip the UI state for instant feedback
+        isGlobalRoutingEnabled = !isGlobalRoutingEnabled;
+        updateRoutingUI();
+
+        try {
+            const res = await fetch('/api/network/internet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enable: isGlobalRoutingEnabled })
+            });
+            const data = await res.json();
+            
+            if (!res.ok) {
+                // Revert if it failed
+                alert(`Error: ${data.message}`);
+                isGlobalRoutingEnabled = !isGlobalRoutingEnabled;
+                updateRoutingUI();
+            }
+        } catch (err) {
+            alert("Network error while toggling routing.");
+            isGlobalRoutingEnabled = !isGlobalRoutingEnabled;
+            updateRoutingUI();
+        }
+    }
 
 </script>
 {{ end }}

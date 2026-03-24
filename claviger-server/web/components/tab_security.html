@@ -40,5 +40,21 @@
             Waiting for data...
         </div>
     </div>
+
+    <div class="bg-surface rounded-2xl border border-border mt-6 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div>
+            <h3 class="text-lg font-bold text-slate-100 flex items-center gap-3">
+                Global Internet Routing
+                <span id="badge-routing-status" class="px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-bold rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20">Checking...</span>
+            </h3>
+            <p class="text-muted-foreground text-sm mt-1 max-w-2xl">
+                When enabled, WireGuard clients route their public internet traffic (like Google or YouTube) through this server. When disabled, clients are strictly isolated to the private <code>10.8.0.x</code> network.
+            </p>
+        </div>
+        
+        <button id="btn-toggle-routing" onclick="toggleGlobalRouting()" class="relative inline-flex  h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background bg-slate-700 shrink-0">
+            <span id="toggle-routing-knob" class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform translate-x-1"></span>
+        </button>
+    </div>
 </div>
 {{ end }}

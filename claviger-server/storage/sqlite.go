@@ -9,13 +9,12 @@ import (
 
 // InitDB initializes the local SQLite database and creates the necessary tables.
 func InitDB() *sql.DB {
-	// Open or create the local database file
 	db, err := sql.Open("sqlite", "claviger.db")
 	if err != nil {
 		log.Fatalf("❌ Failed to open SQLite database: %v", err)
 	}
 
-	// 1. Config Table
+	// 1. Config Table (Strictly Key/Value)
 	createConfigTable := `
 	CREATE TABLE IF NOT EXISTS config (
 		key TEXT PRIMARY KEY,
@@ -24,6 +23,12 @@ func InitDB() *sql.DB {
 	if _, err := db.Exec(createConfigTable); err != nil {
 		log.Fatalf("❌ Failed to create config table: %v", err)
 	}
+
+	// Pre-seed default configuration values
+	db.Exec(`INSERT OR IGNORE INTO config (key, value) VALUES ('allow_global_internet', 'false')`)
+	db.Exec(`INSERT OR IGNORE INTO config (key, value) VALUES ('wg_port', '51820')`)
+	db.Exec(`INSERT OR IGNORE INTO config (key, value) VALUES ('hub_ip', '10.8.0.1')`)
+	db.Exec(`INSERT OR IGNORE INTO config (key, value) VALUES ('hub_port', '18080')`)
 
 	// 2. Roles Table
 	createRolesTable := `
@@ -46,11 +51,11 @@ func InitDB() *sql.DB {
 		id TEXT PRIMARY KEY,
 		name TEXT NOT NULL,
 		public_key TEXT UNIQUE NOT NULL, 
-		ip_address TEXT UNIQUE,       -- Removed NOT NULL (assigned upon approval)
+		ip_address TEXT UNIQUE,       
 		role_id TEXT NOT NULL,
 		platform TEXT,                
 		device_id TEXT,               
-		status TEXT DEFAULT 'pending',-- 'pending', 'active', or 'suspended'
+		status TEXT DEFAULT 'pending',
 		last_seen DATETIME,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (role_id) REFERENCES roles(id)
@@ -59,14 +64,13 @@ func InitDB() *sql.DB {
 		log.Fatalf("❌ Failed to create clients table: %v", err)
 	}
 
-	// 4. Invitations Table (NEW!)
-	// This stores the single-use tokens waiting to be claimed by the Desktop/Mobile app
+	// 4. Invitations Table
 	createInvitationsTable := `
 	CREATE TABLE IF NOT EXISTS invitations (
-		token TEXT PRIMARY KEY,       -- e.g., 'clav-invite-xyz123'
-		role_id TEXT NOT NULL,        -- What role they get when they join
-		expires_at DATETIME NOT NULL, -- Tokens should expire for security
-		is_used BOOLEAN DEFAULT 0,    -- Becomes 1 once the user claims it
+		token TEXT PRIMARY KEY,       
+		role_id TEXT NOT NULL,        
+		expires_at DATETIME NOT NULL, 
+		is_used BOOLEAN DEFAULT 0,    
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (role_id) REFERENCES roles(id)
 	);`
@@ -81,7 +85,7 @@ func GetConfig(db *sql.DB, key string) string {
 	var value string
 	err := db.QueryRow("SELECT value FROM config WHERE key = ?", key).Scan(&value)
 	if err != nil {
-		return ""
+		return "" // Return empty string if not found, allowing defaults to take over
 	}
 	return value
 }

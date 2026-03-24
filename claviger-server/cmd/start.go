@@ -10,20 +10,20 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"text/template"
 	"time"
 
 	"claviger-server/api"
+	"claviger-server/internal/firewall"
 	"claviger-server/network"
 	"claviger-server/storage"
 	"claviger-server/web"
-	"text/template"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // syncWireGuardPeers reads all active clients from SQLite and hot-injects them into wg0.
-// It also wipes any "ghost" peers from the kernel that shouldn't be there.
 func syncWireGuardPeers(db *sql.DB) {
 	log.Println("🔄 Synchronizing active peers to WireGuard interface...")
 
@@ -60,7 +60,6 @@ func syncWireGuardPeers(db *sql.DB) {
 		})
 	}
 
-	// Apply the synchronized list directly to the Linux Kernel
 	wg, err := wgctrl.New()
 	if err != nil {
 		log.Printf("⚠️ Failed to open WireGuard control: %v", err)
@@ -69,7 +68,7 @@ func syncWireGuardPeers(db *sql.DB) {
 	defer wg.Close()
 
 	err = wg.ConfigureDevice("wg0", wgtypes.Config{
-		ReplacePeers: true, // Wipes the interface and replaces with our exact list
+		ReplacePeers: true,
 		Peers:        peers,
 	})
 
@@ -91,22 +90,46 @@ func RunStart() {
 	apiToken := storage.GetConfig(db, "api_token")
 	daemonVersion := "1.0.0"
 
-	if apiToken == "" || nodeID == "" {
-		log.Fatal("❌ Error: Node is not registered. Please run 'sudo ./claviger-server setup' first.")
+	// --- NEW: Read Dynamic Ports from DB ---
+	wgPort := storage.GetConfig(db, "wg_port")
+	hubPort := storage.GetConfig(db, "hub_port")
+	hubIP := storage.GetConfig(db, "hub_ip")
+
+	if wgPort == "" {
+		wgPort = "51820"
+	}
+	if hubPort == "" {
+		hubPort = "18080"
+	}
+	if hubIP == "" {
+		hubIP = "10.8.0.1"
 	}
 
-	// If we pass the check, we are good to go!
+	if apiToken == "" || nodeID == "" {
+		log.Fatal("❌ Error: Node is not registered. Please run 'sudo claviger-server setup' first.")
+	}
+
 	log.Println("✅ Node Identity loaded.")
 
 	// ---------------------------------------------------------
-	// 2. NETWORK BOOT (MUST HAPPEN BEFORE HEARTBEAT)
+	// 2. NETWORK BOOT (DYNAMIC PORTS)
 	// ---------------------------------------------------------
-	if err := network.CheckAndOpenFirewall("51820"); err != nil {
+	if err := network.CheckAndOpenFirewall(wgPort); err != nil {
 		log.Printf("⚠️ Firewall check warning: %v\n", err)
 	}
 
 	if err := network.StartWireGuard(); err != nil {
-		log.Fatalf("❌ Failed to start WireGuard: %v\n(If it is already running, run 'sudo wg-quick down wg0' to reset it)", err)
+		log.Fatalf("❌ Failed to start WireGuard: %v\n(If it is already running, run 'sudo wg-quick down wg0')", err)
+	}
+
+	// Restore Global Internet State
+	if storage.GetConfig(db, "allow_global_internet") == "true" {
+		log.Println("🔄 Restoring Global Internet Routing...")
+		if err := firewall.EnableInternet(); err != nil {
+			log.Printf("⚠️ Failed to restore internet routing: %v", err)
+		}
+	} else {
+		log.Println("🔒 Server is in Isolated LAN mode (No Public Routing).")
 	}
 
 	syncWireGuardPeers(db)
@@ -122,9 +145,8 @@ func RunStart() {
 	// ---------------------------------------------------------
 	mux := http.NewServeMux()
 
-	// Wire up our clean API endpoints
 	mux.HandleFunc("/api/status", api.HandleStatus(nodeID, apiToken != ""))
-	mux.HandleFunc("/api/system", api.HandleSystemStats) // <-- The new hardware stats endpoint!
+	mux.HandleFunc("/api/system", api.HandleSystemStats)
 	mux.HandleFunc("/api/security", api.HandleSecurityStats)
 	mux.HandleFunc("/api/security/action", api.HandleSecurityAction)
 	mux.HandleFunc("/api/clients", api.HandleClients(db))
@@ -134,38 +156,33 @@ func RunStart() {
 	mux.HandleFunc("/api/revoke", api.HandleRevoke(db))
 	mux.HandleFunc("/api/access/ssh", api.HandleSSHKeys)
 	mux.HandleFunc("/api/roles", api.HandleRoles(db))
+	mux.HandleFunc("/api/network/internet", api.HandleNetworkSettings(db))
 
-	// Parse the embedded HTML templates on boot
 	tmpl, err := template.ParseFS(web.TemplatesFS, "index.html", "components/*.html")
 	if err != nil {
 		log.Fatalf("❌ Failed to parse HTML templates: %v", err)
 	}
 
-	// Serve the stitched UI
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-		// Execute the template (this replaces w.Write(web.IndexHTML))
 		err := tmpl.ExecuteTemplate(w, "index.html", nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
 
-	port := "18080"
 	server := &http.Server{
-		Addr:    "0.0.0.0:" + port,
+		Addr:    "0.0.0.0:" + hubPort,
 		Handler: mux,
 	}
 
 	go func() {
 		fmt.Printf("\n🌐 Local Hub running securely.\n")
-		fmt.Printf("👉 Access via VPN: http://10.8.0.1:%s\n", port)
-		fmt.Printf("👉 Access via SSH: http://127.0.0.1:%s\n", port)
+		fmt.Printf("👉 Access via VPN: http://%s:%s\n", hubIP, hubPort)
 		fmt.Println("\nPress Ctrl+C to safely shut down the daemon.")
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -178,19 +195,19 @@ func RunStart() {
 	// ---------------------------------------------------------
 	stopChan := make(chan os.Signal, 1)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
-
-	// The code completely pauses here, waiting for the user to press Ctrl+C
 	<-stopChan
 
-	// --- SHUTDOWN SEQUENCE ---
 	fmt.Println("\n\n🛑 Shutting down Claviger Edge Daemon...")
 
-	// Safely bring down the VPN interface
+	// --- NEW: CLEAN UP IPTABLES NAT ROUTING ---
+	if storage.GetConfig(db, "allow_global_internet") == "true" {
+		firewall.DisableInternet()
+	}
+
 	if err := network.StopWireGuard(); err != nil {
 		log.Printf("⚠️ Error stopping WireGuard: %v\n", err)
 	}
 
-	// Safely shut down the local web server
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {

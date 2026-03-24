@@ -1,9 +1,8 @@
 package api
 
 import (
-	"crypto/rand"
+	"claviger-server/internal/auth"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -21,15 +20,6 @@ type Invitation struct {
 	ExpiresAt string `json:"expires_at"`
 	IsUsed    bool   `json:"is_used"`
 	CreatedAt string `json:"created_at"`
-}
-
-// generateSecureToken creates a cryptographically secure random string
-func generateSecureToken() string {
-	bytes := make([]byte, 8) // 8 bytes = 16 hex characters
-	if _, err := rand.Read(bytes); err != nil {
-		return "clav-err-token" // Fallback (extremely rare)
-	}
-	return "clav-" + hex.EncodeToString(bytes)
 }
 
 // HandleInvites manages creating and listing enrollment tokens
@@ -63,10 +53,11 @@ func HandleInvites(db *sql.DB) http.HandlerFunc {
 			json.NewDecoder(r.Body).Decode(&req)
 
 			if req.RoleID == "" {
-				req.RoleID = "standard" // Default to standard user access
+				req.RoleID = "standard"
 			}
 
-			token := generateSecureToken()
+			// USE THE NEW AUTH ENGINE!
+			token := auth.GenerateInviteToken()
 			expiresAt := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
 			createdAt := time.Now().Format(time.RFC3339)
 
