@@ -54,9 +54,33 @@
             });
             const data = await res.json();
             
-            prompt("✅ Invitation Generated!\nCopy this secure token and send it to the user:", data.token);
-            fetchPeersData();
+            if (res.ok) {
+                prompt("✅ Invitation Generated!\nCopy this secure token and send it to the user:", data.token);
+                fetchPeersData();
+            } else {
+                alert(`Error: ${data.message}`);
+            }
         } catch (err) { alert("Failed to generate invite."); }
+    }
+
+    // --- NEW: Function to revoke unused tokens ---
+    async function revokeInvite(token) {
+        if (!confirm(`Are you sure you want to permanently revoke this invitation token?\n\n${token}`)) return;
+
+        try {
+            const res = await fetch(`/api/invites?token=${encodeURIComponent(token)}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                fetchPeersData(); // Refresh the tables instantly
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        } catch (err) {
+            alert("Failed to revoke invite.");
+        }
     }
 
     async function approveClient(clientId, clientName) {
@@ -98,7 +122,7 @@
     }
 
     async function fetchPeersData() {
-        // --- 1. Fetch Clients (Independent Block) ---
+        // --- 1. Fetch Clients ---
         try {
             const clientRes = await fetch('/api/clients');
             if (clientRes.ok) {
@@ -113,24 +137,56 @@
                 clients.forEach(c => {
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-background/50 transition-colors';
+                    
                     if (c.status === 'pending') {
                         pendingCount++;
                         tr.innerHTML = `
                             <td class="p-4 font-bold text-slate-200">${c.name}</td>
                             <td class="p-4 text-muted-foreground uppercase text-[10px] tracking-widest font-bold">${c.platform || 'Unknown'}</td>
-                            <td class="p-4 text-primary font-medium">${c.role_id}</td>
+                            <td class="p-4 font-medium"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${c.role_id}</span></td>
                             <td class="p-4 text-right">
                                 <button onclick="approveClient('${c.id}', '${c.name}')" class="bg-success/10 text-success hover:bg-success/20 border border-success/30 px-3 py-1.5 rounded-lg transition-colors text-[10px] font-bold uppercase tracking-wider shadow-sm">Approve Access</button>
                             </td>
                         `;
                         if(pendingTbody) pendingTbody.appendChild(tr);
                     } else if (c.status === 'active') {
+                        
+                        // --- NEW: Dynamic Online/Offline State Badge ---
+                        let stateBadge = '';
+                        if (c.is_online) {
+                            stateBadge = `
+                                <div class="flex flex-col items-center justify-center">
+                                    <div class="flex items-center">
+                                        <div class="w-2 h-2 rounded-full bg-success mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                                        <span class="text-xs font-bold text-success uppercase tracking-wider">Online</span>
+                                    </div>
+                                    <span class="text-[9px] text-success/60 mt-1 font-mono">Connected</span>
+                                </div>`;
+                        } else {
+                            // Format the last seen time beautifully
+                            let lastSeenText = 'Never';
+                            if (c.last_handshake) {
+                                const date = new Date(c.last_handshake);
+                                lastSeenText = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                            }
+                            
+                            stateBadge = `
+                                <div class="flex flex-col items-center justify-center" title="Last handshake: ${c.last_handshake || 'Never'}">
+                                    <div class="flex items-center">
+                                        <div class="w-2 h-2 rounded-full bg-muted-foreground/40 mr-2"></div>
+                                        <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Offline</span>
+                                    </div>
+                                    <span class="text-[9px] text-muted-foreground/60 mt-1 font-mono">Seen: ${lastSeenText}</span>
+                                </div>`;
+                        }
+
                         tr.innerHTML = `
-                            <td class="p-4 font-bold text-slate-200 flex items-center"><div class="w-2 h-2 rounded-full bg-success mr-3 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>${c.name}</td>
+                            <td class="p-4 font-bold text-slate-200">${c.name}</td>
                             <td class="p-4 font-mono text-muted-foreground">${c.ip_address}</td>
-                            <td class="p-4 text-primary font-medium">${c.role_id}</td>
+                            <td class="p-4 font-medium"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${c.role_id}</span></td>
+                            <td class="p-4">${stateBadge}</td>
                             <td class="p-4 text-right">
-                                <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
+                                <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
                             </td>
                         `;
                         if(activeTbody) activeTbody.appendChild(tr);
@@ -139,12 +195,13 @@
 
                 const badgeWaiting = document.getElementById('badge-waiting');
                 if(badgeWaiting) badgeWaiting.innerText = `${pendingCount} Pending`;
+                
                 if(pendingCount === 0 && pendingTbody) pendingTbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="4">No devices waiting for approval.</td></tr>';
-                if(activeTbody && activeTbody.innerHTML === '') activeTbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="4">No active peers found.</td></tr>';
+                if(activeTbody && activeTbody.innerHTML === '') activeTbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="5">No managed devices found.</td></tr>';
             }
         } catch (err) { console.error("Error fetching clients:", err); }
 
-        // --- 2. Fetch Invites (Independent Block) ---
+        // --- 2. Fetch Invites ---
         try {
             const inviteRes = await fetch('/api/invites');
             if (inviteRes.ok) {
@@ -152,27 +209,27 @@
                 const invitesTbody = document.getElementById('list-invites');
                 if(invitesTbody) invitesTbody.innerHTML = '';
                 
-                let activeInvites = 0;
-                if(invites) {
+                if(invites && invites.length > 0) {
                     invites.forEach(inv => {
-                        if(!inv.is_used) {
-                            activeInvites++;
-                            const tr = document.createElement('tr');
-                            tr.className = 'hover:bg-surface/80 transition-colors';
-                            tr.innerHTML = `
-                                <td class="p-4 font-mono text-slate-300">${inv.token}</td>
-                                <td class="p-4 text-muted-foreground font-medium">${inv.role_id}</td>
-                                <td class="p-4 text-muted-foreground/70 text-xs">${new Date(inv.expires_at).toLocaleString()}</td>
-                            `;
-                            if(invitesTbody) invitesTbody.appendChild(tr);
-                        }
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-surface/80 transition-colors';
+                        tr.innerHTML = `
+                            <td class="p-4 font-mono text-primary/80 text-xs">${inv.token}</td>
+                            <td class="p-4"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${inv.role_id}</span></td>
+                            <td class="p-4 text-muted-foreground/70 text-xs">${new Date(inv.expires_at).toLocaleString()}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="revokeInvite('${inv.token}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
+                            </td>
+                        `;
+                        if(invitesTbody) invitesTbody.appendChild(tr);
                     });
+                } else {
+                    if(invitesTbody) invitesTbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="4">No active unused invites.</td></tr>';
                 }
-                if(activeInvites === 0 && invitesTbody) invitesTbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="3">No active unused invites.</td></tr>';
             }
         } catch (err) { console.error("Error fetching invites:", err); }
     }
-
+    
     // ==========================================
     // 2. SECURITY & FIREWALL LOGIC
     // ==========================================
@@ -472,11 +529,22 @@
                 tbody.innerHTML = '';
                 roles.forEach(r => {
                     const isSystemRole = (r.id === 'admin' || r.id === 'standard');
+                    
+                    // 1. Build the Access Rights Badges (Checkboxes)
+                    let accessBadges = '';
+                    if (r.allow_global_internet) accessBadges += `<span class="inline-block bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">Internet</span>`;
+                    if (r.allow_intranet) accessBadges += `<span class="inline-block bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">Intranet</span>`;
+                    if (r.allow_hub) accessBadges += `<span class="inline-block bg-warning/10 text-warning border border-warning/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">Hub Admin</span>`;
+                    if (accessBadges === '') accessBadges = `<span class="text-muted-foreground text-xs italic">Isolated</span>`;
+
+                    // 2. Build the Action Buttons
                     const deleteBtn = isSystemRole 
                         ? `<span class="text-muted-foreground/50 text-xs italic px-3">System</span>` 
                         : `<button onclick="deleteRole('${r.id}', '${r.name}')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors ml-2">Delete</button>`;
 
-                    const editBtn = `<button onclick="editRole('${r.id}', '${r.name}', '${r.allowed_ports}')" class="text-muted-foreground hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-primary hover:border-primary transition-colors">Edit</button>`;
+                    // Safely pass the entire Role object to the modal for editing
+                    const roleJsonStr = encodeURIComponent(JSON.stringify(r));
+                    const editBtn = `<button onclick="openRoleModal(JSON.parse(decodeURIComponent('${roleJsonStr}')))" class="text-muted-foreground hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-primary hover:border-primary transition-colors">Edit</button>`;
 
                     tbody.innerHTML += `
                         <tr class="hover:bg-background/50 transition-colors">
@@ -484,9 +552,12 @@
                                 <div class="font-bold text-slate-200">${r.name}</div>
                                 <div class="font-mono text-[10px] text-muted-foreground mt-0.5">${r.id}</div>
                             </td>
-                            <td class="p-5 font-mono text-primary font-medium tracking-tight">${r.allowed_ports}</td>
-                            <td class="p-5 text-muted-foreground text-xs">${new Date(r.created_at).toLocaleDateString()}</td>
-                            <td class="p-5 text-right flex justify-end items-center">
+                            <td class="p-5">${accessBadges}</td>
+                            <td class="p-5">
+                                <div class="text-xs text-slate-300"><span class="text-muted-foreground font-medium uppercase tracking-wider text-[10px] mr-2">IPs:</span> <span class="font-mono">${r.allowed_ips}</span></div>
+                                <div class="text-xs text-slate-300 mt-1"><span class="text-muted-foreground font-medium uppercase tracking-wider text-[10px] mr-2">Ports:</span> <span class="font-mono">${r.allowed_ports}</span></div>
+                            </td>
+                            <td class="p-5 text-right flex justify-end items-center h-full mt-2">
                                 ${editBtn}
                                 ${deleteBtn}
                             </td>
@@ -497,48 +568,102 @@
         } catch (err) { console.error("Error fetching roles:", err); }
     }
 
-    async function createRole() {
-        const name = prompt("Enter Role Name (e.g., 'Database Admin'):");
-        if (!name) return;
-        
-        const ports = prompt("Enter Allowed Ports/IPs (e.g., 'ALL', '80,443', or '10.8.0.50:5432'):", "80,443");
-        if (!ports) return;
+    // --- MODAL CONTROLS ---
 
-        try {
-            const res = await fetch('/api/roles', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name, allowed_ports: ports })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                fetchRolesData(); // Instantly refresh UI!
-            } else {
-                alert(`Error: ${data.message}`);
-            }
-        } catch (err) { alert("Failed to create role."); }
+    function openRoleModal(role = null) {
+        const modal = document.getElementById('modal-role');
+        const content = document.getElementById('modal-role-content');
+        
+        if (role) {
+            // EDIT MODE: Populate the modal with the existing role data
+            document.getElementById('modal-role-title').innerText = "Edit Role: " + role.name;
+            document.getElementById('role-input-id').value = role.id;
+            document.getElementById('role-input-name').value = role.name;
+            document.getElementById('role-toggle-internet').checked = role.allow_global_internet;
+            document.getElementById('role-toggle-intranet').checked = role.allow_intranet;
+            document.getElementById('role-toggle-hub').checked = role.allow_hub;
+            document.getElementById('role-input-ips').value = role.allowed_ips;
+            document.getElementById('role-input-ports').value = role.allowed_ports;
+
+            // Security: Prevent admins from accidentally renaming the 'admin' role
+            document.getElementById('role-input-name').disabled = (role.id === 'admin');
+        } else {
+            // CREATE MODE: Clear all fields to their defaults
+            document.getElementById('modal-role-title').innerText = "Create Custom Role";
+            document.getElementById('role-input-id').value = '';
+            document.getElementById('role-input-name').value = '';
+            document.getElementById('role-toggle-internet').checked = false;
+            document.getElementById('role-toggle-intranet').checked = false;
+            document.getElementById('role-toggle-hub').checked = false;
+            document.getElementById('role-input-ips').value = 'ALL';
+            document.getElementById('role-input-ports').value = 'ALL';
+
+            document.getElementById('role-input-name').disabled = false;
+        }
+
+        // Show Modal with animation
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }, 10);
     }
 
-    async function editRole(id, currentName, currentPorts) {
-        const newName = prompt("Edit Role Name:", currentName);
-        if (!newName) return;
+    function closeRoleModal() {
+        const modal = document.getElementById('modal-role');
+        const content = document.getElementById('modal-role-content');
+        
+        // Hide Modal with animation
+        modal.classList.add('opacity-0');
+        content.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 200);
+    }
 
-        const newPorts = prompt("Edit Allowed Ports/IPs:", currentPorts);
-        if (!newPorts) return;
+    async function saveRole() {
+        // Read data directly from the modal UI
+        const id = document.getElementById('role-input-id').value;
+        const name = document.getElementById('role-input-name').value;
+        const internet = document.getElementById('role-toggle-internet').checked;
+        const intranet = document.getElementById('role-toggle-intranet').checked;
+        const hub = document.getElementById('role-toggle-hub').checked;
+        const ips = document.getElementById('role-input-ips').value || 'ALL';
+        const ports = document.getElementById('role-input-ports').value || 'ALL';
+
+        if (!name) {
+            alert("Role Name is required.");
+            return;
+        }
+
+        // If ID is empty, we are CREATING (POST). If it has an ID, we are EDITING (PUT).
+        const method = id ? 'PUT' : 'POST';
+        
+        const payload = {
+            id: id,
+            name: name,
+            allow_global_internet: internet,
+            allow_intranet: intranet,
+            allow_hub: hub,
+            allowed_ips: ips,
+            allowed_ports: ports
+        };
 
         try {
             const res = await fetch('/api/roles', {
-                method: 'PUT',
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id, name: newName, allowed_ports: newPorts })
+                body: JSON.stringify(payload)
             });
+            
             const data = await res.json();
             if (res.ok) {
-                fetchRolesData(); // Instantly refresh UI!
+                closeRoleModal();
+                fetchRolesData(); // Instantly refresh the UI!
             } else {
                 alert(`Error: ${data.message}`);
             }
-        } catch (err) { alert("Failed to update role."); }
+        } catch (err) { alert("Failed to save role."); }
     }
 
     async function deleteRole(id, name) {

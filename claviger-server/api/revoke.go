@@ -19,32 +19,33 @@ type RevokeReq struct {
 // HandleRevoke permanently deletes a client and kicks them off the VPN
 func HandleRevoke(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json") // Ensure all responses are JSON
+
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, `{"status": "error", "message": "Method not allowed"}`, http.StatusMethodNotAllowed)
 			return
 		}
 
 		var req RevokeReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+			http.Error(w, `{"status": "error", "message": "Invalid request payload"}`, http.StatusBadRequest)
 			return
 		}
 
 		// 1. Fetch the client's public key before we delete them
 		var pubKeyStr, clientName string
-		var clientIP sql.NullString // FIX: Safely handles NULL values for pending users
+		var clientIP sql.NullString
 
 		err := db.QueryRow("SELECT public_key, name, ip_address FROM clients WHERE id = ?", req.ClientID).Scan(&pubKeyStr, &clientName, &clientIP)
 		if err == sql.ErrNoRows {
-			http.Error(w, "Client not found", http.StatusNotFound)
+			http.Error(w, `{"status": "error", "message": "Client not found"}`, http.StatusNotFound)
 			return
 		} else if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
+			http.Error(w, `{"status": "error", "message": "Database error"}`, http.StatusInternalServerError)
 			return
 		}
 
-		// --- NEW: Clean up the Firewall ---
-		// .Valid checks if it's not NULL, .String gets the actual IP
+		// --- Clean up the Firewall ---
 		if clientIP.Valid && clientIP.String != "" {
 			firewall.RemoveRoleRules(clientIP.String)
 		}
@@ -62,14 +63,12 @@ func HandleRevoke(db *sql.DB) http.HandlerFunc {
 					Remove:    true,
 				}
 
-				err = wg.ConfigureDevice("wg0", wgtypes.Config{
-					Peers: []wgtypes.PeerConfig{peerConfig},
-				})
-
-				if err == nil {
+				// We intentionally ignore the error here so that even if the kernel fails
+				// (e.g., interface is temporarily down), we still delete them from the DB.
+				if wgErr := wg.ConfigureDevice("wg0", wgtypes.Config{Peers: []wgtypes.PeerConfig{peerConfig}}); wgErr == nil {
 					log.Printf("🚫 Access Revoked: %s removed from kernel", clientName)
 				} else {
-					log.Printf("⚠️ Failed to remove %s from kernel: %v", clientName, err)
+					log.Printf("⚠️ Failed to remove %s from kernel: %v", clientName, wgErr)
 				}
 			}
 		}
@@ -77,12 +76,12 @@ func HandleRevoke(db *sql.DB) http.HandlerFunc {
 		// 3. Delete from the database to free up the IP address
 		_, err = db.Exec("DELETE FROM clients WHERE id = ?", req.ClientID)
 		if err != nil {
-			http.Error(w, "Failed to delete client from database", http.StatusInternalServerError)
+			http.Error(w, `{"status": "error", "message": "Failed to delete client from database"}`, http.StatusInternalServerError)
 			return
 		}
 
 		// 4. Respond with Success
-		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":  "success",
 			"message": clientName + " has been permanently revoked and disconnected.",

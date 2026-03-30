@@ -30,20 +30,33 @@ func InitDB() *sql.DB {
 	db.Exec(`INSERT OR IGNORE INTO config (key, value) VALUES ('hub_ip', '10.8.0.1')`)
 	db.Exec(`INSERT OR IGNORE INTO config (key, value) VALUES ('hub_port', '18080')`)
 
-	// 2. Roles Table
+	// 2. Roles Table (Updated for Granular Checkbox UX)
 	createRolesTable := `
 	CREATE TABLE IF NOT EXISTS roles (
 		id TEXT PRIMARY KEY,
 		name TEXT NOT NULL,
-		allowed_ports TEXT NOT NULL,
+		
+		-- The Checkboxes (0 = False, 1 = True)
+		allow_global_internet BOOLEAN DEFAULT 0,
+		allow_intranet BOOLEAN DEFAULT 0,
+		allow_hub BOOLEAN DEFAULT 0,
+		
+		-- The Input Fields
+		allowed_ports TEXT DEFAULT 'ALL',
+		allowed_ips TEXT DEFAULT 'ALL',
+		
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 	if _, err := db.Exec(createRolesTable); err != nil {
 		log.Fatalf("❌ Failed to create roles table: %v", err)
 	}
 
-	db.Exec(`INSERT OR IGNORE INTO roles (id, name, allowed_ports) VALUES ('admin', 'Administrator', 'ALL')`)
-	db.Exec(`INSERT OR IGNORE INTO roles (id, name, allowed_ports) VALUES ('standard', 'Standard User', '80,443')`)
+	// Pre-seed the default roles with our new granular permissions
+	db.Exec(`INSERT OR IGNORE INTO roles (id, name, allow_global_internet, allow_intranet, allow_hub, allowed_ports, allowed_ips) 
+		VALUES ('admin', 'Administrator', 1, 1, 1, 'ALL', 'ALL')`)
+
+	db.Exec(`INSERT OR IGNORE INTO roles (id, name, allow_global_internet, allow_intranet, allow_hub, allowed_ports, allowed_ips) 
+		VALUES ('standard', 'Standard User', 1, 0, 0, '80,443', 'ALL')`)
 
 	// 3. Clients Table
 	createClientsTable := `

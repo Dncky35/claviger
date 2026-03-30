@@ -22,14 +22,15 @@ type Invitation struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// HandleInvites manages creating and listing enrollment tokens
+// HandleInvites manages creating, listing, and revoking enrollment tokens
 func HandleInvites(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		// --- GET: List all invitations (for the UI table) ---
 		if r.Method == http.MethodGet {
-			rows, err := db.Query("SELECT token, role_id, expires_at, is_used, created_at FROM invitations ORDER BY created_at DESC")
+			// Note: We only fetch tokens that haven't been used yet to keep the UI clean
+			rows, err := db.Query("SELECT token, role_id, expires_at, is_used, created_at FROM invitations WHERE is_used = 0 ORDER BY created_at DESC")
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -49,39 +50,65 @@ func HandleInvites(db *sql.DB) http.HandlerFunc {
 		// --- POST: Create a new invitation token ---
 		if r.Method == http.MethodPost {
 			var req InviteReq
-			// We try to decode, but if the body is empty, we just default the role
 			json.NewDecoder(r.Body).Decode(&req)
 
 			if req.RoleID == "" {
 				req.RoleID = "standard"
 			}
 
-			// USE THE NEW AUTH ENGINE!
-			token := auth.GenerateInviteToken()
-			expiresAt := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
-			createdAt := time.Now().Format(time.RFC3339)
-
-			_, err := db.Exec(`
-				INSERT INTO invitations (token, role_id, expires_at, is_used, created_at) 
-				VALUES (?, ?, ?, 0, ?)`,
-				token, req.RoleID, expiresAt, createdAt,
-			)
-			if err != nil {
-				http.Error(w, "Failed to save invitation to database", http.StatusInternalServerError)
+			// --- SECURITY CHECK: Ensure the requested role actually exists ---
+			var roleExists int
+			db.QueryRow("SELECT 1 FROM roles WHERE id = ?", req.RoleID).Scan(&roleExists)
+			if roleExists == 0 {
+				http.Error(w, `{"status":"error", "message":"Invalid Role ID"}`, http.StatusBadRequest)
 				return
 			}
 
-			// Return the generated token back to the UI
+			// USE THE NEW AUTH ENGINE!
+			token := auth.GenerateInviteToken()
+			expiresAt := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+
+			_, err := db.Exec(`
+				INSERT INTO invitations (token, role_id, expires_at, is_used) 
+				VALUES (?, ?, ?, 0)`,
+				token, req.RoleID, expiresAt,
+			)
+			if err != nil {
+				http.Error(w, `{"status":"error", "message":"Failed to save invitation"}`, http.StatusInternalServerError)
+				return
+			}
+
 			res := Invitation{
 				Token:     token,
 				RoleID:    req.RoleID,
 				ExpiresAt: expiresAt,
 				IsUsed:    false,
-				CreatedAt: createdAt,
 			}
 
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(res)
+			return
+		}
+
+		// --- DELETE: Revoke an unused invitation ---
+		if r.Method == http.MethodDelete {
+			// Extract token from URL query (e.g., /api/invites?token=clav-xyz)
+			tokenToRevoke := r.URL.Query().Get("token")
+			if tokenToRevoke == "" {
+				http.Error(w, `{"status":"error", "message":"Token parameter is required"}`, http.StatusBadRequest)
+				return
+			}
+
+			_, err := db.Exec("DELETE FROM invitations WHERE token = ?", tokenToRevoke)
+			if err != nil {
+				http.Error(w, `{"status":"error", "message":"Failed to delete invitation"}`, http.StatusInternalServerError)
+				return
+			}
+
+			json.NewEncoder(w).Encode(map[string]string{
+				"status":  "success",
+				"message": "Invitation revoked successfully.",
+			})
 			return
 		}
 

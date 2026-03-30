@@ -2,6 +2,7 @@ package api
 
 import (
 	"claviger-server/internal/firewall"
+	"claviger-server/storage"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -24,7 +25,6 @@ func getNextAvailableIP(db *sql.DB) (string, error) {
 	for i := 2; i <= 254; i++ {
 		testIP := fmt.Sprintf("10.8.0.%d", i)
 		var exists bool
-		// Check if this IP is already taken by any client
 		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM clients WHERE ip_address = ?)", testIP).Scan(&exists)
 		if err != nil {
 			return "", err
@@ -39,44 +39,47 @@ func getNextAvailableIP(db *sql.DB) (string, error) {
 // HandleApprove promotes a pending client to active and injects them into WireGuard
 func HandleApprove(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json") // Always return JSON
+
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, `{"status": "error", "message": "Method not allowed"}`, http.StatusMethodNotAllowed)
 			return
 		}
 
 		var req ApproveReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+			http.Error(w, `{"status": "error", "message": "Invalid request"}`, http.StatusBadRequest)
 			return
 		}
 
 		// 1. Verify the client exists and is actually pending
 		var pubKeyStr, status, clientName string
 		err := db.QueryRow("SELECT public_key, status, name FROM clients WHERE id = ?", req.ClientID).Scan(&pubKeyStr, &status, &clientName)
+
 		if err == sql.ErrNoRows {
-			http.Error(w, "Client not found", http.StatusNotFound)
+			http.Error(w, `{"status": "error", "message": "Client not found"}`, http.StatusNotFound)
 			return
 		} else if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
+			http.Error(w, `{"status": "error", "message": "Database error"}`, http.StatusInternalServerError)
 			return
 		}
 
 		if status != "pending" {
-			http.Error(w, "Client is already active or suspended", http.StatusBadRequest)
+			http.Error(w, `{"status": "error", "message": "Client is already active or suspended"}`, http.StatusBadRequest)
 			return
 		}
 
 		// 2. IP Address Management (IPAM)
 		assignIP, err := getNextAvailableIP(db)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf(`{"status": "error", "message": "%s"}`, err.Error()), http.StatusInternalServerError)
 			return
 		}
 
 		// 3. Promote the client in the database
 		_, err = db.Exec("UPDATE clients SET status = 'active', ip_address = ? WHERE id = ?", assignIP, req.ClientID)
 		if err != nil {
-			http.Error(w, "Failed to update client status", http.StatusInternalServerError)
+			http.Error(w, `{"status": "error", "message": "Failed to update client status"}`, http.StatusInternalServerError)
 			return
 		}
 
@@ -85,7 +88,6 @@ func HandleApprove(db *sql.DB) http.HandlerFunc {
 		if err == nil {
 			defer wg.Close()
 
-			// Parse the base64 public key into WireGuard's cryptographic type
 			pubKey, parseErr := wgtypes.ParseKey(pubKeyStr)
 			if parseErr == nil {
 				_, ipNet, _ := net.ParseCIDR(assignIP + "/32")
@@ -101,12 +103,49 @@ func HandleApprove(db *sql.DB) http.HandlerFunc {
 				})
 				log.Printf("✅ Access Granted: %s injected into kernel at %s", clientName, assignIP)
 
-				// --- NEW: Enforce Micro-segmentation ---
-				// We need to fetch the allowed_ports for their assigned role
-				var allowedPorts string
-				db.QueryRow("SELECT allowed_ports FROM roles WHERE id = (SELECT role_id FROM clients WHERE id = ?)", req.ClientID).Scan(&allowedPorts)
+				// =========================================================================
+				// NEW: ENFORCE GRANULAR MICRO-SEGMENTATION
+				// =========================================================================
+				hubIP := storage.GetConfig(db, "hub_ip")
+				if hubIP == "" {
+					hubIP = "10.8.0.1"
+				}
+				hubPort := storage.GetConfig(db, "hub_port")
+				if hubPort == "" {
+					hubPort = "18080"
+				}
 
-				firewall.ApplyRoleRules(assignIP, allowedPorts) // Call the Enforcer!
+				var allowInternet, allowIntranet, allowHub bool
+				var allowedPorts, allowedIPs string
+
+				// Fetch the granular rules from the assigned role
+				err = db.QueryRow(`
+					SELECT allow_global_internet, allow_intranet, allow_hub, allowed_ports, allowed_ips 
+					FROM roles WHERE id = (SELECT role_id FROM clients WHERE id = ?)`,
+					req.ClientID,
+				).Scan(&allowInternet, &allowIntranet, &allowHub, &allowedPorts, &allowedIPs)
+
+				if err == nil {
+					ruleConfig := firewall.RoleConfig{
+						ClientIP:      assignIP,
+						HubIP:         hubIP,
+						HubPort:       hubPort,
+						AllowInternet: allowInternet,
+						AllowIntranet: allowIntranet,
+						AllowHub:      allowHub,
+						AllowedIPs:    allowedIPs,
+						AllowedPorts:  allowedPorts,
+					}
+
+					// Apply the strict iptables rules!
+					if fwErr := firewall.ApplyRoleRules(ruleConfig); fwErr != nil {
+						log.Printf("⚠️ Firewall warning for %s: %v", clientName, fwErr)
+					}
+				} else {
+					log.Printf("⚠️ Failed to fetch role rules for %s: %v", clientName, err)
+				}
+				// =========================================================================
+
 			} else {
 				log.Printf("⚠️ Failed to parse public key for %s: %v", clientName, parseErr)
 			}
@@ -115,7 +154,6 @@ func HandleApprove(db *sql.DB) http.HandlerFunc {
 		}
 
 		// 5. Respond with Success
-		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":     "success",
 			"message":    fmt.Sprintf("%s has been approved and assigned %s", clientName, assignIP),
