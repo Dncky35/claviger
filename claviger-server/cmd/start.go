@@ -157,7 +157,7 @@ func RunStart() {
 	mux.HandleFunc("/api/access/ssh", api.HandleSSHKeys)
 	mux.HandleFunc("/api/roles", api.HandleRoles(db))
 	mux.HandleFunc("/api/network/internet", api.HandleNetworkSettings(db))
-	http.HandleFunc("/api/client/status", api.HandleClientStatus(db))
+	mux.HandleFunc("/api/client/status", api.HandleClientStatus(db))
 
 	tmpl, err := template.ParseFS(web.TemplatesFS, "index.html", "components/*.html")
 	if err != nil {

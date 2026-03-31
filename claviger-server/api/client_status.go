@@ -4,6 +4,7 @@ import (
 	"claviger-server/storage"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -34,6 +35,7 @@ func HandleClientStatus(db *sql.DB) http.HandlerFunc {
 			json.NewEncoder(w).Encode(map[string]string{"status": "rejected"})
 			return
 		} else if err != nil {
+			fmt.Printf("🚨 CLIENT STATUS DB ERROR: %v\n", err)
 			http.Error(w, `{"status": "error", "message": "Database error"}`, http.StatusInternalServerError)
 			return
 		}

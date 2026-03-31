@@ -139,3 +139,17 @@ func (a *App) Disconnect() error {
 func (a *App) IsConnected() bool {
 	return a.engine.Status()
 }
+
+// LeaveNetwork disconnects the VPN, wipes the local keys, and resets the app
+func (a *App) LeaveNetwork() error {
+	// 1. Ensure the tunnel is off
+	a.Disconnect()
+
+	// 2. Wipe the vault in memory
+	a.vault = &config.ClientVault{
+		Status: "unregistered",
+	}
+
+	// 3. Save the empty vault to the hard drive
+	return config.Save(a.vault)
+}

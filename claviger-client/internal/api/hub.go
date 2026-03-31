@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -82,7 +83,9 @@ func CheckStatus(serverURL, clientID string) (*StatusResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("failed to fetch status")
+		// Read the actual error body from the server!
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Server Error (HTTP %d): %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var statusResp StatusResponse

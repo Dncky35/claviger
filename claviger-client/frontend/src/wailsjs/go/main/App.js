@@ -25,3 +25,7 @@ export function GetVault() {
 export function IsConnected() {
   return window['go']['main']['App']['IsConnected']();
 }
+
+export function LeaveNetwork() {
+  return window['go']['main']['App']['LeaveNetwork']();
+}

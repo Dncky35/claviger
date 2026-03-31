@@ -13,3 +13,5 @@ export function Enroll(arg1:string,arg2:string):Promise<void>;
 export function GetVault():Promise<config.ClientVault>;
 
 export function IsConnected():Promise<boolean>;
+
+export function LeaveNetwork():Promise<void>;
