@@ -1,0 +1,15 @@
+{
+  "name": "claviger-client",
+  "assetserver": {
+    "assets": "frontend/dist"
+  },
+  "reload_threshold": 30,
+  "build:dir": "build",
+  "frontend:dir": "frontend",
+  "wailsjsdir": "frontend/src",
+  "outputfilename": "claviger-client",
+  "author": {
+    "name": "Ercan",
+    "email": "ercan@example.com"
+  }
+}
