@@ -1,13 +1,35 @@
 # =========================
 # Project Claviger Specific
 # =========================
-# NEVER commit the local edge node database or wireguard configs!
+# NEVER commit the local edge node database, wireguard configs, or client vaults!
 claviger.db
 *.db
 *.sqlite3
 *.conf
 *.key
 *.pem
+vault.json
+
+# =========================
+# Wails Desktop Client
+# =========================
+# Ignore Wails build artifacts and compiled frontend assets
+claviger-client/build/bin/
+claviger-client/frontend/dist/
+
+# =========================
+# Golang
+# =========================
+# Ignore compiled binaries
+/claviger-server/claviger-server
+/claviger-client/claviger-client
+*.exe
+*.exe~
+*.dll
+*.dylib
+*.test
+/bin/
+/obj/
 
 # =========================
 # Node.js / Next.js
@@ -49,18 +71,6 @@ pip-delete-this-directory.txt
 .coverage
 htmlcov/
 .tox/
-
-# =========================
-# Golang
-# =========================
-# Ignore compiled binaries
-/claviger-server/claviger-server
-*.exe
-*.exe~
-*.dll
-*.dylib
-/bin/
-/obj/
 
 # =========================
 # OS / IDE / Docker

@@ -27,15 +27,15 @@ func GenerateInviteToken() string {
 }
 
 // AdminPayload defines what gets packed into the Setup Command's Base64 token
-type AdminPayload struct {
+type SmartTokenPayload struct {
 	Token    string `json:"token"`
 	ServerIP string `json:"server_ip"`
 	HubPort  string `json:"hub_port"`
 }
 
-// GenerateAdminSetupToken packs the initial invite and server details into one copy-paste string
-func GenerateAdminSetupToken(inviteToken, serverIP, hubPort string) (string, error) {
-	payload := AdminPayload{
+// GenerateSmartToken packs the raw invite and server details into one base64 string
+func GenerateSmartToken(inviteToken, serverIP, hubPort string) (string, error) {
+	payload := SmartTokenPayload{
 		Token:    inviteToken,
 		ServerIP: serverIP,
 		HubPort:  hubPort,
@@ -46,6 +46,6 @@ func GenerateAdminSetupToken(inviteToken, serverIP, hubPort string) (string, err
 		return "", err
 	}
 
-	// Encode to Base64 so it's easy for the user to double-click and copy in the terminal
+	// Encode to Base64 so it's a single, easy-to-copy string
 	return base64.StdEncoding.EncodeToString(jsonData), nil
 }

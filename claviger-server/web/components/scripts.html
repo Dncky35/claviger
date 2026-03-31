@@ -55,7 +55,8 @@
             const data = await res.json();
             
             if (res.ok) {
-                prompt("✅ Invitation Generated!\nCopy this secure token and send it to the user:", data.token);
+                // NEW: Show the Smart Token in the prompt
+                prompt("✅ Invitation Generated!\nCopy this secure token and send it to the user:", data.smart_token);
                 fetchPeersData();
             } else {
                 alert(`Error: ${data.message}`);
@@ -63,9 +64,22 @@
         } catch (err) { alert("Failed to generate invite."); }
     }
 
-    // --- NEW: Function to revoke unused tokens ---
+    // --- NEW: Function to copy token to clipboard ---
+    function copyToken(tokenStr, btnElement) {
+        navigator.clipboard.writeText(tokenStr).then(() => {
+            // Temporarily change the icon to a checkmark for visual feedback!
+            const originalHTML = btnElement.innerHTML;
+            btnElement.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            setTimeout(() => { btnElement.innerHTML = originalHTML; }, 1500);
+        }).catch(err => {
+            console.error("Failed to copy text: ", err);
+            alert("Clipboard access denied. Please copy manually.");
+        });
+    }
+
+    // --- Function to revoke unused tokens ---
     async function revokeInvite(token) {
-        if (!confirm(`Are you sure you want to permanently revoke this invitation token?\n\n${token}`)) return;
+        if (!confirm(`Are you sure you want to permanently revoke this invitation token?`)) return;
 
         try {
             const res = await fetch(`/api/invites?token=${encodeURIComponent(token)}`, {
@@ -151,7 +165,7 @@
                         if(pendingTbody) pendingTbody.appendChild(tr);
                     } else if (c.status === 'active') {
                         
-                        // --- NEW: Dynamic Online/Offline State Badge ---
+                        // Dynamic Online/Offline State Badge
                         let stateBadge = '';
                         if (c.is_online) {
                             stateBadge = `
@@ -163,7 +177,6 @@
                                     <span class="text-[9px] text-success/60 mt-1 font-mono">Connected</span>
                                 </div>`;
                         } else {
-                            // Format the last seen time beautifully
                             let lastSeenText = 'Never';
                             if (c.last_handshake) {
                                 const date = new Date(c.last_handshake);
@@ -213,8 +226,15 @@
                     invites.forEach(inv => {
                         const tr = document.createElement('tr');
                         tr.className = 'hover:bg-surface/80 transition-colors';
+                        
+                        // NEW: Truncated Smart Token with Copy Button
                         tr.innerHTML = `
-                            <td class="p-4 font-mono text-primary/80 text-xs">${inv.token}</td>
+                            <td class="p-4 flex items-center gap-2">
+                                <span class="font-mono text-primary/80 text-xs max-w-[140px] truncate block" title="${inv.smart_token}">${inv.smart_token}</span>
+                                <button onclick="copyToken('${inv.smart_token}', this)" class="text-slate-500 hover:text-white transition-colors p-1" title="Copy Token">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                            </td>
                             <td class="p-4"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${inv.role_id}</span></td>
                             <td class="p-4 text-muted-foreground/70 text-xs">${new Date(inv.expires_at).toLocaleString()}</td>
                             <td class="p-4 text-right">

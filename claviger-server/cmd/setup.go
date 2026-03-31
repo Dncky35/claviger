@@ -132,7 +132,7 @@ func RunSetup(args []string) {
 	expiresAt := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
 
 	db.Exec("INSERT INTO invitations (token, role_id, expires_at, is_used) VALUES (?, 'admin', ?, 0)", inviteToken, expiresAt)
-	adminToken, _ := auth.GenerateAdminSetupToken(inviteToken, serverIP, hubPort)
+	adminToken, _ := auth.GenerateSmartToken(inviteToken, serverIP, hubPort)
 
 	// --- NEW: Install the Systemd Auto-Start Service ---
 	fmt.Println("\n🔄 Installing background services...")
