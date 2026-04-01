@@ -28,17 +28,19 @@ func GenerateInviteToken() string {
 
 // AdminPayload defines what gets packed into the Setup Command's Base64 token
 type SmartTokenPayload struct {
-	Token    string `json:"token"`
-	ServerIP string `json:"server_ip"`
-	HubPort  string `json:"hub_port"`
+	Token     string `json:"token"`
+	ServerIP  string `json:"server_ip"`
+	HubPort   string `json:"hub_port"`
+	ServerKey string `json:"server_key"`
 }
 
-// GenerateSmartToken packs the raw invite and server details into one base64 string
-func GenerateSmartToken(inviteToken, serverIP, hubPort string) (string, error) {
+// GenerateSmartToken packs the raw invite, server details, and public key into one base64 string
+func GenerateSmartToken(inviteToken, serverIP, hubPort, serverKey string) (string, error) {
 	payload := SmartTokenPayload{
-		Token:    inviteToken,
-		ServerIP: serverIP,
-		HubPort:  hubPort,
+		Token:     inviteToken,
+		ServerIP:  serverIP,
+		HubPort:   hubPort,
+		ServerKey: serverKey, // NEW
 	}
 
 	jsonData, err := json.Marshal(payload)

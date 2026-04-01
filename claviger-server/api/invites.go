@@ -30,7 +30,7 @@ func HandleInvites(db *sql.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 
 		// Helper to grab connection details for the Smart Tokens
-		getServerConfig := func() (string, string) {
+		getServerConfig := func() (string, string, string) {
 			serverIP := storage.GetConfig(db, "public_ip")
 			if serverIP == "" {
 				serverIP = "127.0.0.1"
@@ -39,7 +39,10 @@ func HandleInvites(db *sql.DB) http.HandlerFunc {
 			if hubPort == "" {
 				hubPort = "18080"
 			}
-			return serverIP, hubPort
+
+			// NEW: Grab the WireGuard Public Key from the database!
+			serverKey := storage.GetConfig(db, "wg_public_key")
+			return serverIP, hubPort, serverKey
 		}
 
 		// --- GET: List all invitations (for the UI table) ---
@@ -51,7 +54,7 @@ func HandleInvites(db *sql.DB) http.HandlerFunc {
 			}
 			defer rows.Close()
 
-			serverIP, hubPort := getServerConfig()
+			serverIP, hubPort, serverKey := getServerConfig()
 			invites := []Invitation{}
 
 			for rows.Next() {
@@ -59,7 +62,7 @@ func HandleInvites(db *sql.DB) http.HandlerFunc {
 				rows.Scan(&inv.Token, &inv.RoleID, &inv.ExpiresAt, &inv.IsUsed, &inv.CreatedAt)
 
 				// Dynamically wrap the raw token into a Smart Token for the UI!
-				inv.SmartToken, _ = auth.GenerateSmartToken(inv.Token, serverIP, hubPort)
+				inv.SmartToken, _ = auth.GenerateSmartToken(inv.Token, serverIP, hubPort, serverKey)
 
 				invites = append(invites, inv)
 			}
@@ -98,8 +101,8 @@ func HandleInvites(db *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			serverIP, hubPort := getServerConfig()
-			smartToken, _ := auth.GenerateSmartToken(token, serverIP, hubPort)
+			serverIP, hubPort, serverKey := getServerConfig()
+			smartToken, _ := auth.GenerateSmartToken(token, serverIP, hubPort, serverKey)
 
 			res := Invitation{
 				Token:      token,      // Keep raw for internal UI logic

@@ -131,8 +131,14 @@ func RunSetup(args []string) {
 	inviteToken := auth.GenerateInviteToken()
 	expiresAt := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
 
+	serverKey := storage.GetConfig(db, "wg_public_key")
+
+	if serverKey == "" {
+		log.Fatal("❌ Server public key not found in database. Aborting.")
+	}
+
 	db.Exec("INSERT INTO invitations (token, role_id, expires_at, is_used) VALUES (?, 'admin', ?, 0)", inviteToken, expiresAt)
-	adminToken, _ := auth.GenerateSmartToken(inviteToken, serverIP, hubPort)
+	adminToken, _ := auth.GenerateSmartToken(inviteToken, serverIP, hubPort, serverKey)
 
 	// --- NEW: Install the Systemd Auto-Start Service ---
 	fmt.Println("\n🔄 Installing background services...")
