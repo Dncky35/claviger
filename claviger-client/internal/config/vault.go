@@ -8,13 +8,14 @@ import (
 
 // ClientVault holds the state of the desktop app
 type ClientVault struct {
-	ServerURL  string `json:"server_url"`
-	ClientID   string `json:"client_id"`
-	PrivateKey string `json:"private_key"`
-	PublicKey  string `json:"public_key"`
-	AssignedIP string `json:"assigned_ip"`
-	ServerKey  string `json:"server_public_key"`
-	Status     string `json:"status"` // "unregistered", "pending", "active"
+	ServerURL      string `json:"server_url"`
+	ClientID       string `json:"client_id"`
+	PrivateKey     string `json:"private_key"`
+	PublicKey      string `json:"public_key"`
+	AssignedIP     string `json:"assigned_ip"`
+	ServerKey      string `json:"server_public_key"`
+	ServerEndpoint string `json:"server_endpoint"` // NEW: Store the server's IP:Port for the VPN connection
+	Status         string `json:"status"`          // "unregistered", "pending", "active"
 }
 
 // getVaultPath automatically finds the correct secure folder for Win/Mac/Linux

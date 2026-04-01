@@ -20,19 +20,20 @@ type EnrollPayload struct {
 
 // EnrollResponse is what the server replies with
 type EnrollResponse struct {
-	Status       string `json:"status"`
-	Message      string `json:"message"`
-	ClientID     string `json:"client_id"`
-	AssignedIP   string `json:"assigned_ip"`       // Only present if Admin bypass
-	ServerPubKey string `json:"server_public_key"` // Only present if Admin bypass
+	Status         string `json:"status"`
+	Message        string `json:"message"`
+	ClientID       string `json:"client_id"`
+	AssignedIP     string `json:"assigned_ip"`       // Only present if Admin bypass
+	ServerPubKey   string `json:"server_public_key"` // Only present if Admin bypass
+	ServerEndpoint string `json:"server_endpoint,omitempty"`
 }
 
 // StatusResponse is what the server sends when we poll the waiting room
 type StatusResponse struct {
-	Status       string `json:"status"`
-	AssignedIP   string `json:"assigned_ip"`
-	ServerPubKey string `json:"server_public_key"`
-	HubIP        string `json:"hub_ip"`
+	Status         string `json:"status"`
+	AssignedIP     string `json:"assigned_ip,omitempty"`
+	ServerPubKey   string `json:"server_public_key,omitempty"` // NEW: Caught from Server
+	ServerEndpoint string `json:"server_endpoint,omitempty"`   // NEW: Caught from Server
 }
 
 var httpClient = &http.Client{Timeout: 10 * time.Second}

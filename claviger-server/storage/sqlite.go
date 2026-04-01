@@ -9,7 +9,7 @@ import (
 
 // InitDB initializes the local SQLite database and creates the necessary tables.
 func InitDB() *sql.DB {
-	db, err := sql.Open("sqlite", "claviger.db")
+	db, err := sql.Open("sqlite", "claviger.db?_journal_mode=WAL&_busy_timeout=5000")
 	if err != nil {
 		log.Fatalf("❌ Failed to open SQLite database: %v", err)
 	}

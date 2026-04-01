@@ -52,7 +52,7 @@ func (a *App) GetVault() *config.ClientVault {
 // Enroll asks the server to join the network
 func (a *App) Enroll(serverURL, token string) error {
 	// 1. Generate local cryptographic keys
-	privKey, pubKey, err := a.engine.GenerateKeys()
+	privKey, pubKey, err := vpn.GenerateKeys() // Updated to call from our vpn package
 	if err != nil {
 		return fmt.Errorf("failed to generate keys: %v", err)
 	}
@@ -84,10 +84,11 @@ func (a *App) Enroll(serverURL, token string) error {
 	a.vault.PublicKey = pubKey
 	a.vault.Status = resp.Status
 
-	// If Admin bypassed, the server instantly gives us our IP and Keys!
+	// If Admin bypassed (or future auto-approval), the server instantly gives us our IP and Keys!
 	if resp.Status == "active" {
 		a.vault.AssignedIP = resp.AssignedIP
 		a.vault.ServerKey = resp.ServerPubKey
+		a.vault.ServerEndpoint = resp.ServerEndpoint // NEW: Ensure the engine has the target IP:Port
 	}
 
 	// Securely save the file to disk
@@ -110,6 +111,7 @@ func (a *App) CheckApproval() (string, error) {
 		a.vault.Status = "active"
 		a.vault.AssignedIP = resp.AssignedIP
 		a.vault.ServerKey = resp.ServerPubKey
+		a.vault.ServerEndpoint = resp.ServerEndpoint // NEW: Ensure the VPN engine gets the target IP:Port!
 		config.Save(a.vault)
 	}
 

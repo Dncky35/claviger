@@ -70,7 +70,7 @@ async function doEnroll() {
         const parsed = JSON.parse(decoded);
         
         // Ensure all pieces are there
-        if (!parsed.token || !parsed.server_ip || !parsed.hub_port) {
+        if (!parsed.token || !parsed.server_ip || !parsed.hub_port || !parsed.server_key) {
             throw new Error("Invalid token format.");
         }
 

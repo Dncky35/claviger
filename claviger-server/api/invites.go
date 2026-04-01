@@ -5,6 +5,7 @@ import (
 	"claviger-server/storage"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -97,7 +98,11 @@ func HandleInvites(db *sql.DB) http.HandlerFunc {
 				token, req.RoleID, expiresAt,
 			)
 			if err != nil {
-				http.Error(w, `{"status":"error", "message":"Failed to save invitation"}`, http.StatusInternalServerError)
+				fmt.Printf("🚨 DATABASE ERROR: %v\n", err)
+
+				// Cleanly format the JSON error so Go doesn't complain about headers
+				errMsg := fmt.Sprintf(`{"status":"error", "message":"Database locked: %v"}`, err)
+				http.Error(w, errMsg, http.StatusInternalServerError)
 				return
 			}
 
