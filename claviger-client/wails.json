@@ -1,7 +1,7 @@
 {
   "name": "claviger-client",
   "assetserver": {
-    "assets": "frontend/dist"
+    "assets": "frontend/src"
   },
   "reload_threshold": 30,
   "build:dir": "build",
