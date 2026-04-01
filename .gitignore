@@ -3,6 +3,8 @@
 # =========================
 # NEVER commit the local edge node database, wireguard configs, or client vaults!
 claviger.db
+claviger.db-shm
+claviger.db-wal
 *.db
 *.sqlite3
 *.conf
