@@ -9,10 +9,24 @@ import (
 
 // InitDB initializes the local SQLite database and creates the necessary tables.
 func InitDB() *sql.DB {
-	db, err := sql.Open("sqlite", "claviger.db?_journal_mode=WAL&_busy_timeout=5000")
+	// 1. Open the DB without the ignored query parameters
+	db, err := sql.Open("sqlite", "claviger.db")
 	if err != nil {
 		log.Fatalf("❌ Failed to open SQLite database: %v", err)
 	}
+
+	// 2. Apply strict PRAGMAS for concurrency
+	if _, err := db.Exec("PRAGMA journal_mode=WAL;"); err != nil {
+		log.Printf("⚠️ Failed to set WAL mode: %v", err)
+	}
+	if _, err := db.Exec("PRAGMA busy_timeout=5000;"); err != nil {
+		log.Printf("⚠️ Failed to set busy timeout: %v", err)
+	}
+
+	// 3. Give Go enough connections to handle concurrent API requests!
+	// 25 is the standard "sweet spot" for SQLite web servers.
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
 
 	// 1. Config Table (Strictly Key/Value)
 	createConfigTable := `

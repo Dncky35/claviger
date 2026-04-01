@@ -112,6 +112,7 @@ func RunSetup(args []string) {
 	}
 	serverIP := strings.TrimSpace(serverIPRaw)
 	fmt.Printf("%s\n", serverIP)
+	storage.SetConfig(db, "public_ip", serverIP)
 
 	// SERVER GENERATES ONLY ITS OWN KEYS
 	serverPriv, serverPub, err := network.GenerateKeys()

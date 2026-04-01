@@ -36,6 +36,7 @@ func HandleInvites(db *sql.DB) http.HandlerFunc {
 			if serverIP == "" {
 				serverIP = "127.0.0.1"
 			}
+			// serverIP := "172.27.153.68" // NEW "172.27.153.68"
 			hubPort := storage.GetConfig(db, "hub_port")
 			if hubPort == "" {
 				hubPort = "18080"
