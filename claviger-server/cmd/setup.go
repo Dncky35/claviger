@@ -8,7 +8,6 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	"time"
 
 	"claviger-server/api"
 	"claviger-server/internal/auth"
@@ -123,25 +122,38 @@ func RunSetup(args []string) {
 	storage.SetConfig(db, "wg_private_key", serverPriv)
 	storage.SetConfig(db, "wg_public_key", serverPub)
 
-	// Write the base server config (No peers yet!)
-	if err = network.WriteBaseConfig(serverPriv, wgPort); err != nil {
-		log.Printf("⚠️ Could not write /etc/wireguard/wg0.conf: %v\n", err)
+	// ---------------------------------------------------------
+	// 7. THE ZERO-TRUST ADMIN ENROLLMENT
+	// ---------------------------------------------------------
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("🛡️  ZERO-TRUST PROVISIONING")
+	fmt.Println("To complete setup, open your Claviger Client app, click 'Generate Connection Request',")
+	fmt.Println("and paste the token here.")
+
+	requestToken := promptUser(reader, "\nPaste Connection Request", "")
+	if requestToken == "" {
+		log.Fatal("❌ Setup aborted. A Connection Request is required to secure the server.")
 	}
 
-	// 7. Generate the Admin Bootstrap Token using the new Auth Engine
-	inviteToken := auth.GenerateInviteToken()
-	expiresAt := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
-
-	serverKey := storage.GetConfig(db, "wg_public_key")
-
-	if serverKey == "" {
-		log.Fatal("❌ Server public key not found in database. Aborting.")
+	// 1. Decode the string into our Request Struct
+	connReq, err := auth.DecodeConnectionRequest(requestToken)
+	if err != nil {
+		log.Fatalf("❌ Failed to read request: %v", err)
 	}
 
-	db.Exec("INSERT INTO invitations (token, role_id, expires_at, is_used) VALUES (?, 'admin', ?, 0)", inviteToken, expiresAt)
-	adminToken, _ := auth.GenerateSmartToken(inviteToken, serverIP, hubPort, serverKey)
+	// 2. Pass it to our new Enrollment Engine!
+	approvalData, err := auth.EnrollFirstAdmin(db, connReq, serverIP)
+	if err != nil {
+		log.Fatalf("❌ Failed to enroll Admin: %v", err)
+	}
 
-	// --- NEW: Install the Systemd Auto-Start Service ---
+	// 3. Encode the Approval Data into the final Visa token!
+	finalToken, err := auth.EncodeConnectionApproval(approvalData)
+	if err != nil {
+		log.Fatalf("❌ Failed to generate Approval token: %v", err)
+	}
+
+	// --- Install the Systemd Auto-Start Service ---
 	fmt.Println("\n🔄 Installing background services...")
 	if err := system.InstallSystemdService(); err != nil {
 		log.Printf("⚠️ Warning: Could not install auto-start service: %v\n", err)
@@ -151,10 +163,10 @@ func RunSetup(args []string) {
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("🎉 NODE PROVISIONED SUCCESSFULLY!")
 	fmt.Println(strings.Repeat("=", 60))
-	fmt.Printf("1. Run 'sudo systemctl start claviger' to boot the daemon in the background.\n")
-	fmt.Printf("2. Open your Claviger Client and enroll using the token below.\n")
+	fmt.Printf("1. Run 'sudo systemctl start claviger' to boot the daemon.\n")
+	fmt.Printf("2. Paste the Server Approval Token below into your Claviger Client.\n")
 	fmt.Printf("3. Once connected, open http://%s:%s to access the Hub.\n", hubIP, hubPort)
-	fmt.Println("\n🔑 YOUR ADMIN BOOTSTRAP TOKEN:")
-	fmt.Printf("\n%s\n\n", adminToken)
+	fmt.Println("\n🔑 YOUR SERVER APPROVAL TOKEN:")
+	fmt.Printf("\n%s\n\n", finalToken)
 	fmt.Println(strings.Repeat("=", 60))
 }

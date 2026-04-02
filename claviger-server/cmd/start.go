@@ -145,26 +145,30 @@ func RunStart() {
 	// ---------------------------------------------------------
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/api/status", api.HandleStatus(nodeID, apiToken != ""))
-	mux.HandleFunc("/api/system", api.HandleSystemStats)
-	mux.HandleFunc("/api/security", api.HandleSecurityStats)
-	mux.HandleFunc("/api/security/action", api.HandleSecurityAction)
-	mux.HandleFunc("/api/clients", api.HandleClients(db))
-	mux.HandleFunc("/api/invites", api.HandleInvites(db))
-	mux.HandleFunc("/api/enroll", api.HandleEnroll(db))
-	mux.HandleFunc("/api/approve", api.HandleApprove(db))
-	mux.HandleFunc("/api/revoke", api.HandleRevoke(db))
-	mux.HandleFunc("/api/access/ssh", api.HandleSSHKeys)
-	mux.HandleFunc("/api/roles", api.HandleRoles(db))
-	mux.HandleFunc("/api/network/internet", api.HandleNetworkSettings(db))
+	// --- UNPROTECTED ROUTES (Needed for the Client App to connect/ping) ---
 	mux.HandleFunc("/api/client/status", api.HandleClientStatus(db))
+	// mux.HandleFunc("/api/ping", api.HandlePing(db)) // We will add this heartbeat later!
 
+	// --- PROTECTED ROUTES (Requires allow_hub = 1) ---
+	mux.HandleFunc("/api/status", api.HubAccessMiddleware(db, api.HandleStatus(nodeID, apiToken != "")))
+	mux.HandleFunc("/api/register/preview", api.HubAccessMiddleware(db, api.HandleRegisterPreview()))
+	mux.HandleFunc("/api/register/confirm", api.HubAccessMiddleware(db, api.HandleRegisterConfirm(db)))
+	mux.HandleFunc("/api/system", api.HubAccessMiddleware(db, api.HandleSystemStats))
+	mux.HandleFunc("/api/security", api.HubAccessMiddleware(db, api.HandleSecurityStats))
+	mux.HandleFunc("/api/security/action", api.HubAccessMiddleware(db, api.HandleSecurityAction))
+	mux.HandleFunc("/api/clients", api.HubAccessMiddleware(db, api.HandleClients(db)))
+	mux.HandleFunc("/api/revoke", api.HubAccessMiddleware(db, api.HandleRevoke(db)))
+	mux.HandleFunc("/api/access/ssh", api.HubAccessMiddleware(db, api.HandleSSHKeys))
+	mux.HandleFunc("/api/roles", api.HubAccessMiddleware(db, api.HandleRoles(db)))
+	mux.HandleFunc("/api/network/internet", api.HubAccessMiddleware(db, api.HandleNetworkSettings(db)))
+
+	// --- PROTECT THE MAIN UI DASHBOARD ---
 	tmpl, err := template.ParseFS(web.TemplatesFS, "index.html", "components/*.html")
 	if err != nil {
 		log.Fatalf("❌ Failed to parse HTML templates: %v", err)
 	}
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", api.HubAccessMiddleware(db, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
@@ -174,16 +178,16 @@ func RunStart() {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-	})
+	}))
 
 	server := &http.Server{
-		Addr:    "0.0.0.0:" + hubPort,
+		Addr:    fmt.Sprintf("%s:%s", hubIP, hubPort), // Locked to VPN only
 		Handler: mux,
 	}
 
 	go func() {
 		fmt.Printf("\n🌐 Local Hub running securely.\n")
-		fmt.Printf("👉 Access via VPN: http://%s:%s\n", hubIP, hubPort)
+		fmt.Printf("👉 Access strictly isolated to VPN: http://%s:%s\n", hubIP, hubPort)
 		fmt.Println("\nPress Ctrl+C to safely shut down the daemon.")
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

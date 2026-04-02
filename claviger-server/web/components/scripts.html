@@ -42,80 +42,149 @@
     // 1. VPN PEERS & ENROLLMENT LOGIC
     // ==========================================
 
-    async function generateInvite() {
-        const role = prompt("Enter the role for this invite (e.g., admin, standard, developer):", "standard");
-        if (!role) return;
+    // Global variable to hold the decoded request temporarily
+    let currentClientRequest = null;
 
-        try {
-            const res = await fetch('/api/invites', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role_id: role })
-            });
-            const data = await res.json();
-            
-            if (res.ok) {
-                // NEW: Show the Smart Token in the prompt
-                prompt("✅ Invitation Generated!\nCopy this secure token and send it to the user:", data.smart_token);
-                fetchPeersData();
-            } else {
-                alert(`Error: ${data.message}`);
-            }
-        } catch (err) { alert("Failed to generate invite."); }
+    // --- Modal Controls ---
+    function openRegistrationModal() {
+        document.getElementById('input-client-request').value = '';
+        document.getElementById('reg-error').classList.add('hidden');
+        switchModalState(1);
+        
+        const modal = document.getElementById('modal-register');
+        const content = document.getElementById('modal-register-content');
+        modal.classList.remove('hidden');
+        
+        // Tiny delay for smooth CSS animation
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }, 10);
+        
+        fetchRolesForDropdown(); // Pre-load roles into the dropdown
     }
 
-    // --- NEW: Function to copy token to clipboard ---
-    function copyToken(tokenStr, btnElement) {
-        navigator.clipboard.writeText(tokenStr).then(() => {
-            // Temporarily change the icon to a checkmark for visual feedback!
-            const originalHTML = btnElement.innerHTML;
-            btnElement.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-            setTimeout(() => { btnElement.innerHTML = originalHTML; }, 1500);
-        }).catch(err => {
-            console.error("Failed to copy text: ", err);
-            alert("Clipboard access denied. Please copy manually.");
+    function closeRegistrationModal() {
+        const modal = document.getElementById('modal-register');
+        const content = document.getElementById('modal-register-content');
+        modal.classList.add('opacity-0');
+        content.classList.add('scale-95');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            currentClientRequest = null;
+        }, 300); // Wait for transition
+    }
+
+    function switchModalState(stateNumber) {
+        document.getElementById('reg-state-1').classList.add('hidden');
+        document.getElementById('reg-state-2').classList.add('hidden');
+        document.getElementById('reg-state-3').classList.add('hidden');
+        document.getElementById(`reg-state-${stateNumber}`).classList.remove('hidden');
+    }
+
+    // --- API Interactions ---
+    async function fetchRolesForDropdown() {
+        try {
+            const res = await fetch('/api/roles');
+            if (res.ok) {
+                const roles = await res.json();
+                const select = document.getElementById('select-role');
+                select.innerHTML = '';
+                roles.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.innerText = r.name;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (err) { console.error("Failed to load roles."); }
+    }
+
+    async function previewRegistration() {
+        const token = document.getElementById('input-client-request').value.trim();
+        const errText = document.getElementById('reg-error');
+        const btn = document.getElementById('btn-preview');
+
+        if (!token) {
+            errText.innerText = "Please paste a token first.";
+            errText.classList.remove('hidden');
+            return;
+        }
+
+        btn.innerText = "Decoding...";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/register/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                errText.classList.add('hidden');
+                currentClientRequest = data.request; // Save for the confirm step
+                document.getElementById('preview-hostname').innerText = data.request.hostname;
+                document.getElementById('preview-platform').innerText = data.request.platform;
+                switchModalState(2);
+            } else {
+                errText.innerText = data.message || "Invalid Token.";
+                errText.classList.remove('hidden');
+            }
+        } catch (err) {
+            errText.innerText = "Network Error.";
+            errText.classList.remove('hidden');
+        }
+        btn.innerText = "Decode & Preview";
+        btn.disabled = false;
+    }
+
+    async function confirmRegistration() {
+        const roleId = document.getElementById('select-role').value;
+        const btn = document.getElementById('btn-confirm');
+        
+        btn.innerText = "Applying Firewall Rules...";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/register/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    request_data: currentClientRequest,
+                    role_id: roleId
+                })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                document.getElementById('output-server-approval').value = data.approval_token;
+                switchModalState(3);
+                fetchPeersData(); // Refresh the table behind the modal
+            } else {
+                alert(`Error: ${data.message}`);
+                switchModalState(1); // Kick them back
+            }
+        } catch (err) {
+            alert("Registration failed due to network error.");
+            switchModalState(1);
+        }
+        btn.innerText = "Approve & Generate Visa";
+        btn.disabled = false;
+    }
+
+    function copyAndCloseRegistration() {
+        const token = document.getElementById('output-server-approval').value;
+        navigator.clipboard.writeText(token).then(() => {
+            closeRegistrationModal();
+        }).catch(() => {
+            alert("Copied failed. Please copy the token manually.");
         });
     }
 
-    // --- Function to revoke unused tokens ---
-    async function revokeInvite(token) {
-        if (!confirm(`Are you sure you want to permanently revoke this invitation token?`)) return;
-
-        try {
-            const res = await fetch(`/api/invites?token=${encodeURIComponent(token)}`, {
-                method: 'DELETE'
-            });
-            const data = await res.json();
-
-            if (res.ok) {
-                fetchPeersData(); // Refresh the tables instantly
-            } else {
-                alert(`Error: ${data.message}`);
-            }
-        } catch (err) {
-            alert("Failed to revoke invite.");
-        }
-    }
-
-    async function approveClient(clientId, clientName) {
-        if(!confirm(`Do you want to approve ${clientName} and permanently assign them an IP address on the VPN?`)) return;
-
-        try {
-            const res = await fetch('/api/approve', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ client_id: clientId })
-            });
-            const data = await res.json();
-            if(res.ok) {
-                alert(`✅ Success! ${data.message}`);
-                fetchPeersData();
-            } else {
-                alert(`Error: ${data.message}`);
-            }
-        } catch (err) { alert("Approval failed."); }
-    }
-
+    // --- General List Management ---
     async function revokeClient(clientId, clientName) {
         if(!confirm(`🚨 DANGER: Are you sure you want to permanently revoke VPN access for ${clientName}? Their connection will drop instantly.`)) return;
 
@@ -127,7 +196,6 @@
             });
             const data = await res.json();
             if(res.ok) {
-                alert(`🚫 ${data.message}`);
                 fetchPeersData();
             } else {
                 alert(`Error: ${data.message}`);
@@ -136,36 +204,21 @@
     }
 
     async function fetchPeersData() {
-        // --- 1. Fetch Clients ---
         try {
             const clientRes = await fetch('/api/clients');
             if (clientRes.ok) {
                 const clients = await clientRes.json();
-                const pendingTbody = document.getElementById('list-pending-peers');
                 const activeTbody = document.getElementById('list-active-peers');
-                let pendingCount = 0;
-
-                if(pendingTbody) pendingTbody.innerHTML = '';
-                if(activeTbody) activeTbody.innerHTML = '';
+                
+                if(!activeTbody) return;
+                activeTbody.innerHTML = '';
+                
+                let activeCount = 0;
 
                 clients.forEach(c => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-background/50 transition-colors';
-                    
-                    if (c.status === 'pending') {
-                        pendingCount++;
-                        tr.innerHTML = `
-                            <td class="p-4 font-bold text-slate-200">${c.name}</td>
-                            <td class="p-4 text-muted-foreground uppercase text-[10px] tracking-widest font-bold">${c.platform || 'Unknown'}</td>
-                            <td class="p-4 font-medium"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${c.role_id}</span></td>
-                            <td class="p-4 text-right">
-                                <button onclick="approveClient('${c.id}', '${c.name}')" class="bg-success/10 text-success hover:bg-success/20 border border-success/30 px-3 py-1.5 rounded-lg transition-colors text-[10px] font-bold uppercase tracking-wider shadow-sm">Approve Access</button>
-                            </td>
-                        `;
-                        if(pendingTbody) pendingTbody.appendChild(tr);
-                    } else if (c.status === 'active') {
-                        
-                        // Dynamic Online/Offline State Badge
+                    // We now ONLY render active clients!
+                    if (c.status === 'active') {
+                        activeCount++;
                         let stateBadge = '';
                         if (c.is_online) {
                             stateBadge = `
@@ -174,25 +227,19 @@
                                         <div class="w-2 h-2 rounded-full bg-success mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
                                         <span class="text-xs font-bold text-success uppercase tracking-wider">Online</span>
                                     </div>
-                                    <span class="text-[9px] text-success/60 mt-1 font-mono">Connected</span>
                                 </div>`;
                         } else {
-                            let lastSeenText = 'Never';
-                            if (c.last_handshake) {
-                                const date = new Date(c.last_handshake);
-                                lastSeenText = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                            }
-                            
                             stateBadge = `
-                                <div class="flex flex-col items-center justify-center" title="Last handshake: ${c.last_handshake || 'Never'}">
+                                <div class="flex flex-col items-center justify-center">
                                     <div class="flex items-center">
                                         <div class="w-2 h-2 rounded-full bg-muted-foreground/40 mr-2"></div>
                                         <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Offline</span>
                                     </div>
-                                    <span class="text-[9px] text-muted-foreground/60 mt-1 font-mono">Seen: ${lastSeenText}</span>
                                 </div>`;
                         }
 
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-background/50 transition-colors';
                         tr.innerHTML = `
                             <td class="p-4 font-bold text-slate-200">${c.name}</td>
                             <td class="p-4 font-mono text-muted-foreground">${c.ip_address}</td>
@@ -202,52 +249,13 @@
                                 <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
                             </td>
                         `;
-                        if(activeTbody) activeTbody.appendChild(tr);
+                        activeTbody.appendChild(tr);
                     }
                 });
 
-                const badgeWaiting = document.getElementById('badge-waiting');
-                if(badgeWaiting) badgeWaiting.innerText = `${pendingCount} Pending`;
-                
-                if(pendingCount === 0 && pendingTbody) pendingTbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="4">No devices waiting for approval.</td></tr>';
-                if(activeTbody && activeTbody.innerHTML === '') activeTbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="5">No managed devices found.</td></tr>';
+                if(activeCount === 0) activeTbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="5">No managed devices found.</td></tr>';
             }
         } catch (err) { console.error("Error fetching clients:", err); }
-
-        // --- 2. Fetch Invites ---
-        try {
-            const inviteRes = await fetch('/api/invites');
-            if (inviteRes.ok) {
-                const invites = await inviteRes.json();
-                const invitesTbody = document.getElementById('list-invites');
-                if(invitesTbody) invitesTbody.innerHTML = '';
-                
-                if(invites && invites.length > 0) {
-                    invites.forEach(inv => {
-                        const tr = document.createElement('tr');
-                        tr.className = 'hover:bg-surface/80 transition-colors';
-                        
-                        // NEW: Truncated Smart Token with Copy Button
-                        tr.innerHTML = `
-                            <td class="p-4 flex items-center gap-2">
-                                <span class="font-mono text-primary/80 text-xs max-w-[140px] truncate block" title="${inv.smart_token}">${inv.smart_token}</span>
-                                <button onclick="copyToken('${inv.smart_token}', this)" class="text-slate-500 hover:text-white transition-colors p-1" title="Copy Token">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </button>
-                            </td>
-                            <td class="p-4"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${inv.role_id}</span></td>
-                            <td class="p-4 text-muted-foreground/70 text-xs">${new Date(inv.expires_at).toLocaleString()}</td>
-                            <td class="p-4 text-right">
-                                <button onclick="revokeInvite('${inv.token}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
-                            </td>
-                        `;
-                        if(invitesTbody) invitesTbody.appendChild(tr);
-                    });
-                } else {
-                    if(invitesTbody) invitesTbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="4">No active unused invites.</td></tr>';
-                }
-            }
-        } catch (err) { console.error("Error fetching invites:", err); }
     }
     
     // ==========================================
