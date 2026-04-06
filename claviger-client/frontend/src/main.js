@@ -1,196 +1,189 @@
-// State variables
+// ==========================================
+// GLOBAL STATE & ERROR HANDLING
+// ==========================================
 let currentVault = null;
-let isConnected = false;
-let pollingInterval = null;
+let generatedRequestToken = "";
 
-// Wait for Wails to fully inject its Go bindings before starting
-window.onload = async () => {
-    // Ask Go for the current vault data on startup
-    await refreshState();
+// Catch any fatal JavaScript errors and print them to the screen
+window.onerror = function(msg, url, line) {
+    const errBox = document.getElementById('fatal-error-log');
+    errBox.innerText = `FATAL JS ERROR: ${msg} (Line ${line})`;
+    errBox.classList.remove('hidden');
 };
 
-// Fetches the Vault from Go and decides which screen to show
+// Wait for Wails bindings to inject
+window.onload = () => {
+    setTimeout(async () => {
+        await refreshState();
+    }, 100);
+};
+
+// ==========================================
+// STATE MANAGEMENT & NAVIGATION
+// ==========================================
 async function refreshState() {
     try {
+        // Ensure Go bindings exist
+        if (!window.go || !window.go.main || !window.go.main.App) {
+            throw new Error("Wails Go bindings failed to load. Check app.go bindings in main.go.");
+        }
+
         currentVault = await window.go.main.App.GetVault();
         
-        if (currentVault.status === "unregistered" || !currentVault.status) {
-            showScreen('screen-enroll');
-        } else if (currentVault.status === "pending") {
-            showScreen('screen-waiting');
-            startPolling(); // Start asking the server if we are approved yet
-        } else if (currentVault.status === "active") {
-            document.getElementById('dash-ip').innerText = currentVault.assigned_ip;
+        // Check properties carefully
+        const status = currentVault.Status || currentVault.status || "unregistered";
+        const ip = currentVault.AssignedIP || currentVault.assigned_ip || "Unknown";
+        const endpoint = currentVault.ServerEndpoint || currentVault.server_endpoint || "Connected";
+
+        if (status === "unregistered" || status === "pending_approval") {
+            showScreen('view-enroll');
+        } else if (status === "active") {
+            document.getElementById('dash-ip').innerText = ip;
+            document.getElementById('dash-endpoint').innerText = endpoint;
+            showScreen('view-dashboard');
             
-            // Check if the Go Engine says the VPN is currently running
-            isConnected = await window.go.main.App.IsConnected();
-            updateDashboardUI();
-            
-            showScreen('screen-dashboard');
-            startPolling(); // Keep slow-polling to see if the Admin revoked us
+            // Sync the toggle button with the actual engine state
+            await syncToggleUI();
+        } else {
+            showScreen('view-enroll');
         }
     } catch (err) {
-        console.error("Failed to load state from Go:", err);
+        const errBox = document.getElementById('fatal-error-log');
+        errBox.innerText = `GO BINDING ERROR: ${err}`;
+        errBox.classList.remove('hidden');
+        showScreen('view-enroll'); // Fail open so the user sees the error
     }
 }
 
-// Switches between the 3 UI screens
 function showScreen(screenId) {
-    document.getElementById('screen-enroll').classList.add('hidden');
-    document.getElementById('screen-waiting').classList.add('hidden');
-    document.getElementById('screen-dashboard').classList.add('hidden');
+    document.getElementById('view-enroll').classList.add('hidden');
+    document.getElementById('view-dashboard').classList.add('hidden');
     
-    document.getElementById(screenId).classList.remove('hidden');
+    const target = document.getElementById(screenId);
+    target.classList.remove('hidden');
+    target.classList.add('animate-fade-in');
 }
 
 // ==========================================
-// ACTION: ENROLLMENT (SMART TOKEN LOGIC)
+// ENROLLMENT ACTIONS
 // ==========================================
-async function doEnroll() {
-    const tokenInput = document.getElementById('input-token').value.trim();
-    const btn = document.getElementById('btn-enroll');
+async function handleGenerateRequest() {
+    const btn = document.getElementById('btn-generate-req');
+    btn.innerText = "Generating...";
+    btn.disabled = true;
+
+    try {
+        generatedRequestToken = await window.go.main.App.GenerateRequest();
+        
+        // Show the copy button container
+        document.getElementById('req-copy-container').classList.remove('hidden');
+        
+        btn.innerText = "Regenerate Token";
+        btn.disabled = false;
+    } catch (err) {
+        alert("Error generating request: " + err);
+        btn.innerText = "Generate Request Token";
+        btn.disabled = false;
+    }
+}
+
+function copyClientRequest() {
+    if (!generatedRequestToken) return;
+
+    navigator.clipboard.writeText(generatedRequestToken).then(() => {
+        const copyBtn = document.getElementById('btn-copy-req');
+        const originalHTML = copyBtn.innerHTML;
+        
+        // Temporary success state for UX
+        copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!`;
+        copyBtn.classList.replace('text-primary', 'text-success');
+        copyBtn.classList.replace('bg-primary/20', 'bg-success/20');
+        copyBtn.classList.replace('border-primary/30', 'border-success/30');
+
+        setTimeout(() => { 
+            copyBtn.innerHTML = originalHTML; 
+            copyBtn.classList.replace('text-success', 'text-primary');
+            copyBtn.classList.replace('bg-success/20', 'bg-primary/20');
+            copyBtn.classList.replace('border-success/30', 'border-primary/30');
+        }, 2000);
+    }).catch(err => console.error("Clipboard failed", err));
+}
+
+async function handleVerify() {
+    const tokenInput = document.getElementById('input-visa').value.trim();
+    const btn = document.getElementById('btn-verify');
     const errText = document.getElementById('enroll-error');
 
     if (!tokenInput) {
-        errText.innerText = "Please paste your Smart Token.";
+        errText.innerText = "Please paste the Server Approval Token.";
         errText.classList.remove('hidden');
         return;
     }
 
-    btn.innerText = "Decrypting & Connecting...";
+    btn.innerText = "Verifying...";
     btn.disabled = true;
     errText.classList.add('hidden');
 
-    let serverUrl = "";
-    let rawToken = "";
-
     try {
-        // 1. Decode the Base64 Smart Token
-        const decoded = atob(tokenInput);
-        const parsed = JSON.parse(decoded);
-        
-        // Ensure all pieces are there
-        if (!parsed.token || !parsed.server_ip || !parsed.hub_port || !parsed.server_key) {
-            throw new Error("Invalid token format.");
-        }
-
-        // 2. Reconstruct the Server URL and extract the raw token
-        serverUrl = `http://${parsed.server_ip}:${parsed.hub_port}`;
-        rawToken = parsed.token;
-
-    } catch (err) {
-        errText.innerText = "Invalid token. Please make sure you copied the exact string provided by your admin.";
-        errText.classList.remove('hidden');
-        btn.innerText = "Connect to Hub";
+        await window.go.main.App.ProcessApproval(tokenInput);
+        document.getElementById('input-visa').value = '';
+        btn.innerText = "Verify";
         btn.disabled = false;
-        return; // Stop execution if token is bad
-    }
-
-    try {
-        // 3. CALL THE GO FUNCTION with the unpacked data!
-        await window.go.main.App.Enroll(serverUrl, rawToken);
-        
-        // If successful, reload the state (moves us to waiting room)
         await refreshState();
     } catch (err) {
         errText.innerText = err;
         errText.classList.remove('hidden');
-        btn.innerText = "Connect to Hub";
+        btn.innerText = "Verify";
         btn.disabled = false;
     }
 }
 
 // ==========================================
-// ACTION: WAITING ROOM & REVOCATION POLLING
+// DASHBOARD ACTIONS
 // ==========================================
-function startPolling() {
-    if (pollingInterval) clearInterval(pollingInterval);
-    
-    // Fast polling (3s) if waiting, Slow polling (15s) if active to check for revocation
-    const intervalTime = (currentVault && currentVault.status === "active") ? 15000 : 3000;
-    
-    pollingInterval = setInterval(async () => {
-        try {
-            const newStatus = await window.go.main.App.CheckApproval();
-            
-            // If our status changed (e.g. pending -> active, or active -> unregistered)
-            if (newStatus !== currentVault.status) {
-                await refreshState(); 
-            }
-        } catch (err) {
-            console.log("Polling error:", err);
-        }
-    }, intervalTime);
-}
-
-function stopPolling() {
-    if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-    }
-}
-
-// ==========================================
-// ACTION: VPN DASHBOARD TOGGLE
-// ==========================================
-async function toggleVPN() {
-    const btn = document.getElementById('btn-toggle');
-    btn.classList.add('scale-95', 'opacity-80'); // Click animation
-
-    try {
-        if (isConnected) {
-            // CALL GO TO DISCONNECT
-            await window.go.main.App.Disconnect();
-            isConnected = false;
-        } else {
-            // CALL GO TO CONNECT
-            await window.go.main.App.Connect();
-            isConnected = true;
-        }
-    } catch (err) {
-        alert("VPN Error: " + err);
-    }
-
-    // Restore animation and update colors
-    setTimeout(() => btn.classList.remove('scale-95', 'opacity-80'), 150);
-    updateDashboardUI();
-}
-
-// Updates the colors of the giant toggle button
-function updateDashboardUI() {
-    const statusText = document.getElementById('status-text');
-    const powerIcon = document.getElementById('icon-power');
-    const glow = document.getElementById('glow-active');
-    const btn = document.getElementById('btn-toggle');
+async function syncToggleUI() {
+    const isConnected = await window.go.main.App.IsConnected();
+    const btnText = document.getElementById('toggle-text');
+    const indicator = document.getElementById('status-indicator');
 
     if (isConnected) {
-        statusText.innerText = "Connected";
-        statusText.classList.replace('text-slate-400', 'text-emerald-400');
-        powerIcon.classList.replace('text-slate-500', 'text-emerald-400');
-        btn.classList.replace('border-slate-700', 'border-emerald-500/50');
-        glow.classList.replace('shadow-[0_0_40px_rgba(34,197,94,0)]', 'shadow-[0_0_40px_rgba(34,197,94,0.3)]');
+        btnText.innerText = "Disconnect Tunnel";
+        indicator.classList.replace('bg-slate-500', 'bg-success');
+        indicator.classList.add('shadow-[0_0_8px_rgba(34,197,94,0.8)]');
     } else {
-        statusText.innerText = "Disconnected";
-        statusText.classList.replace('text-emerald-400', 'text-slate-400');
-        powerIcon.classList.replace('text-emerald-400', 'text-slate-500');
-        btn.classList.replace('border-emerald-500/50', 'border-slate-700');
-        glow.classList.replace('shadow-[0_0_40px_rgba(34,197,94,0.3)]', 'shadow-[0_0_40px_rgba(34,197,94,0)]');
+        btnText.innerText = "Connect Tunnel";
+        indicator.classList.replace('bg-success', 'bg-slate-500');
+        indicator.classList.remove('shadow-[0_0_8px_rgba(34,197,94,0.8)]');
     }
 }
 
-// ==========================================
-// ACTION: LEAVE NETWORK
-// ==========================================
-async function leaveNetwork() {
-    if (!confirm("Are you sure you want to disconnect and forget this network? You will need a new invite token to rejoin.")) {
-        return;
+async function handleToggleVPN() {
+    const btnText = document.getElementById('toggle-text');
+    
+    try {
+        const isConnected = await window.go.main.App.IsConnected();
+        
+        if (isConnected) {
+            btnText.innerText = "Disconnecting...";
+            await window.go.main.App.Disconnect();
+        } else {
+            btnText.innerText = "Connecting...";
+            await window.go.main.App.Connect();
+        }
+        
+        await syncToggleUI();
+    } catch (err) {
+        alert("VPN Engine Error: " + err);
+        await syncToggleUI();
     }
+}
+
+async function handleLeaveNetwork() {
+    if (!confirm("🚨 DANGER: Are you sure you want to forget this network? You will need to ask the Administrator for a new Visa to rejoin.")) return;
 
     try {
         await window.go.main.App.LeaveNetwork();
-        stopPolling();
-        isConnected = false;
-        await refreshState(); // This will automatically throw them back to the Enroll screen!
+        await refreshState(); 
     } catch (err) {
         alert("Error leaving network: " + err);
     }

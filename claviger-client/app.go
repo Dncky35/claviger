@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime"
 
-	"claviger-client/internal/api"
+	"claviger-client/internal/auth"
 	"claviger-client/internal/config"
 	"claviger-client/internal/vpn"
 )
@@ -46,87 +46,15 @@ func (a *App) startup(ctx context.Context) {
 
 // GetVault returns the current saved state so the UI knows what screen to show
 func (a *App) GetVault() *config.ClientVault {
+	if a.vault == nil {
+		return &config.ClientVault{Status: "unregistered"}
+	}
 	return a.vault
-}
-
-// Enroll asks the server to join the network
-func (a *App) Enroll(serverURL, token string) error {
-	// 1. Generate local cryptographic keys
-	privKey, pubKey, err := vpn.GenerateKeys() // Updated to call from our vpn package
-	if err != nil {
-		return fmt.Errorf("failed to generate keys: %v", err)
-	}
-
-	hostname, _ := os.Hostname()
-	if hostname == "" {
-		hostname = "Unknown-Desktop"
-	}
-
-	// 2. Prepare the payload
-	payload := api.EnrollPayload{
-		Token:     token,
-		PublicKey: pubKey,
-		Name:      hostname,
-		Platform:  runtime.GOOS,   // "windows", "darwin" (mac), or "linux"
-		DeviceID:  "dummy-id-123", // Future update: fetch real hardware UUID
-	}
-
-	// 3. Send to Server
-	resp, err := api.RequestEnrollment(serverURL, payload)
-	if err != nil {
-		return err
-	}
-
-	// 4. Save to Vault
-	a.vault.ServerURL = serverURL
-	a.vault.ClientID = resp.ClientID
-	a.vault.PrivateKey = privKey
-	a.vault.PublicKey = pubKey
-	a.vault.Status = resp.Status
-
-	// If Admin bypassed (or future auto-approval), the server instantly gives us our IP and Keys!
-	if resp.Status == "active" {
-		a.vault.AssignedIP = resp.AssignedIP
-		a.vault.ServerKey = resp.ServerPubKey
-		a.vault.ServerEndpoint = resp.ServerEndpoint // NEW: Ensure the engine has the target IP:Port
-	}
-
-	// Securely save the file to disk
-	return config.Save(a.vault)
-}
-
-// CheckApproval pings the server every 3 seconds while in the waiting room
-func (a *App) CheckApproval() (string, error) {
-	if a.vault.ClientID == "" || a.vault.ServerURL == "" {
-		return "", fmt.Errorf("no client ID or server URL found")
-	}
-
-	resp, err := api.CheckStatus(a.vault.ServerURL, a.vault.ClientID)
-	if err != nil {
-		return "error", err
-	}
-
-	// If the admin approved us, update the vault with our new IP and Keys!
-	if resp.Status == "active" && a.vault.Status != "active" {
-		a.vault.Status = "active"
-		a.vault.AssignedIP = resp.AssignedIP
-		a.vault.ServerKey = resp.ServerPubKey
-		a.vault.ServerEndpoint = resp.ServerEndpoint // NEW: Ensure the VPN engine gets the target IP:Port!
-		config.Save(a.vault)
-	}
-
-	// If the admin rejected/deleted us, reset the vault
-	if resp.Status == "rejected" {
-		a.vault.Status = "unregistered"
-		config.Save(a.vault)
-	}
-
-	return resp.Status, nil
 }
 
 // Connect turns the VPN tunnel ON
 func (a *App) Connect() error {
-	if a.vault.Status != "active" {
+	if a.vault == nil || a.vault.Status != "active" {
 		return fmt.Errorf("device is not approved yet")
 	}
 	return a.engine.Connect(a.vault)
@@ -154,4 +82,53 @@ func (a *App) LeaveNetwork() error {
 
 	// 3. Save the empty vault to the hard drive
 	return config.Save(a.vault)
+}
+
+// =====================================================================
+// THE ZERO-TRUST PROTOCOL (PASSPORT & VISA)
+// =====================================================================
+
+// GenerateRequest creates the local keys and outputs the "Passport" token
+func (a *App) GenerateRequest() (string, error) {
+	privKey, pubKey, err := vpn.GenerateKeys()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate keys: %v", err)
+	}
+
+	hostname, _ := os.Hostname()
+	if hostname == "" {
+		hostname = "Unknown-Desktop"
+	}
+
+	// Save the Private Key to the Vault immediately!
+	a.vault.PrivateKey = privKey
+	a.vault.PublicKey = pubKey
+	a.vault.Status = "pending_approval"
+	config.Save(a.vault)
+
+	// Call our new Auth package to build the token
+	return auth.GenerateRequestToken(pubKey, hostname, runtime.GOOS, "dummy-id-123")
+}
+
+// ProcessApproval catches the "Visa" from the Admin and updates the Vault (NO AUTO-CONNECT)
+func (a *App) ProcessApproval(tokenString string) error {
+	approval, err := auth.DecodeApprovalToken(tokenString)
+	if err != nil {
+		return err
+	}
+
+	// Update the Vault with the Server's map
+	a.vault.AssignedIP = approval.AssignedIP
+	a.vault.ServerKey = approval.ServerPubKey
+	a.vault.ServerEndpoint = approval.ServerEndpoint
+	a.vault.Status = "active"
+
+	if err := config.Save(a.vault); err != nil {
+		return fmt.Errorf("failed to save vault: %v", err)
+	}
+
+	// We removed the engine.Connect() call here!
+	// The user will now land on the Dashboard and must explicitly click "Connect Tunnel".
+
+	return nil
 }
