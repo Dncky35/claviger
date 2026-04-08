@@ -8,9 +8,9 @@ export function Disconnect():Promise<void>;
 
 export function GenerateRequest():Promise<string>;
 
-export function GetVault():Promise<config.ClientVault>;
+export function GetTunnelState():Promise<string>;
 
-export function IsConnected():Promise<boolean>;
+export function GetVault():Promise<config.ClientVault>;
 
 export function LeaveNetwork():Promise<void>;
 

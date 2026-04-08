@@ -14,12 +14,12 @@ export function GenerateRequest() {
   return window['go']['main']['App']['GenerateRequest']();
 }
 
-export function GetVault() {
-  return window['go']['main']['App']['GetVault']();
+export function GetTunnelState() {
+  return window['go']['main']['App']['GetTunnelState']();
 }
 
-export function IsConnected() {
-  return window['go']['main']['App']['IsConnected']();
+export function GetVault() {
+  return window['go']['main']['App']['GetVault']();
 }
 
 export function LeaveNetwork() {

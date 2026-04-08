@@ -10,6 +10,8 @@ import (
 	"claviger-client/internal/auth"
 	"claviger-client/internal/config"
 	"claviger-client/internal/vpn"
+
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct is the core of our Desktop Application
@@ -37,11 +39,19 @@ func NewApp() *App {
 // startup is called by Wails when the UI window opens
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	// ---------------------------------------------------------
+	// THE EVENT EMITTER HOOK
+	// We pass a callback to the Engine. Whenever the Watchdog changes
+	// the connection state, this instantly fires a Wails Event to JavaScript!
+	// ---------------------------------------------------------
+	a.engine.SetStateCallback(func(newState string) {
+		wailsRuntime.EventsEmit(ctx, "vpn-state-change", newState)
+	})
 }
 
 // =====================================================================
 // EXPOSED FRONTEND FUNCTIONS
-// (Your JavaScript UI can call all of these directly!)
 // =====================================================================
 
 // GetVault returns the current saved state so the UI knows what screen to show
@@ -65,9 +75,10 @@ func (a *App) Disconnect() error {
 	return a.engine.Disconnect()
 }
 
-// IsConnected tells the UI if the toggle switch should be green or gray
-func (a *App) IsConnected() bool {
-	return a.engine.Status()
+// GetTunnelState tells the UI exactly what the engine is doing
+// Returns: "disconnected", "connecting", "verifying", "secured", or "reconnecting"
+func (a *App) GetTunnelState() string {
+	return a.engine.GetState()
 }
 
 // LeaveNetwork disconnects the VPN, wipes the local keys, and resets the app
@@ -110,7 +121,7 @@ func (a *App) GenerateRequest() (string, error) {
 	return auth.GenerateRequestToken(pubKey, hostname, runtime.GOOS, "dummy-id-123")
 }
 
-// ProcessApproval catches the "Visa" from the Admin and updates the Vault (NO AUTO-CONNECT)
+// ProcessApproval catches the "Visa" from the Admin and updates the Vault
 func (a *App) ProcessApproval(tokenString string) error {
 	approval, err := auth.DecodeApprovalToken(tokenString)
 	if err != nil {
@@ -126,9 +137,6 @@ func (a *App) ProcessApproval(tokenString string) error {
 	if err := config.Save(a.vault); err != nil {
 		return fmt.Errorf("failed to save vault: %v", err)
 	}
-
-	// We removed the engine.Connect() call here!
-	// The user will now land on the Dashboard and must explicitly click "Connect Tunnel".
 
 	return nil
 }

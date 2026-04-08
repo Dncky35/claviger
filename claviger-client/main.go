@@ -18,9 +18,11 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "Claviger Zero Trust",
-		Width:  400, // Make it look like a sleek VPN app (tall and narrow)
-		Height: 600,
+		Title:     "Claviger Zero Trust",
+		Width:     900, // 👈 Wide desktop layout
+		Height:    550, // 👈 Slightly shorter so it looks like a sleek dashboard
+		MinWidth:  800, // 👈 Prevents the user from squishing the UI
+		MinHeight: 500,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
