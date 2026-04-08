@@ -13,7 +13,7 @@ var (
 )
 
 // HandleStatus returns a handler that serves the VPN status to the local Hub.
-func HandleStatus(nodeID string, hasToken bool) http.HandlerFunc {
+func HandleStatus() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -23,8 +23,8 @@ func HandleStatus(nodeID string, hasToken bool) http.HandlerFunc {
 		}
 
 		status := map[string]interface{}{
-			"node_id":           nodeID,
-			"has_token":         hasToken,
+			"node_id":           "test",
+			"has_token":         "true",
 			"vpn_state":         "active",
 			"cloud_sync_status": CloudSyncStatus,
 			"last_cloud_sync":   lastSyncStr,

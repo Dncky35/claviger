@@ -145,21 +145,21 @@ func (e *Engine) startWatchdog() {
 				// STATE MACHINE LOGIC
 				switch currentState {
 				case StateVerifying:
-					// 1. Did we get a handshake right away? (Unix() > 0 ensures it's not the year 1970)
-					if lastHandshake.Unix() > 0 && timeSince < 2*time.Minute {
+					// Handshake success! (Unix() > 0 filters out the year 1970 zero-value)
+					if lastHandshake.Unix() > 0 && timeSince < 45*time.Second {
 						e.setState(StateSecured)
 					} else if timeSince > 15*time.Second {
-						// 2. We've been trying for 15 seconds and no handshake. Server is unresponsive!
+						// 15 seconds with no first handshake = Server unreachable
 						e.setState(StateReconnecting)
 					}
 				case StateSecured:
-					// 3. We were secured, but the handshake is getting old. We lost connection!
-					if timeSince > 3*time.Minute {
+					// We missed almost two keep-alives (25s * 2). The server is gone!
+					if timeSince > 55*time.Second {
 						e.setState(StateReconnecting)
 					}
 				case StateReconnecting:
-					// 4. The connection healed itself! Handshake resumed.
-					if lastHandshake.Unix() > 0 && timeSince < 2*time.Minute {
+					// The connection healed itself! Handshake resumed.
+					if lastHandshake.Unix() > 0 && timeSince < 45*time.Second {
 						e.setState(StateSecured)
 					}
 				}

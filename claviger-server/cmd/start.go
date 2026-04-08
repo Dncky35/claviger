@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
 	"net"
 	"net/http"
@@ -12,9 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"claviger-server/api"
 	"claviger-server/internal/firewall"
 	"claviger-server/network"
 	"claviger-server/storage"
+	"claviger-server/web"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -124,7 +127,7 @@ func RunStart() {
 	// ---------------------------------------------------------
 	// 3. START HEARTBEAT ENGINE
 	// ---------------------------------------------------------
-	log.Println("Starting Cloudrocean Heartbeat Engine...")
+	// log.Println("Starting Cloudrocean Heartbeat Engine...")
 	// go api.StartHeartbeatLoop(db, nodeID, apiToken, daemonVersion)
 
 	// ---------------------------------------------------------
@@ -132,7 +135,38 @@ func RunStart() {
 	// ---------------------------------------------------------
 	mux := http.NewServeMux()
 
-	// ... (Keep all your mux.HandleFunc routing lines exactly as they are here) ...
+	// --- UNPROTECTED ROUTES ---
+	mux.HandleFunc("/api/client/status", api.HandleClientStatus(db))
+
+	// --- PROTECTED ROUTES (Requires allow_hub = 1) ---
+	mux.HandleFunc("/api/status", api.HubAccessMiddleware(db, api.HandleStatus()))
+	mux.HandleFunc("/api/system", api.HubAccessMiddleware(db, api.HandleSystemStats))
+	mux.HandleFunc("/api/security", api.HubAccessMiddleware(db, api.HandleSecurityStats))
+	mux.HandleFunc("/api/security/action", api.HubAccessMiddleware(db, api.HandleSecurityAction))
+	mux.HandleFunc("/api/clients", api.HubAccessMiddleware(db, api.HandleClients(db)))
+	mux.HandleFunc("/api/revoke", api.HubAccessMiddleware(db, api.HandleRevoke(db)))
+	mux.HandleFunc("/api/access/ssh", api.HubAccessMiddleware(db, api.HandleSSHKeys))
+	mux.HandleFunc("/api/roles", api.HubAccessMiddleware(db, api.HandleRoles(db)))
+	mux.HandleFunc("/api/network/internet", api.HubAccessMiddleware(db, api.HandleNetworkSettings(db)))
+
+	// --- SERVE THE MAIN UI DASHBOARD ---
+	tmpl, err := template.ParseFS(web.TemplatesFS, "index.html", "components/*.html")
+	if err != nil {
+		log.Fatalf("❌ Failed to parse HTML templates: %v", err)
+	}
+
+	// Wrap the UI in the same middleware so only authorized VPN IPs can see it
+	mux.HandleFunc("/", api.HubAccessMiddleware(db, func(w http.ResponseWriter, r *http.Request) {
+		// Strictly enforce the root path. Ignore /favicon.ico or random browser requests
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tmpl.ExecuteTemplate(w, "index.html", nil); err != nil {
+			http.Error(w, "Template Error: "+err.Error(), http.StatusInternalServerError)
+		}
+	}))
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", hubIP, hubPort), // Locked to VPN only
