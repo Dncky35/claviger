@@ -1,0 +1,48 @@
+{{define "tab_containers"}}
+<div id="tab-containers" class="hidden space-y-6">
+    
+    <div class="flex justify-between items-center">
+        <h2 class="text-2xl font-bold tracking-tight text-white">🐳 Container Management</h2>
+        <button onclick="loadContainers()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg transition-colors border border-slate-700 shadow-sm flex items-center gap-2">
+            <span>🔄</span> Refresh
+        </button>
+    </div>
+
+    <div id="docker-missing-state" class="hidden bg-amber-500/10 border border-amber-500/20 text-amber-200 p-6 rounded-xl shadow-sm">
+        <h3 class="text-lg font-semibold mb-2 flex items-center gap-2"><span>⚠️</span> Docker Engine is Required</h3>
+        <p class="text-sm text-amber-200/80 mb-4">To enable 1-Click Apps and container management, you need to install Docker on this server.</p>
+        <p class="text-sm mb-2 text-amber-200/90">Run this command in your server's terminal:</p>
+        <code class="block bg-black/40 text-amber-100 p-4 rounded-lg text-sm font-mono border border-amber-500/20">curl -fsSL https://get.docker.com | sudo sh</code>
+        <p class="text-sm mt-4 text-amber-200/80">Once installed, click the Refresh button above.</p>
+    </div>
+
+    <div id="docker-active-state" class="hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-sm overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-900/50 border-b border-slate-800 text-sm text-slate-400">
+                    <tr>
+                        <th class="p-4 font-medium">App Name</th>
+                        <th class="p-4 font-medium">Image</th>
+                        <th class="p-4 font-medium">Status</th>
+                        <th class="p-4 font-medium">Ports</th>
+                        <th class="p-4 font-medium text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="containers-table-body" class="text-sm divide-y divide-slate-800/50">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <dialog id="logs-modal" class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-0 w-[90%] max-w-4xl backdrop:bg-black/60 text-slate-200">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+            <h3 class="font-semibold text-white">Terminal Logs</h3>
+            <button onclick="document.getElementById('logs-modal').close()" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">✕ Close</button>
+        </div>
+        <div class="p-4">
+            <pre id="logs-output" class="bg-[#0c0c0c] text-emerald-400 p-4 rounded-lg overflow-y-auto max-h-[500px] font-mono text-xs leading-relaxed border border-slate-800"></pre>
+        </div>
+    </dialog>
+
+</div>
+{{end}}

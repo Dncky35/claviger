@@ -7,7 +7,7 @@
 
     // --- Tab Navigation Logic ---
     function switchTab(tabId) {
-        const tabs = ['system', 'security', 'clients', "access", "roles"];
+        const tabs = ['system', 'security', 'clients', "access", "roles", "containers"];
         tabs.forEach(id => {
             const tabEl = document.getElementById('tab-' + id);
             const btnEl = document.getElementById('btn-' + id);
@@ -36,6 +36,7 @@
         if (tabId === 'clients') fetchPeersData();
         if (tabId === 'access') fetchSSHKeys();
         if (tabId === 'roles') fetchRolesData();
+        if (tabId === 'containers') loadContainers();
     }
 
     // ==========================================
@@ -710,6 +711,111 @@
                 alert(`Error: ${data.message}`);
             }
         } catch (err) { alert("Failed to delete role."); }
+    }
+
+    // ==========================================
+    // CONTAINER HUB LOGIC
+    // ==========================================
+
+    async function loadContainers() {
+        try {
+            const res = await fetch('/api/containers');
+            const data = await res.json();
+
+            // Toggle Tailwind classes for visibility
+            if (!data.docker_installed) {
+                document.getElementById('docker-missing-state').classList.remove('hidden');
+                document.getElementById('docker-missing-state').classList.add('block');
+                document.getElementById('docker-active-state').classList.add('hidden');
+                document.getElementById('docker-active-state').classList.remove('block');
+                return;
+            }
+
+            document.getElementById('docker-missing-state').classList.add('hidden');
+            document.getElementById('docker-missing-state').classList.remove('block');
+            document.getElementById('docker-active-state').classList.remove('hidden');
+            document.getElementById('docker-active-state').classList.add('block');
+
+            const tbody = document.getElementById('containers-table-body');
+            tbody.innerHTML = ''; 
+
+            if (data.containers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">No containers running. Ready to deploy some apps!</td></tr>';
+                return;
+            }
+
+            data.containers.forEach(c => {
+                // Tailwind Status Badges
+                let statusBadge = '';
+                if (c.state === 'running') {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">● Running</span>`;
+                } else if (c.state === 'exited') {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">● Stopped</span>`;
+                } else {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">● ${c.state}</span>`;
+                }
+
+                let portString = c.ports && c.ports.length > 0 ? c.ports.join(', ') : '<span class="text-slate-600">None</span>';
+
+                let row = `
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td class="p-4 font-semibold text-slate-200">${c.name}</td>
+                    <td class="p-4 text-slate-400 text-xs font-mono">${c.image}</td>
+                    <td class="p-4">${statusBadge}</td>
+                    <td class="p-4 font-mono text-xs text-slate-400">${portString}</td>
+                    <td class="p-4 text-right space-x-2">
+                        <button onclick="containerAction('${c.id}', 'start')" class="p-1.5 text-slate-400 hover:text-emerald-400 transition-colors" title="Start">▶️</button>
+                        <button onclick="containerAction('${c.id}', 'stop')" class="p-1.5 text-slate-400 hover:text-amber-400 transition-colors" title="Stop">⏹️</button>
+                        <button onclick="containerAction('${c.id}', 'restart')" class="p-1.5 text-slate-400 hover:text-blue-400 transition-colors" title="Restart">🔄</button>
+                        <button onclick="viewLogs('${c.id}')" class="p-1.5 text-slate-400 hover:text-purple-400 transition-colors" title="Logs">📋</button>
+                        <button onclick="containerAction('${c.id}', 'delete')" class="p-1.5 text-slate-400 hover:text-rose-400 transition-colors" title="Delete">🗑️</button>
+                    </td>
+                </tr>`;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+        } catch (e) {
+            console.error("Failed to load containers", e);
+        }
+    }
+
+    // --- ACTIONS ---
+    async function containerAction(id, action) {
+        if (action === 'delete' && !confirm("Are you sure you want to completely delete this container?")) return;
+
+        try {
+            const res = await fetch('/api/containers/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ container_id: id, action: action })
+            });
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                setTimeout(loadContainers, 500); // Wait for Docker to process
+            } else {
+                alert("Error: " + data.message);
+            }
+        } catch (e) {
+            alert("Connection error executing action.");
+        }
+    }
+
+    // --- VIEW LOGS ---
+    async function viewLogs(id) {
+        document.getElementById('logs-output').innerText = "Loading logs...";
+        document.getElementById('logs-modal').showModal();
+
+        try {
+            const res = await fetch(`/api/containers/logs?id=${id}`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                document.getElementById('logs-output').innerText = data.logs || "No logs available.";
+            } else {
+                document.getElementById('logs-output').innerText = "Error fetching logs: " + data.message;
+            }
+        } catch (e) {
+            document.getElementById('logs-output').innerText = "Connection error.";
+        }
     }
 
     // ==========================================

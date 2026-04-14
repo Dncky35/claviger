@@ -160,6 +160,12 @@ func RunStart() {
 	mux.HandleFunc("/api/roles", api.HubAccessMiddleware(db, api.HandleRoles(db)))
 	mux.HandleFunc("/api/network/internet", api.HubAccessMiddleware(db, api.HandleNetworkSettings(db)))
 
+	// --- PROTECTED DOCKER API ROUTES ---
+	mux.HandleFunc("/api/containers", api.HubAccessMiddleware(db, api.HandleContainers(dockerEngine)))
+	mux.HandleFunc("/api/containers/action", api.HubAccessMiddleware(db, api.HandleContainerAction(dockerEngine)))
+	mux.HandleFunc("/api/containers/logs", api.HubAccessMiddleware(db, api.HandleContainerLogs(dockerEngine)))
+	mux.HandleFunc("/api/containers/stats", api.HubAccessMiddleware(db, api.HandleContainerStats(dockerEngine)))
+
 	// --- SERVE THE MAIN UI DASHBOARD ---
 	tmpl, err := template.ParseFS(web.TemplatesFS, "index.html", "components/*.html")
 	if err != nil {
