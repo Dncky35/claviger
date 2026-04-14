@@ -89,12 +89,41 @@ func RunSetup(args []string) {
 
 	fmt.Print("⚙️  Detecting Public IP... ")
 	serverIPRaw, err := network.GetPublicIP()
+
+	defaultIP := ""
 	if err != nil {
-		log.Fatalf("❌ Failed. Ensure this server has internet access.")
+		fmt.Println("⚠️ Could not detect Public IP.")
+	} else {
+		defaultIP = strings.TrimSpace(serverIPRaw)
+		fmt.Printf("%s\n", defaultIP)
 	}
-	serverIP := strings.TrimSpace(serverIPRaw)
-	fmt.Printf("%s\n", serverIP)
-	tempConfig["public_ip"] = serverIP
+
+	// --- THE FIX: Let the user decide! ---
+	fmt.Printf("\n🌍 Enter the IP address or Domain Name clients will use to connect.\n")
+	if defaultIP != "" {
+		fmt.Printf("   (Press ENTER to use detected public IP: %s)\n", defaultIP)
+	} else {
+		fmt.Printf("   (e.g., 198.51.100.5, vpn.mydomain.com, or 192.168.1.50 for LAN)\n")
+	}
+
+	fmt.Print("👉 Endpoint IP/Domain: ")
+
+	reader = bufio.NewReader(os.Stdin)
+	userInput, _ := reader.ReadString('\n')
+	userInput = strings.TrimSpace(userInput)
+
+	// Determine final IP based on user input
+	finalIP := defaultIP
+	if userInput != "" {
+		finalIP = userInput
+	}
+
+	if finalIP == "" {
+		log.Fatalf("❌ Setup aborted: You must provide a valid IP or domain.")
+	}
+
+	fmt.Printf("✅ Server Endpoint set to: %s\n", finalIP)
+	tempConfig["public_ip"] = finalIP
 
 	// Generate Server Keys
 	serverPriv, serverPub, err := network.GenerateKeys()
@@ -151,7 +180,7 @@ Address = %s/24
 	}
 
 	// C. Enroll the Admin in the Database
-	approvalData, err := auth.EnrollFirstAdmin(db, connReq, serverIP)
+	approvalData, err := auth.EnrollFirstAdmin(db, connReq, finalIP)
 	if err != nil {
 		log.Fatalf("❌ Failed to enroll Admin in database: %v", err)
 	}

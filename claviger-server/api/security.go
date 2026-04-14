@@ -27,6 +27,7 @@ type SecurityStats struct {
 	Insights  []Insight      `json:"insights"`
 }
 
+// HandleSecurityStats parses UFW and returns the status, rules, and insights
 func HandleSecurityStats(w http.ResponseWriter, r *http.Request) {
 	stats := SecurityStats{
 		UFWStatus: "inactive",
@@ -119,7 +120,7 @@ func HandleSecurityStats(w http.ResponseWriter, r *http.Request) {
 			stats.Insights = append(stats.Insights, Insight{
 				Level:   "warning",
 				Title:   "Public Web Traffic",
-				Message: "Ports 80/443 are open to everywhere. Consider using a Reverse Proxy or CDN (like Cloudflare, Fastly, or AWS) and restricting these ports to only allow traffic from their specific IP ranges to prevent direct attacks.",
+				Message: "Ports 80/443 are open to everywhere. Consider using a Reverse Proxy or CDN (like Cloudflare, Fastly, or AWS) and restricting these ports to only allow traffic from their specific IP ranges.",
 			})
 		}
 		if hasDB {
@@ -175,8 +176,14 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 
 	switch req.Action {
 	case "enable":
+		// Automatically allow standard required ports
 		exec.Command("ufw", "allow", "22/tcp").Run()
 		exec.Command("ufw", "allow", "51820/udp").Run()
+
+		// THE FIX: Explicitly trust all internal VPN traffic so the Hub never gets blocked!
+		exec.Command("ufw", "allow", "in", "on", "wg0").Run()
+
+		// Finally, force enable UFW
 		err = exec.Command("ufw", "--force", "enable").Run()
 
 	case "disable":
@@ -188,7 +195,6 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 
 	case "delete":
 		// e.g., ufw delete allow 22
-		// Note: ufw expects lowercase actions for delete (e.g., 'allow', not 'ALLOW')
 		actionLower := strings.ToLower(req.RuleAction)
 		err = exec.Command("ufw", "delete", actionLower, req.Port).Run()
 	}

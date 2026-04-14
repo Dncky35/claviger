@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"claviger-server/api"
+	"claviger-server/internal/docker"
 	"claviger-server/internal/firewall"
 	"claviger-server/network"
 	"claviger-server/storage"
@@ -129,6 +130,16 @@ func RunStart() {
 	// ---------------------------------------------------------
 	// log.Println("Starting Cloudrocean Heartbeat Engine...")
 	// go api.StartHeartbeatLoop(db, nodeID, apiToken, daemonVersion)
+
+	// ---------------------------------------------------------
+	// 3.5 START DOCKER ORCHESTRATION ENGINE
+	// ---------------------------------------------------------
+	dockerEngine, err := docker.NewEngine()
+	if err != nil {
+		log.Printf("⚠️ Docker Engine Warning: %v\n(Containers tab will be disabled until Docker is installed)", err)
+	} else {
+		defer dockerEngine.Close()
+	}
 
 	// ---------------------------------------------------------
 	// 4. SETUP THE WEB HUB & ERROR CHANNEL
