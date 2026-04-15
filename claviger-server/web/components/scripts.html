@@ -5,6 +5,24 @@
     let lastTxBytes = 0;
     let lastTimestamp = 0;
 
+    // --- BROWSER TAB FOCUS MAGIC ---
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            const tabs = ['system', 'network', 'security', 'clients', 'access', 'roles', 'containers'];
+            
+            // Find which tab does NOT have the 'hidden' class
+            const activeTabId = tabs.find(id => {
+                const el = document.getElementById('tab-' + id);
+                return el && !el.classList.contains('hidden');
+            });
+
+            // Refresh the specific data
+            if (activeTabId === 'network') { fetchNetworkStatus(); syncAppStates(); }
+            if (activeTabId === 'security') { fetchSecurityData(); syncAppStates(); }
+            if (activeTabId === 'containers') { loadContainers(); }
+        }
+    });
+
     // --- APP INSTALLER LOGIC ---
     async function installApp(appId) {
         if (!confirm(`Are you sure you want to install ${appId}?`)) return;
@@ -108,16 +126,22 @@
                     // --- NEW: SMART ROUTING FOR ADGUARD ---
                     if (appName === 'adguard') {
                         const agBtn = document.getElementById('btn-dash-adguard');
+                        const agBadge = document.getElementById('badge-app-adguard');
+
                         if (data.adguard_setup) {
                             // Setup is done -> Route to Main Dashboard
                             agBtn.setAttribute('onclick', "window.open('http://' + window.location.hostname + ':8083', '_blank')");
                             agBtn.innerText = "Open Dashboard ↗";
                             agBtn.classList.replace('bg-primary', 'bg-slate-800'); // Standard button color
+                            agBadge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                            agBadge.innerText = 'Setup Complete';
                         } else {
                             // Setup needed -> Route to Wizard
                             agBtn.setAttribute('onclick', "window.open('http://' + window.location.hostname + ':3030', '_blank')");
                             agBtn.innerText = "Finish Setup ↗";
                             agBtn.classList.replace('bg-slate-800', 'bg-primary'); // Highlight blue so they know to click it!
+                            agBadge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-warning/10 text-warning border border-warning/20';
+                            agBadge.innerText = "When setup is complete, ignore AdGuard's final button and just close the tab.";
                         }
                     }
 
