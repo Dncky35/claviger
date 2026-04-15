@@ -1,5 +1,5 @@
 {{ define "navbar" }}
-<nav class="bg-surface border-b border-border px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+<nav class="bg-surface border-b border-border px-6 py-4 flex justify-between items-center z-50 shadow-sm shrink-0">
     <div class="flex items-center space-x-3">
         <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-primary/20 text-lg">
             C
@@ -12,33 +12,42 @@
         <span id="cloud-sync-badge" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-background text-slate-400 border border-border transition-colors">
             ☁️ Syncing...
         </span>
-        
         <span id="vpn-status-badge" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-background text-slate-400 border border-border transition-colors">
             Checking...
         </span>
     </div>
 </nav>
+{{ end }}
 
-<div class="border-b border-border bg-background/80 backdrop-blur-md sticky top-[64px] z-40">
-    <div class="max-w-[1200px] w-full mx-auto px-6 flex space-x-8">
-        <button onclick="switchTab('system')" id="btn-system" class="py-4 text-sm font-semibold tracking-tight border-b-2 border-primary text-primary transition-colors">
-            System Overview
-        </button>
-        <button onclick="switchTab('security')" id="btn-security" class="py-4 text-sm font-semibold tracking-tight border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
-            Security & Firewall
-        </button>
-        <button onclick="switchTab('clients')" id="btn-clients" class="py-4 text-sm font-semibold tracking-tight border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
-            VPN Peers
-        </button>
-        <button onclick="switchTab('access')" id="btn-access" class="py-4 text-sm font-semibold tracking-tight border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
-            Server Auth
-        </button>
-        <button onclick="switchTab('roles')" id="btn-roles" class="py-4 text-sm font-semibold tracking-tight border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
-            Roles & Permissions
-        </button>
-        <button onclick="switchTab('containers')" id="btn-containers" class="py-4 text-sm font-semibold tracking-tight border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
-            Container Management
-        </button>
+
+{{ define "sidebar" }}
+<aside class="w-64 bg-surface/30 border-r border-border flex flex-col shrink-0 overflow-y-auto">
+    <div class="p-4 space-y-8 mt-4">
+        
+        <div>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">System Core</h3>
+            <div class="space-y-1">
+                <button onclick="switchTab('system')" id="btn-system" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">System Overview</button>
+                <button onclick="switchTab('network')" id="btn-network" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Network & Gateway</button>
+                <button onclick="switchTab('security')" id="btn-security" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Security & Firewall</button>
+                <button onclick="switchTab('access')" id="btn-access" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Server SSH Keys</button>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Identity & Access</h3>
+            <div class="space-y-1">
+                <button onclick="switchTab('clients')" id="btn-clients" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">VPN Peers</button>
+                <button onclick="switchTab('roles')" id="btn-roles" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Roles & Permissions</button>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Private Cloud</h3>
+            <div class="space-y-1">
+                <button onclick="switchTab('containers')" id="btn-containers" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Container Manager</button>
+            </div>
+        </div>
     </div>
-</div>
+</aside>
 {{ end }}

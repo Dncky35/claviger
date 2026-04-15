@@ -5,34 +5,174 @@
     let lastTxBytes = 0;
     let lastTimestamp = 0;
 
+    // --- APP INSTALLER LOGIC ---
+    async function installApp(appId) {
+        if (!confirm(`Are you sure you want to install ${appId}?`)) return;
+
+        const installBtn = document.getElementById(`btn-install-${appId}`);
+        const originalHtml = installBtn.innerHTML;
+
+        // 1. LOADING STATE
+        installBtn.disabled = true;
+        // Remove primary blue colors
+        installBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
+        // Add gray, disabled, and pulsing animation classes
+        installBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
+        installBtn.innerHTML = '⏳ Installing... Please wait';
+
+        try {
+            const res = await fetch('/api/apps/install', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ app_id: appId })
+            });
+            const data = await res.json();
+            
+            if (res.ok && data.status === 'success') {
+                // 2. SUCCESS STATE
+                installBtn.classList.remove('animate-pulse');
+                installBtn.classList.add('bg-emerald-600');
+                installBtn.innerHTML = '✅ Installed!';
+                
+                // Wait 1 second so the user sees the success checkmark, then sync the UI
+                setTimeout(() => {
+                    syncAppStates(); 
+                    if (appId === 'adguard') loadContainers(); // Refresh containers tab in background
+                }, 1000);
+            } else {
+                // Trigger the catch block below
+                throw new Error(data.message || "Unknown server error");
+            }
+        } catch (e) {
+            // 3. FAILURE & RETRY STATE
+            installBtn.disabled = false;
+            installBtn.classList.remove('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
+            // Turn the button red to indicate failure
+            installBtn.classList.add('bg-rose-600', 'hover:bg-rose-500'); 
+            installBtn.innerHTML = '❌ Failed. Retry?';
+            
+            // Show the exact reason why it failed (e.g., "Port 53 already in use")
+            setTimeout(() => {
+                alert(`Installation Failed for ${appId}:\n\n${e.message}\n\nPlease check your server logs.`);
+            }, 100);
+        }
+    }
+
+    // --- APP STORE STATE MANAGER ---
+    async function syncAppStates() {
+        try {
+            const res = await fetch('/api/containers');
+            const data = await res.json();
+            
+            // List of apps we track in our UI
+            const trackedApps = ['adguard', 'fail2ban'];
+
+            trackedApps.forEach(appName => {
+                const badge = document.getElementById(`badge-app-${appName}`);
+                const installBtn = document.getElementById(`btn-install-${appName}`);
+                const dashBtn = document.getElementById(`btn-dash-${appName}`);
+
+                if (!badge || !installBtn || !dashBtn) return; 
+
+                // 1. Check if it's a Docker app
+                let isInstalled = false;
+                let appState = 'not_installed';
+
+                if (data.docker_installed && data.containers) {
+                    const container = data.containers.find(c => c.name === appName);
+                    if (container) {
+                        isInstalled = true;
+                        appState = container.state;
+                    }
+                }
+
+                // 2. Check if it's a Native app (overrides Docker check if found)
+                if (data.native_apps && data.native_apps[appName] && data.native_apps[appName] !== 'not_installed') {
+                    isInstalled = true;
+                    appState = data.native_apps[appName];
+                }
+
+                // 3. Update the UI based on state
+                if (isInstalled) {
+                    installBtn.classList.add('hidden');
+                    dashBtn.classList.remove('hidden');
+                    
+                    if (appState === 'running') {
+                        badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                        badge.innerText = 'Running';
+                    } else {
+                        badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-warning/10 text-warning border border-warning/20';
+                        badge.innerText = 'Stopped';
+                    }
+
+                    // --- NEW: SMART ROUTING FOR ADGUARD ---
+                    if (appName === 'adguard') {
+                        const agBtn = document.getElementById('btn-dash-adguard');
+                        if (data.adguard_setup) {
+                            // Setup is done -> Route to Main Dashboard
+                            agBtn.setAttribute('onclick', "window.open('http://' + window.location.hostname + ':8083', '_blank')");
+                            agBtn.innerText = "Open Dashboard ↗";
+                            agBtn.classList.replace('bg-primary', 'bg-slate-800'); // Standard button color
+                        } else {
+                            // Setup needed -> Route to Wizard
+                            agBtn.setAttribute('onclick', "window.open('http://' + window.location.hostname + ':3030', '_blank')");
+                            agBtn.innerText = "Finish Setup ↗";
+                            agBtn.classList.replace('bg-slate-800', 'bg-primary'); // Highlight blue so they know to click it!
+                        }
+                    }
+
+
+                } else {
+                    installBtn.classList.remove('hidden');
+                    dashBtn.classList.add('hidden');
+                    badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700';
+                    badge.innerText = 'Not Installed';
+                }
+            });
+        } catch (e) {
+            console.error("Failed to sync app states", e);
+        }
+    }
+
     // --- Tab Navigation Logic ---
     function switchTab(tabId) {
-        const tabs = ['system', 'security', 'clients', "access", "roles", "containers"];
+        const tabs = ['system', 'security', 'clients', "access", "roles", "containers", "network"];
+        
+        // New Sidebar Tailwind CSS states
+        const inactiveClass = 'px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors';
+        const activeClass = 'px-3 py-2 w-full text-left rounded-lg text-sm font-medium bg-primary/10 text-primary transition-colors';
+
         tabs.forEach(id => {
             const tabEl = document.getElementById('tab-' + id);
             const btnEl = document.getElementById('btn-' + id);
+            
+            // Hide all tab content
             if (tabEl) {
                 tabEl.classList.add('hidden');
                 tabEl.classList.remove('block');
             }
+            // Reset all buttons to inactive
             if (btnEl) {
-                btnEl.className = 'py-4 text-sm font-semibold tracking-tight border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors';
+                btnEl.className = inactiveClass;
             }
         });
         
         const activeTab = document.getElementById('tab-' + tabId);
         const activeBtn = document.getElementById('btn-' + tabId);
         
+        // Show selected tab content
         if (activeTab) {
             activeTab.classList.remove('hidden');
             activeTab.classList.add('block');
         }
+        // Highlight selected button
         if (activeBtn) {
-            activeBtn.className = 'py-4 text-sm font-semibold tracking-tight border-b-2 border-primary text-primary transition-colors';
+            activeBtn.className = activeClass;
         }
         
         // Fetch fresh data immediately when switching to a tab
-        if (tabId === 'security') fetchSecurityData();
+        if (tabId === 'network') { fetchNetworkStatus(); syncAppStates(); }
+        if (tabId === 'security') { fetchSecurityData(); syncAppStates(); }
         if (tabId === 'clients') fetchPeersData();
         if (tabId === 'access') fetchSSHKeys();
         if (tabId === 'roles') fetchRolesData();
@@ -389,6 +529,40 @@
         } catch (err) { console.error("Error fetching security:", err); }
     }
 
+    async function saveFail2BanConfig() {
+        const btn = document.getElementById('btn-save-f2b');
+        btn.disabled = true;
+        btn.innerHTML = 'Saving...';
+
+        const payload = {
+            port: parseInt(document.getElementById('f2b-port').value),
+            max_retries: parseInt(document.getElementById('f2b-retries').value),
+            find_time: parseInt(document.getElementById('f2b-findtime').value),
+            ban_time: parseInt(document.getElementById('f2b-bantime').value)
+        };
+
+        try {
+            const res = await fetch('/api/security/fail2ban/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                document.getElementById('modal-fail2ban').close();
+                alert('Fail2Ban rules updated and service restarted successfully!');
+            } else {
+                alert('Error saving rules: ' + data.message);
+            }
+        } catch (e) {
+            alert('Network error while saving config.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Save & Apply Rules';
+        }
+    }
+
     // ==========================================
     // 3. SYSTEM & HARDWARE LOGIC
     // ==========================================
@@ -712,111 +886,7 @@
             }
         } catch (err) { alert("Failed to delete role."); }
     }
-
-    // ==========================================
-    // CONTAINER HUB LOGIC
-    // ==========================================
-
-    async function loadContainers() {
-        try {
-            const res = await fetch('/api/containers');
-            const data = await res.json();
-
-            // Toggle Tailwind classes for visibility
-            if (!data.docker_installed) {
-                document.getElementById('docker-missing-state').classList.remove('hidden');
-                document.getElementById('docker-missing-state').classList.add('block');
-                document.getElementById('docker-active-state').classList.add('hidden');
-                document.getElementById('docker-active-state').classList.remove('block');
-                return;
-            }
-
-            document.getElementById('docker-missing-state').classList.add('hidden');
-            document.getElementById('docker-missing-state').classList.remove('block');
-            document.getElementById('docker-active-state').classList.remove('hidden');
-            document.getElementById('docker-active-state').classList.add('block');
-
-            const tbody = document.getElementById('containers-table-body');
-            tbody.innerHTML = ''; 
-
-            if (data.containers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">No containers running. Ready to deploy some apps!</td></tr>';
-                return;
-            }
-
-            data.containers.forEach(c => {
-                // Tailwind Status Badges
-                let statusBadge = '';
-                if (c.state === 'running') {
-                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">● Running</span>`;
-                } else if (c.state === 'exited') {
-                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">● Stopped</span>`;
-                } else {
-                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">● ${c.state}</span>`;
-                }
-
-                let portString = c.ports && c.ports.length > 0 ? c.ports.join(', ') : '<span class="text-slate-600">None</span>';
-
-                let row = `
-                <tr class="hover:bg-slate-800/30 transition-colors">
-                    <td class="p-4 font-semibold text-slate-200">${c.name}</td>
-                    <td class="p-4 text-slate-400 text-xs font-mono">${c.image}</td>
-                    <td class="p-4">${statusBadge}</td>
-                    <td class="p-4 font-mono text-xs text-slate-400">${portString}</td>
-                    <td class="p-4 text-right space-x-2">
-                        <button onclick="containerAction('${c.id}', 'start')" class="p-1.5 text-slate-400 hover:text-emerald-400 transition-colors" title="Start">▶️</button>
-                        <button onclick="containerAction('${c.id}', 'stop')" class="p-1.5 text-slate-400 hover:text-amber-400 transition-colors" title="Stop">⏹️</button>
-                        <button onclick="containerAction('${c.id}', 'restart')" class="p-1.5 text-slate-400 hover:text-blue-400 transition-colors" title="Restart">🔄</button>
-                        <button onclick="viewLogs('${c.id}')" class="p-1.5 text-slate-400 hover:text-purple-400 transition-colors" title="Logs">📋</button>
-                        <button onclick="containerAction('${c.id}', 'delete')" class="p-1.5 text-slate-400 hover:text-rose-400 transition-colors" title="Delete">🗑️</button>
-                    </td>
-                </tr>`;
-                tbody.insertAdjacentHTML('beforeend', row);
-            });
-        } catch (e) {
-            console.error("Failed to load containers", e);
-        }
-    }
-
-    // --- ACTIONS ---
-    async function containerAction(id, action) {
-        if (action === 'delete' && !confirm("Are you sure you want to completely delete this container?")) return;
-
-        try {
-            const res = await fetch('/api/containers/action', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ container_id: id, action: action })
-            });
-            const data = await res.json();
-            
-            if (data.status === 'success') {
-                setTimeout(loadContainers, 500); // Wait for Docker to process
-            } else {
-                alert("Error: " + data.message);
-            }
-        } catch (e) {
-            alert("Connection error executing action.");
-        }
-    }
-
-    // --- VIEW LOGS ---
-    async function viewLogs(id) {
-        document.getElementById('logs-output').innerText = "Loading logs...";
-        document.getElementById('logs-modal').showModal();
-
-        try {
-            const res = await fetch(`/api/containers/logs?id=${id}`);
-            const data = await res.json();
-            if (data.status === 'success') {
-                document.getElementById('logs-output').innerText = data.logs || "No logs available.";
-            } else {
-                document.getElementById('logs-output').innerText = "Error fetching logs: " + data.message;
-            }
-        } catch (e) {
-            document.getElementById('logs-output').innerText = "Connection error.";
-        }
-    }
+    
 
     // ==========================================
     // GLOBAL ROUTING LOGIC

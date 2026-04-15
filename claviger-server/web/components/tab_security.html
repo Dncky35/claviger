@@ -41,20 +41,77 @@
         </div>
     </div>
 
-    <div class="bg-surface rounded-2xl border border-border mt-6 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div>
-            <h3 class="text-lg font-bold text-slate-100 flex items-center gap-3">
-                Global Internet Routing
-                <span id="badge-routing-status" class="px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-bold rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20">Checking...</span>
-            </h3>
-            <p class="text-muted-foreground text-sm mt-1 max-w-2xl">
-                When enabled, WireGuard clients route their public internet traffic (like Google or YouTube) through this server. When disabled, clients are strictly isolated to the private <code>10.8.0.x</code> network.
+    <hr class="border-border my-8">
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-slate-100">Intrusion Prevention</h3>
+    </div>
+
+    <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
+        <div class="z-10">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 bg-rose-500/10 rounded-lg flex items-center justify-center text-rose-500 text-xl">🧱</div>
+                <h3 class="text-lg font-bold text-slate-100">Fail2Ban</h3>
+                <span id="badge-app-fail2ban" class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">Checking...</span>
+            </div>
+            <p class="text-muted-foreground text-sm max-w-2xl">
+                Automatically scans log files and bans IP addresses that show malicious signs.
             </p>
         </div>
-        
-        <button id="btn-toggle-routing" onclick="toggleGlobalRouting()" class="relative inline-flex  h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background bg-slate-700 shrink-0">
-            <span id="toggle-routing-knob" class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform translate-x-1"></span>
-        </button>
+        <div class="z-10 flex items-center shrink-0 gap-2">
+            <button id="btn-install-fail2ban" onclick="installApp('fail2ban')" class="hidden px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
+                Install Engine
+            </button>
+            
+            <div id="btn-dash-fail2ban" class="hidden flex items-center gap-2">
+                <span class="px-4 py-2 bg-emerald-500/10 text-emerald-500 text-sm font-medium rounded-lg border border-emerald-500/20 cursor-default">
+                    Running in Background
+                </span>
+                <button onclick="document.getElementById('modal-fail2ban').showModal()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors" title="Configure Rules">
+                    ⚙️
+                </button>
+            </div>
+        </div>
     </div>
 </div>
+
+<dialog id="modal-fail2ban" class="bg-surface border border-border rounded-xl shadow-2xl p-0 w-[90%] max-w-md backdrop:bg-black/60 text-slate-200">
+    <div class="p-5 border-b border-border flex justify-between items-center bg-surface/50">
+        <h3 class="font-bold text-lg text-white flex items-center gap-2"><span>🧱</span> Configure Fail2Ban</h3>
+        <button onclick="document.getElementById('modal-fail2ban').close()" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">✕</button>
+    </div>
+    
+    <div class="p-6 space-y-5">
+        <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">SSH Port Number</label>
+            <input type="number" id="f2b-port" value="22" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+            <p class="text-[11px] text-slate-500 mt-1">The port your SSH daemon listens on.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Max Retries</label>
+                <input type="number" id="f2b-retries" value="3" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Window (Mins)</label>
+                <input type="number" id="f2b-findtime" value="10" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+            </div>
+        </div>
+        <p class="text-[11px] text-slate-500 -mt-2">Ban if there are [Max Retries] failures within [Window] minutes.</p>
+
+        <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Ban Duration (Minutes)</label>
+            <input type="number" id="f2b-bantime" value="60" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+            <p class="text-[11px] text-slate-500 mt-1">Set to -1 for a permanent ban (use with caution!).</p>
+        </div>
+    </div>
+
+    <div class="p-5 border-t border-border flex justify-end gap-3 bg-background/50 rounded-b-xl">
+        <button onclick="document.getElementById('modal-fail2ban').close()" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors">Cancel</button>
+        <button id="btn-save-f2b" onclick="saveFail2BanConfig()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
+            Save & Apply Rules
+        </button>
+    </div>
+</dialog>
 {{ end }}

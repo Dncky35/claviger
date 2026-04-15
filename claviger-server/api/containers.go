@@ -3,8 +3,10 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"claviger-server/internal/docker"
+	"claviger-server/internal/security"
 )
 
 // HandleContainers returns the list of Docker containers, or tells the UI Docker isn't installed
@@ -12,16 +14,38 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		// SCENARIO 1: Docker is not installed or crashed
+		// --- Check Native Apps ---
+		fail2banState := "not_installed"
+		if security.IsFail2BanInstalled() {
+			if security.IsFail2BanRunning() {
+				fail2banState = "running"
+			} else {
+				fail2banState = "stopped"
+			}
+		}
+
+		nativeApps := map[string]string{
+			"fail2ban": fail2banState,
+		}
+
+		// --- NEW: Check AdGuard Setup State ---
+		// If this file exists, the setup wizard is finished
+		adguardSetupDone := false
+		if _, err := os.Stat("/var/lib/claviger/apps/adguard/conf/AdGuardHome.yaml"); err == nil {
+			adguardSetupDone = true
+		}
+		// --------------------------------------
+
 		if engine == nil || engine.Client == nil {
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"docker_installed": false,
 				"containers":       []docker.ContainerInfo{},
+				"native_apps":      nativeApps,
+				"adguard_setup":    adguardSetupDone, // Add to response
 			})
 			return
 		}
 
-		// SCENARIO 2: Docker is running perfectly
 		containers, err := engine.ListContainers(r.Context())
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -29,14 +53,17 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 				"docker_installed": true,
 				"error":            err.Error(),
 				"containers":       []docker.ContainerInfo{},
+				"native_apps":      nativeApps,
+				"adguard_setup":    adguardSetupDone, // Add to response
 			})
 			return
 		}
 
-		// Success! Send the clean list to the frontend
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"docker_installed": true,
 			"containers":       containers,
+			"native_apps":      nativeApps,
+			"adguard_setup":    adguardSetupDone, // Add to response
 		})
 	}
 }

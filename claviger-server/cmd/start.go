@@ -159,6 +159,8 @@ func RunStart() {
 	mux.HandleFunc("/api/access/ssh", api.HubAccessMiddleware(db, api.HandleSSHKeys))
 	mux.HandleFunc("/api/roles", api.HubAccessMiddleware(db, api.HandleRoles(db)))
 	mux.HandleFunc("/api/network/internet", api.HubAccessMiddleware(db, api.HandleNetworkSettings(db)))
+	mux.HandleFunc("/api/apps/install", api.HubAccessMiddleware(db, api.HandleAppInstall))
+	mux.HandleFunc("/api/security/fail2ban/config", api.HubAccessMiddleware(db, api.HandleFail2BanConfig))
 
 	// --- PROTECTED DOCKER API ROUTES ---
 	mux.HandleFunc("/api/containers", api.HubAccessMiddleware(db, api.HandleContainers(dockerEngine)))
