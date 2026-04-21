@@ -162,6 +162,15 @@ func RunStart() {
 	mux.HandleFunc("/api/apps/install", api.HubAccessMiddleware(db, api.HandleAppInstall))
 	mux.HandleFunc("/api/security/fail2ban/config", api.HubAccessMiddleware(db, api.HandleFail2BanConfig))
 
+	// --- PROTECTED SETTINGS ROUTES ---
+	mux.HandleFunc("/api/settings/endpoint", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			api.HubAccessMiddleware(db, api.HandleGetEndpoint(db))(w, r)
+		} else {
+			api.HubAccessMiddleware(db, api.HandleSaveEndpoint(db))(w, r)
+		}
+	})
+
 	// --- PROTECTED DOCKER API ROUTES ---
 	mux.HandleFunc("/api/containers", api.HubAccessMiddleware(db, api.HandleContainers(dockerEngine)))
 	mux.HandleFunc("/api/containers/action", api.HubAccessMiddleware(db, api.HandleContainerAction(dockerEngine)))

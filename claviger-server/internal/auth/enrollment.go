@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 
 	"github.com/google/uuid"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -15,12 +16,16 @@ import (
 // EnrollFirstAdmin handles the precise offline provisioning of the first Root Admin during setup.
 // It completely bypasses the web server and injects the admin directly into the database and kernel.
 func EnrollFirstAdmin(db *sql.DB, req *ConnectionRequest, serverPublicIP string) (*ConnectionApproval, error) {
-	// 1. Hardcode the First Admin IP (The Hub is .1, Admin gets .2)
-	assignIP := "10.8.0.2"
+	// 1. Dynamically find the next available IP instead of hardcoding!
+	assignIP, err := GetNextAvailableIP(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to assign IP to admin (network full): %v", err)
+	}
+
 	clientID := req.DeviceID //uuid.New().String()
 
 	// 2. Save the Admin safely into the database as ACTIVE
-	_, err := db.Exec(`
+	_, err = db.Exec(`
 		INSERT INTO clients (id, name, public_key, ip_address, role_id, platform, device_id, status) 
 		VALUES (?, ?, ?, ?, 'admin', ?, ?, 'active')`,
 		clientID, req.Hostname, req.PublicKey, assignIP, req.Platform, req.DeviceID,
@@ -61,12 +66,28 @@ func EnrollFirstAdmin(db *sql.DB, req *ConnectionRequest, serverPublicIP string)
 		wgPort = "51820"
 	}
 
+	// --- NEW: Check for Custom Domain with STRICT VALIDATION ---
+	// Clean up any hidden spaces or newlines from the DB or arguments
+	customEndpoint := strings.TrimSpace(storage.GetConfig(db, "vpn_endpoint"))
+	cleanServerIP := strings.TrimSpace(serverPublicIP)
+
+	// If the custom endpoint is empty, use the detected server IP as a fallback
+	if customEndpoint == "" {
+		customEndpoint = cleanServerIP // Fallback to raw IP
+	}
+
+	// 🚨 FAILSAFE: If it is STILL empty, abort immediately! 🚨
+	if customEndpoint == "" {
+		return nil, fmt.Errorf("CRITICAL ERROR: Cannot generate connection token. The Server IP/Domain is completely empty")
+	}
+	// ------------------------------------
+
 	// 5. Construct and return the exact data the Client needs to connect!
 	approval := &ConnectionApproval{
 		Role:           "admin",
 		AssignedIP:     assignIP,
 		ServerPubKey:   serverPubKey,
-		ServerEndpoint: fmt.Sprintf("%s:%s", serverPublicIP, wgPort),
+		ServerEndpoint: fmt.Sprintf("%s:%s", customEndpoint, wgPort),
 	}
 
 	return approval, nil
@@ -146,12 +167,19 @@ func EnrollStandardUser(db *sql.DB, req *ConnectionRequest, roleID string, serve
 		wgPort = "51820"
 	}
 
+	// --- NEW: Check for Custom Domain ---
+	customEndpoint := storage.GetConfig(db, "vpn_endpoint")
+	if customEndpoint == "" {
+		customEndpoint = serverPublicIP // Fallback to raw IP
+	}
+	// ------------------------------------
+
 	// 6. Generate the Approval Token
 	approval := &ConnectionApproval{
 		Role:           roleID,
 		AssignedIP:     assignIP,
 		ServerPubKey:   serverPubKey,
-		ServerEndpoint: fmt.Sprintf("%s:%s", serverPublicIP, wgPort),
+		ServerEndpoint: fmt.Sprintf("%s:%s", customEndpoint, wgPort), // <-- Updated to use customEndpoint
 	}
 
 	return approval, nil

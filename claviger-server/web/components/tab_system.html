@@ -1,5 +1,10 @@
 {{ define "tab_system" }}
 <div id="tab-system" class="space-y-6 block animate-fade-in">
+
+    <div>
+        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">System Overview</h2>
+        <p class="text-muted-foreground text-sm mt-1">Monitor and manage your system resources.</p>
+    </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
@@ -82,7 +87,166 @@
                 </div>
             </div>
         </div>
-        
     </div>
+
+    <hr class="border-border my-8">
+    <h3 class="text-lg font-bold text-slate-100 mb-4">Server Configuration</h3>
+
+    <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-border/50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-xl">🌐</div>
+                <div>
+                    <h3 class="text-md font-bold text-slate-100">Public VPN Endpoint</h3>
+                    <p class="text-xs text-slate-400">The IP or Domain clients use to connect to this server.</p>
+                </div>
+            </div>
+            
+            <div class="bg-background rounded-lg p-3 border border-border min-w-[200px] text-center md:text-right">
+                <span class="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1">Current Active Endpoint</span>
+                <span id="current-endpoint-display" class="text-emerald-400 font-mono text-sm font-bold">Loading...</span>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-4 items-start md:items-center">
+            <div class="flex-1 w-full">
+                <input type="text" id="input-endpoint" placeholder="Enter new IP or Domain (e.g., vpn.mydomain.com)" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+            </div>
+            <button id="btn-save-endpoint" onclick="saveEndpoint()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700 whitespace-nowrap">
+                Save Endpoint
+            </button>
+        </div>
+
+        <div class="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex gap-3 items-start">
+            <span class="text-amber-500 mt-0.5">⚠️</span>
+            <p class="text-xs text-amber-200/80 leading-relaxed">
+                <strong>Safe Action:</strong> Changing this setting will not disconnect existing peers. However, it will change the connection address generated for all <em>future</em> peers and QR codes. 
+                <br><em>Note: If you use a custom domain, you must purchase it and point the A-Record to this server's IP address.</em>
+            </p>
+        </div>
+    </div>
+
+    <dialog id="modal-dns-warning" class="bg-surface border border-amber-500/30 rounded-xl shadow-2xl p-0 w-[90%] max-w-md backdrop:bg-black/80 text-slate-200">
+        <div class="p-5 border-b border-border flex justify-between items-center bg-amber-500/10">
+            <h3 class="font-bold text-lg text-amber-500 flex items-center gap-2"><span>⚠️</span> DNS Verification Failed</h3>
+            <button onclick="document.getElementById('modal-dns-warning').close()" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">✕</button>
+        </div>
+        
+        <div class="p-6 space-y-4">
+            <p id="dns-warning-text" class="text-sm text-slate-300 leading-relaxed font-mono bg-background p-4 rounded-lg border border-border">
+                </p>
+            <p class="text-xs text-slate-400">
+                If you recently purchased this domain or updated your Cloudflare settings, DNS propagation can take up to 30 minutes. 
+                <br><br>
+                If you are confident your settings are correct and you just need to wait for propagation, you can override this safety check.
+            </p>
+        </div>
+
+        <div class="p-5 border-t border-border flex justify-end gap-3 bg-background/50 rounded-b-xl">
+            <button onclick="document.getElementById('modal-dns-warning').close()" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors">Cancel</button>
+            <button onclick="saveEndpoint(true)" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold rounded-lg transition-colors shadow-sm shadow-amber-500/20">
+                Force Save Anyway
+            </button>
+        </div>
+    </dialog>
+
+    <script>
+        // Fetch the current endpoint to populate the UI
+        async function fetchSystemSettings() {
+            const displayEl = document.getElementById('current-endpoint-display');
+            const inputEl = document.getElementById('input-endpoint');
+            
+            try {
+                const res = await fetch('/api/settings/endpoint');
+                if (!res.ok) throw new Error(`Server returned ${res.status}`);
+
+                const data = await res.json();
+
+                if (data.endpoint) {
+                    displayEl.innerText = data.endpoint;
+                    displayEl.classList.replace('text-amber-400', 'text-emerald-400');
+                    displayEl.classList.replace('text-red-400', 'text-emerald-400');
+                } else {
+                    displayEl.innerText = "Not Set (Using Raw IP)";
+                    displayEl.classList.replace('text-emerald-400', 'text-amber-400');
+                    displayEl.classList.replace('text-red-400', 'text-amber-400');
+                }
+                inputEl.value = "";
+                
+            } catch (e) {
+                console.error("Failed to load endpoint settings:", e);
+                if (displayEl) {
+                    displayEl.innerText = "Error Loading Data"; 
+                    displayEl.classList.add('text-red-400');
+                    displayEl.classList.remove('text-emerald-400', 'text-amber-400');
+                }
+            }
+        }
+
+        // Save the new endpoint (with optional Force bypass)
+        async function saveEndpoint(force = false) {
+            const input = document.getElementById('input-endpoint').value.trim();
+            if (!input) {
+                alert("Endpoint cannot be empty.");
+                return;
+            }
+
+            if (force) {
+                document.getElementById('modal-dns-warning').close();
+            } else {
+                if (!confirm(`Update endpoint to ${input}?\n\nAll new QR codes will use this address.`)) return;
+            }
+
+            const btn = document.getElementById('btn-save-endpoint');
+            btn.disabled = true;
+            btn.innerHTML = 'Checking DNS... ⏳';
+
+            try {
+                const res = await fetch('/api/settings/endpoint', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        endpoint: input,
+                        force: force === true 
+                    })
+                });
+
+                const contentType = res.headers.get("content-type");
+                let data = {};
+                if (contentType && contentType.includes("application/json")) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    throw new Error(`Server crashed or returned HTML. Code: ${res.status}. Text: ${text.substring(0, 50)}`);
+                }
+
+                if (res.ok) {
+                    btn.classList.replace('bg-slate-800', 'bg-emerald-600');
+                    btn.innerHTML = '✅ Saved Successfully';
+                    setTimeout(() => { 
+                        btn.classList.replace('bg-emerald-600', 'bg-slate-800');
+                        btn.innerHTML = 'Save Endpoint'; 
+                        btn.disabled = false; 
+                        fetchSystemSettings(); // Refresh the badge!
+                    }, 2000);
+                } else if (res.status === 409 && data.status === 'warning') {
+                    document.getElementById('dns-warning-text').innerText = data.message;
+                    document.getElementById('modal-dns-warning').showModal();
+                    btn.innerHTML = 'Save Endpoint';
+                    btn.disabled = false;
+                } else {
+                    alert("Error saving: " + (data.message || "Unknown server error"));
+                    btn.innerHTML = 'Save Endpoint';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                console.error("Save Crash Details:", e);
+                alert("Network Error! Press F12 and check the Console for details.\n\n" + e.message);
+                btn.innerHTML = 'Save Endpoint';
+                btn.disabled = false;
+            }
+        }
+    </script>
 </div>
 {{ end }}

@@ -5,24 +5,6 @@
     let lastTxBytes = 0;
     let lastTimestamp = 0;
 
-    // --- BROWSER TAB FOCUS MAGIC ---
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-            const tabs = ['system', 'network', 'security', 'clients', 'access', 'roles', 'containers'];
-            
-            // Find which tab does NOT have the 'hidden' class
-            const activeTabId = tabs.find(id => {
-                const el = document.getElementById('tab-' + id);
-                return el && !el.classList.contains('hidden');
-            });
-
-            // Refresh the specific data
-            if (activeTabId === 'network') { fetchNetworkStatus(); syncAppStates(); }
-            if (activeTabId === 'security') { fetchSecurityData(); syncAppStates(); }
-            if (activeTabId === 'containers') { loadContainers(); }
-        }
-    });
-
     // --- APP INSTALLER LOGIC ---
     async function installApp(appId) {
         if (!confirm(`Are you sure you want to install ${appId}?`)) return;
@@ -201,6 +183,7 @@
         if (tabId === 'access') fetchSSHKeys();
         if (tabId === 'roles') fetchRolesData();
         if (tabId === 'containers') loadContainers();
+        if (tabId === 'system') fetchSystemSettings();
     }
 
     // ==========================================

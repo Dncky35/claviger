@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"net"
 	"os"
+	"strconv"
 	"strings"
 
 	"claviger-server/internal/auth"
@@ -28,6 +30,52 @@ func promptUser(reader *bufio.Reader, prompt string, defaultValue string) string
 		return defaultValue
 	}
 	return input
+}
+
+// promptValidatedPort checks if the port is a valid number and actually free on the OS
+func promptValidatedPort(reader *bufio.Reader, promptText string, defaultPort string, protocol string) string {
+	for {
+		input := promptUser(reader, promptText, defaultPort)
+
+		// 1. Check if it's a valid number
+		portNum, err := strconv.Atoi(input)
+		if err != nil || portNum < 1 || portNum > 65535 {
+			fmt.Println("⚠️  Invalid port. Please enter a number between 1 and 65535.")
+			continue
+		}
+
+		// 2. Ask the kernel if the port is currently available
+		if protocol == "udp" {
+			addr, _ := net.ResolveUDPAddr("udp", ":"+input)
+			conn, err := net.ListenUDP("udp", addr)
+			if err != nil {
+				fmt.Printf("⚠️  Port %s (UDP) is currently in use! Please choose another.\n", input)
+				continue
+			}
+			conn.Close()
+		} else if protocol == "tcp" {
+			ln, err := net.Listen("tcp", ":"+input)
+			if err != nil {
+				fmt.Printf("⚠️  Port %s (TCP) is currently in use! Please choose another.\n", input)
+				continue
+			}
+			ln.Close()
+		}
+
+		return input // It passed all tests!
+	}
+}
+
+// promptValidatedIP ensures the user types a real IPv4 address
+func promptValidatedIP(reader *bufio.Reader, promptText string, defaultIP string) string {
+	for {
+		input := promptUser(reader, promptText, defaultIP)
+		if net.ParseIP(input) == nil {
+			fmt.Println("⚠️  Invalid IP format. Please enter a valid IPv4 address (e.g., 10.8.0.1).")
+			continue
+		}
+		return input
+	}
 }
 
 func RunSetup(args []string) {
@@ -73,11 +121,18 @@ func RunSetup(args []string) {
 
 	// 3. Network Configuration Prompts
 	fmt.Println("\n📡 Network Configuration")
-	wgPort := promptUser(reader, "Enter WireGuard Listen Port", "51820")
-	hubIP := promptUser(reader, "Enter Local Hub IP Address", "10.8.0.1")
-	hubPort := promptUser(reader, "Enter Local Hub Web Port", "18080")
+
+	// Check UDP availability for WireGuard
+	wgPort := promptValidatedPort(reader, "Enter WireGuard Listen Port", "51820", "udp")
+
+	// Ensure valid IP structure
+	hubIP := promptValidatedIP(reader, "Enter Local Hub IP Address", "10.8.0.1")
+
+	// Check TCP availability for the Web Server
+	hubPort := promptValidatedPort(reader, "Enter Local Hub Web Port", "18080", "tcp")
 
 	tempConfig["wg_port"] = wgPort
+
 	tempConfig["hub_ip"] = hubIP
 	tempConfig["hub_port"] = hubPort
 
@@ -98,7 +153,10 @@ func RunSetup(args []string) {
 		fmt.Printf("%s\n", defaultIP)
 	}
 
-	// --- THE FIX: Let the user decide! ---
+	// ==========================================
+	// ENDPOINT VERIFICATION (IP or Domain)
+	// ==========================================
+	var finalIP string
 	fmt.Printf("\n🌍 Enter the IP address or Domain Name clients will use to connect.\n")
 	if defaultIP != "" {
 		fmt.Printf("   (Press ENTER to use detected public IP: %s)\n", defaultIP)
@@ -106,24 +164,49 @@ func RunSetup(args []string) {
 		fmt.Printf("   (e.g., 198.51.100.5, vpn.mydomain.com, or 192.168.1.50 for LAN)\n")
 	}
 
-	fmt.Print("👉 Endpoint IP/Domain: ")
+	for {
+		fmt.Print("👉 Endpoint IP/Domain: ")
+		reader = bufio.NewReader(os.Stdin)
+		userInput, _ := reader.ReadString('\n')
+		userInput = strings.TrimSpace(userInput)
 
-	reader = bufio.NewReader(os.Stdin)
-	userInput, _ := reader.ReadString('\n')
-	userInput = strings.TrimSpace(userInput)
+		finalIP = defaultIP
+		if userInput != "" {
+			finalIP = userInput
+		}
 
-	// Determine final IP based on user input
-	finalIP := defaultIP
-	if userInput != "" {
-		finalIP = userInput
+		if finalIP == "" {
+			log.Fatalf("❌ Setup aborted: You must provide a valid IP or domain.")
+		}
+
+		// Run the DNS/IP Verification Engine
+		status, message := network.VerifyEndpoint(finalIP, defaultIP)
+
+		// Success Cases (Valid IP or matching Domain)
+		if status == network.StatusExactMatch || status == network.StatusValidIP {
+			fmt.Printf("✅ %s\n", message)
+			// Save it to tempConfig under the correct key!
+			tempConfig["vpn_endpoint"] = finalIP
+			fmt.Printf("✅ Server Endpoint successfully set to: %s\n", finalIP)
+			break
+		}
+
+		// Failure/Mismatch Case
+		fmt.Printf("\n%s\n", message)
+		fmt.Print("❓ Do you want to FORCE USE this endpoint anyway? (y/N): ")
+		overrideInput, _ := reader.ReadString('\n')
+		overrideInput = strings.TrimSpace(strings.ToLower(overrideInput))
+
+		if overrideInput == "y" || overrideInput == "yes" {
+			// User forced it. Save and exit!
+			fmt.Printf("✅ Server Endpoint forcefully set to: %s\n", finalIP)
+			tempConfig["vpn_endpoint"] = finalIP
+			break
+		}
+
+		fmt.Println("🔄 Let's try typing the endpoint again...")
+		// Loop automatically restarts here
 	}
-
-	if finalIP == "" {
-		log.Fatalf("❌ Setup aborted: You must provide a valid IP or domain.")
-	}
-
-	fmt.Printf("✅ Server Endpoint set to: %s\n", finalIP)
-	tempConfig["public_ip"] = finalIP
 
 	// Generate Server Keys
 	serverPriv, serverPub, err := network.GenerateKeys()
@@ -159,33 +242,43 @@ func RunSetup(args []string) {
 
 	fmt.Println("\n💾 Committing configurations to disk...")
 
-	// A. Save all configs to SQLite
+	// A. Wipe old config to ensure a totally clean slate
+	storage.ClearConfig(db)
+
+	// B. Save all configs to SQLite
 	for key, value := range tempConfig {
 		storage.SetConfig(db, key, value)
 	}
 
-	// B. Build the base wg0.conf file so wg-quick doesn't crash later!
+	// C. Build the base wg0.conf file so wg-quick doesn't crash later!
 	if err := os.MkdirAll("/etc/wireguard", 0700); err != nil {
 		log.Fatalf("❌ Failed to create WireGuard directory: %v", err)
 	}
 
+	// Make sure SaveConfig is false so wg-quick doesn't overwrite your manual changes
 	wgConfContent := fmt.Sprintf(`[Interface]
 PrivateKey = %s
 ListenPort = %s
 Address = %s/24
+SaveConfig = false
 `, serverPriv, wgPort, hubIP)
 
 	if err := os.WriteFile("/etc/wireguard/wg0.conf", []byte(wgConfContent), 0600); err != nil {
 		log.Fatalf("❌ Failed to write wg0.conf file: %v", err)
 	}
 
-	// C. Enroll the Admin in the Database
+	// D. START WIREGUARD BEFORE ENROLLING ADMIN!
+	if err := network.StartWireGuard(); err != nil {
+		log.Printf("⚠️ Warning: Could not start WireGuard automatically: %v", err)
+	}
+
+	// E. Enroll the Admin in the Database and hot-inject into the kernel
 	approvalData, err := auth.EnrollFirstAdmin(db, connReq, finalIP)
 	if err != nil {
 		log.Fatalf("❌ Failed to enroll Admin in database: %v", err)
 	}
 
-	// D. Encode the final Visa token
+	// F. Encode the final Visa token
 	finalToken, err := auth.EncodeConnectionApproval(approvalData)
 	if err != nil {
 		log.Fatalf("❌ Failed to generate Approval token: %v", err)
