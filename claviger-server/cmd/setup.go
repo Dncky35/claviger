@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"bufio"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -242,6 +245,15 @@ func RunSetup(args []string) {
 
 	fmt.Println("\n💾 Committing configurations to disk...")
 
+	// --- NEW: Generate the AES-256 Disaster Recovery Key ---
+	keyBytes := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, keyBytes); err != nil {
+		log.Fatalf("❌ Failed to generate secure backup key: %v", err)
+	}
+
+	recoveryKeyHex := hex.EncodeToString(keyBytes)
+	tempConfig["backup_recovery_key"] = recoveryKeyHex
+
 	// A. Wipe old config to ensure a totally clean slate
 	storage.ClearConfig(db)
 
@@ -291,13 +303,19 @@ SaveConfig = false
 	}
 
 	// --- THE TERMINAL REVEAL ---
-	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("\n" + strings.Repeat("=", 65))
 	fmt.Println("🎉 NODE PROVISIONED SUCCESSFULLY!")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(strings.Repeat("=", 65))
 	fmt.Printf("1. Run 'sudo systemctl start claviger' to boot the daemon.\n")
 	fmt.Printf("2. Paste the Server Approval Token below into your Claviger Client.\n")
 	fmt.Printf("3. Once connected, open http://%s:%s to access the Hub.\n", hubIP, hubPort)
+
+	fmt.Println("\n🛡️  DISASTER RECOVERY KEY (SAVE THIS NOW!):")
+	fmt.Println("   If this server is destroyed, you will need this key to decrypt")
+	fmt.Println("   your automated backups. It will NEVER be shown again.")
+	fmt.Printf("   👉 %s\n", recoveryKeyHex)
+
 	fmt.Println("\n🔑 YOUR SERVER APPROVAL TOKEN:")
 	fmt.Printf("\n%s\n\n", finalToken)
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(strings.Repeat("=", 65))
 }

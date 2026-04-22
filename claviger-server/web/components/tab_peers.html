@@ -96,5 +96,226 @@
 
         </div>
     </div>
+
+    <script>
+        // Global variable to hold the decoded request temporarily
+        let currentClientRequest = null;
+
+        // --- Modal Controls ---
+        function openRegistrationModal() {
+            document.getElementById('input-client-request').value = '';
+            document.getElementById('reg-error').classList.add('hidden');
+            switchModalState(1);
+            
+            const modal = document.getElementById('modal-register');
+            const content = document.getElementById('modal-register-content');
+            modal.classList.remove('hidden');
+            
+            // Tiny delay for smooth CSS animation
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+            
+            fetchRolesForDropdown(); // Pre-load roles into the dropdown
+        }
+
+        function closeRegistrationModal() {
+            const modal = document.getElementById('modal-register');
+            const content = document.getElementById('modal-register-content');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                currentClientRequest = null;
+            }, 300); // Wait for transition
+        }
+
+        function switchModalState(stateNumber) {
+            document.getElementById('reg-state-1').classList.add('hidden');
+            document.getElementById('reg-state-2').classList.add('hidden');
+            document.getElementById('reg-state-3').classList.add('hidden');
+            document.getElementById(`reg-state-${stateNumber}`).classList.remove('hidden');
+        }
+
+        // --- API Interactions ---
+        async function fetchRolesForDropdown() {
+            try {
+                const res = await fetch('/api/roles');
+                if (res.ok) {
+                    const roles = await res.json();
+                    const select = document.getElementById('select-role');
+                    select.innerHTML = '';
+                    roles.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.id;
+                        opt.innerText = r.name;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (err) { console.error("Failed to load roles."); }
+        }
+
+        async function previewRegistration() {
+            const token = document.getElementById('input-client-request').value.trim();
+            const errText = document.getElementById('reg-error');
+            const btn = document.getElementById('btn-preview');
+
+            if (!token) {
+                errText.innerText = "Please paste a token first.";
+                errText.classList.remove('hidden');
+                return;
+            }
+
+            btn.innerText = "Decoding...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/register/preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    errText.classList.add('hidden');
+                    currentClientRequest = data.request; // Save for the confirm step
+                    document.getElementById('preview-hostname').innerText = data.request.hostname;
+                    document.getElementById('preview-platform').innerText = data.request.platform;
+                    switchModalState(2);
+                } else {
+                    errText.innerText = data.message || "Invalid Token.";
+                    errText.classList.remove('hidden');
+                }
+            } catch (err) {
+                errText.innerText = "Network Error.";
+                errText.classList.remove('hidden');
+            }
+            btn.innerText = "Decode & Preview";
+            btn.disabled = false;
+        }
+
+        async function confirmRegistration() {
+            const roleId = document.getElementById('select-role').value;
+            const btn = document.getElementById('btn-confirm');
+            
+            btn.innerText = "Applying Firewall Rules...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/register/confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        request_data: currentClientRequest,
+                        role_id: roleId
+                    })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById('output-server-approval').value = data.approval_token;
+                    switchModalState(3);
+                    fetchPeersData(); // Refresh the table behind the modal
+                } else {
+                    alert(`Error: ${data.message}`);
+                    switchModalState(1); // Kick them back
+                }
+            } catch (err) {
+                alert("Registration failed due to network error.");
+                switchModalState(1);
+            }
+            btn.innerText = "Approve & Generate Visa";
+            btn.disabled = false;
+        }
+
+        function copyAndCloseRegistration() {
+            const token = document.getElementById('output-server-approval').value;
+            navigator.clipboard.writeText(token).then(() => {
+                closeRegistrationModal();
+            }).catch(() => {
+                alert("Copied failed. Please copy the token manually.");
+            });
+        }
+
+        // --- General List Management ---
+        async function revokeClient(clientId, clientName) {
+            if(!confirm(`🚨 DANGER: Are you sure you want to permanently revoke VPN access for ${clientName}? Their connection will drop instantly.`)) return;
+
+            try {
+                const res = await fetch('/api/revoke', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ client_id: clientId })
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    fetchPeersData();
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            } catch (err) { alert("Revocation failed."); }
+        }
+
+        async function fetchPeersData() {
+            try {
+                const clientRes = await fetch('/api/clients');
+                if (clientRes.ok) {
+                    const clients = await clientRes.json();
+                    const activeTbody = document.getElementById('list-active-peers');
+                    
+                    if(!activeTbody) return;
+                    activeTbody.innerHTML = '';
+                    
+                    let activeCount = 0;
+
+                    clients.forEach(c => {
+                        // We now ONLY render active clients!
+                        if (c.status === 'active') {
+                            activeCount++;
+                            let stateBadge = '';
+                            if (c.is_online) {
+                                stateBadge = `
+                                    <div class="flex flex-col items-center justify-center">
+                                        <div class="flex items-center">
+                                            <div class="w-2 h-2 rounded-full bg-success mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                                            <span class="text-xs font-bold text-success uppercase tracking-wider">Online</span>
+                                        </div>
+                                    </div>`;
+                            } else {
+                                stateBadge = `
+                                    <div class="flex flex-col items-center justify-center">
+                                        <div class="flex items-center">
+                                            <div class="w-2 h-2 rounded-full bg-muted-foreground/40 mr-2"></div>
+                                            <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Offline</span>
+                                        </div>
+                                    </div>`;
+                            }
+
+                            const tr = document.createElement('tr');
+                            tr.className = 'hover:bg-background/50 transition-colors';
+                            tr.innerHTML = `
+                                <td class="p-4 font-bold text-slate-200">${c.name}</td>
+                                <td class="p-4 font-mono text-muted-foreground">${c.ip_address}</td>
+                                <td class="p-4 font-medium"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${c.role_id}</span></td>
+                                <td class="p-4">${stateBadge}</td>
+                                <td class="p-4 text-right">
+                                    <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
+                                </td>
+                            `;
+                            activeTbody.appendChild(tr);
+                        }
+                    });
+
+                    if(activeCount === 0) activeTbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="5">No managed devices found.</td></tr>';
+                }
+            } catch (err) { console.error("Error fetching clients:", err); }
+        }
+
+        fetchPeersData();
+        setInterval(fetchPeersData, 5000); // Poll for new enrollments every 5 seconds
+    </script>
 </div>
 {{ end }}

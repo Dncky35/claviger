@@ -1,6 +1,7 @@
 package api
 
 import (
+	"claviger-server/internal/scheduler"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -93,4 +94,52 @@ func HandleSystemStats(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
+}
+
+// HandleGetTasks returns the list of all cron tasks
+func HandleGetTasks(w http.ResponseWriter, r *http.Request) {
+	tasks := scheduler.GetTasksForUI()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tasks)
+}
+
+// HandleRunTask triggers a manual execution
+func HandleRunTask(w http.ResponseWriter, r *http.Request) {
+	// Extract the ID from the URL (e.g., /api/system/tasks/db-backup/run)
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 5 {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+	taskID := parts[4]
+
+	err := scheduler.RunNow(taskID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// HandleToggleTask turns a task on or off
+func HandleToggleTask(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 5 {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+	taskID := parts[4]
+
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	if req.Enabled {
+		scheduler.EnableTask(taskID)
+	} else {
+		scheduler.DisableTask(taskID)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

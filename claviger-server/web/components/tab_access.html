@@ -57,5 +57,68 @@
         </div>
     </div>
 
+
+    <script>
+        async function fetchSSHKeys() {
+            try {
+                const res = await fetch('/api/access/ssh');
+                if (res.ok) {
+                    const keys = await res.json();
+                    const tbody = document.getElementById('list-ssh-keys');
+                    if (!tbody) return;
+                    
+                    if (!keys || keys.length === 0) {
+                        tbody.innerHTML = '<tr><td class="p-6 text-center text-muted-foreground italic font-medium" colspan="4">No authorized SSH keys found.</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = '';
+                    keys.forEach(k => {
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-background/50 transition-colors">
+                                <td class="p-5 font-bold text-slate-200">${k.comment}</td>
+                                <td class="p-5 text-primary font-mono text-xs">${k.key_type}</td>
+                                <td class="p-5 font-mono text-muted-foreground text-xs truncate max-w-[200px]">${k.preview}</td>
+                                <td class="p-5 text-right">
+                                    <button onclick="revokeSSHKey('${k.comment}')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (err) { console.error("Error fetching SSH keys:", err); }
+        }
+
+        async function addSSHKey() {
+            const rawKey = prompt("Paste the full public SSH key (e.g., ssh-ed25519 AAAAC3... user@machine):");
+            if (!rawKey) return;
+
+            try {
+                const res = await fetch('/api/access/ssh?action=add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ raw_key: rawKey })
+                });
+                const data = await res.json();
+                alert(data.message);
+                fetchSSHKeys();
+            } catch (err) { alert("Failed to add key."); }
+        }
+
+        async function revokeSSHKey(comment) {
+            if (!confirm(`🚨 Are you sure you want to revoke SSH access for '${comment}'?`)) return;
+
+            try {
+                const res = await fetch('/api/access/ssh?action=revoke', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comment: comment })
+                });
+                const data = await res.json();
+                alert(data.message);
+                fetchSSHKeys();
+            } catch (err) { alert("Failed to revoke key."); }
+        }
+    </script>
 </div>
 {{ end }}

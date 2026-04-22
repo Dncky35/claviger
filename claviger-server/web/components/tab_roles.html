@@ -107,5 +107,173 @@
         </div>
 
     </div>
+
+    <script>
+        async function fetchRolesData() {
+            try {
+                const res = await fetch('/api/roles');
+                if (res.ok) {
+                    const roles = await res.json();
+                    const tbody = document.getElementById('list-roles');
+                    if (!tbody) return;
+
+                    tbody.innerHTML = '';
+                    roles.forEach(r => {
+                        const isSystemRole = (r.id === 'admin' || r.id === 'standard');
+                        
+                        // 1. Build the Access Rights Badges (Checkboxes)
+                        let accessBadges = '';
+                        if (r.allow_global_internet) accessBadges += `<span class="inline-block bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">Internet</span>`;
+                        if (r.allow_intranet) accessBadges += `<span class="inline-block bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">Intranet</span>`;
+                        if (r.allow_hub) accessBadges += `<span class="inline-block bg-warning/10 text-warning border border-warning/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">Hub Admin</span>`;
+                        if (accessBadges === '') accessBadges = `<span class="text-muted-foreground text-xs italic">Isolated</span>`;
+
+                        // 2. Build the Action Buttons
+                        const deleteBtn = isSystemRole 
+                            ? `<span class="text-muted-foreground/50 text-xs italic px-3">System</span>` 
+                            : `<button onclick="deleteRole('${r.id}', '${r.name}')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors ml-2">Delete</button>`;
+
+                        // Safely pass the entire Role object to the modal for editing
+                        const roleJsonStr = encodeURIComponent(JSON.stringify(r));
+                        const editBtn = `<button onclick="openRoleModal(JSON.parse(decodeURIComponent('${roleJsonStr}')))" class="text-muted-foreground hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-primary hover:border-primary transition-colors">Edit</button>`;
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-background/50 transition-colors">
+                                <td class="p-5">
+                                    <div class="font-bold text-slate-200">${r.name}</div>
+                                    <div class="font-mono text-[10px] text-muted-foreground mt-0.5">${r.id}</div>
+                                </td>
+                                <td class="p-5">${accessBadges}</td>
+                                <td class="p-5">
+                                    <div class="text-xs text-slate-300"><span class="text-muted-foreground font-medium uppercase tracking-wider text-[10px] mr-2">IPs:</span> <span class="font-mono">${r.allowed_ips}</span></div>
+                                    <div class="text-xs text-slate-300 mt-1"><span class="text-muted-foreground font-medium uppercase tracking-wider text-[10px] mr-2">Ports:</span> <span class="font-mono">${r.allowed_ports}</span></div>
+                                </td>
+                                <td class="p-5 text-right flex justify-end items-center h-full mt-2">
+                                    ${editBtn}
+                                    ${deleteBtn}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (err) { console.error("Error fetching roles:", err); }
+        }
+
+        // --- MODAL CONTROLS ---
+
+        function openRoleModal(role = null) {
+            const modal = document.getElementById('modal-role');
+            const content = document.getElementById('modal-role-content');
+            
+            if (role) {
+                // EDIT MODE: Populate the modal with the existing role data
+                document.getElementById('modal-role-title').innerText = "Edit Role: " + role.name;
+                document.getElementById('role-input-id').value = role.id;
+                document.getElementById('role-input-name').value = role.name;
+                document.getElementById('role-toggle-internet').checked = role.allow_global_internet;
+                document.getElementById('role-toggle-intranet').checked = role.allow_intranet;
+                document.getElementById('role-toggle-hub').checked = role.allow_hub;
+                document.getElementById('role-input-ips').value = role.allowed_ips;
+                document.getElementById('role-input-ports').value = role.allowed_ports;
+
+                // Security: Prevent admins from accidentally renaming the 'admin' role
+                document.getElementById('role-input-name').disabled = (role.id === 'admin');
+            } else {
+                // CREATE MODE: Clear all fields to their defaults
+                document.getElementById('modal-role-title').innerText = "Create Custom Role";
+                document.getElementById('role-input-id').value = '';
+                document.getElementById('role-input-name').value = '';
+                document.getElementById('role-toggle-internet').checked = false;
+                document.getElementById('role-toggle-intranet').checked = false;
+                document.getElementById('role-toggle-hub').checked = false;
+                document.getElementById('role-input-ips').value = 'ALL';
+                document.getElementById('role-input-ports').value = 'ALL';
+
+                document.getElementById('role-input-name').disabled = false;
+            }
+
+            // Show Modal with animation
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeRoleModal() {
+            const modal = document.getElementById('modal-role');
+            const content = document.getElementById('modal-role-content');
+            
+            // Hide Modal with animation
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        async function saveRole() {
+            // Read data directly from the modal UI
+            const id = document.getElementById('role-input-id').value;
+            const name = document.getElementById('role-input-name').value;
+            const internet = document.getElementById('role-toggle-internet').checked;
+            const intranet = document.getElementById('role-toggle-intranet').checked;
+            const hub = document.getElementById('role-toggle-hub').checked;
+            const ips = document.getElementById('role-input-ips').value || 'ALL';
+            const ports = document.getElementById('role-input-ports').value || 'ALL';
+
+            if (!name) {
+                alert("Role Name is required.");
+                return;
+            }
+
+            // If ID is empty, we are CREATING (POST). If it has an ID, we are EDITING (PUT).
+            const method = id ? 'PUT' : 'POST';
+            
+            const payload = {
+                id: id,
+                name: name,
+                allow_global_internet: internet,
+                allow_intranet: intranet,
+                allow_hub: hub,
+                allowed_ips: ips,
+                allowed_ports: ports
+            };
+
+            try {
+                const res = await fetch('/api/roles', {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    closeRoleModal();
+                    fetchRolesData(); // Instantly refresh the UI!
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            } catch (err) { alert("Failed to save role."); }
+        }
+
+        async function deleteRole(id, name) {
+            if (!confirm(`🚨 Are you sure you want to delete the '${name}' role?\n\nThis will fail if users are currently assigned to it.`)) return;
+
+            try {
+                const res = await fetch('/api/roles', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    fetchRolesData(); // Instantly refresh UI!
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            } catch (err) { alert("Failed to delete role."); }
+        }
+    </script>
 </div>
 {{ end }}

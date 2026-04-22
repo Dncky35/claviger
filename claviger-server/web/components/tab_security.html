@@ -113,5 +113,171 @@
             Save & Apply Rules
         </button>
     </div>
+
+    <script>
+        async function executeSecurityAction(payload) {
+            try {
+                const res = await fetch('/api/security/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    fetchSecurityData();
+                } else {
+                    alert("Action failed. Check terminal logs for permissions.");
+                }
+            } catch (err) { console.error("Action failed:", err); }
+        }
+
+        function deleteRule(port, ruleAction) {
+            if(confirm(`🚨 WARNING: Are you sure you want to delete the rule for Port ${port}?\n\nIf this is your WireGuard or SSH port, you might drop your connection.`)) {
+                executeSecurityAction({ action: "delete", port: port, rule_action: ruleAction });
+            }
+        }
+
+        function toggleUFW(currentState) {
+            if (currentState === 'active') {
+                if(confirm(`🚨 DANGER: Are you sure you want to DISABLE the firewall? Your server will be fully exposed.`)) {
+                    executeSecurityAction({ action: "disable" });
+                }
+            } else {
+                if(confirm(`🛡️ Enabling Firewall: Claviger will automatically inject safety rules for SSH and VPN before applying.`)) {
+                    executeSecurityAction({ action: "enable" });
+                }
+            }
+        }
+
+        function addRule() {
+            const port = prompt("Enter the Port or Service to Allow (e.g., 80, 443, 8080/tcp):");
+            if (port) {
+                executeSecurityAction({ action: "add", port: port });
+            }
+        }
+
+        async function fetchSecurityData() {
+            try {
+                const res = await fetch('/api/security');
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // 1. Update Badge
+                    const badge = document.getElementById('ufw-badge');
+                    const toggleBtn = document.getElementById('btn-toggle-ufw');
+                    
+                    if (badge && toggleBtn) {
+                        if (data.ufw_status === 'active') {
+                            badge.className = 'ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-success/10 text-success border border-success/20';
+                            badge.innerText = 'Active';
+                            toggleBtn.innerText = 'Disable UFW';
+                            toggleBtn.className = 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border border-destructive/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
+                            toggleBtn.onclick = () => toggleUFW('active');
+                        } else {
+                            badge.className = 'ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-destructive/10 text-destructive border border-destructive/20';
+                            badge.innerText = 'Inactive';
+                            toggleBtn.innerText = 'Enable UFW';
+                            toggleBtn.className = 'bg-success/10 text-success hover:bg-success hover:text-white border border-success/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
+                            toggleBtn.onclick = () => toggleUFW('inactive');
+                        }
+                    }
+
+                    // 2. Render Insights
+                    const insightsContainer = document.getElementById('security-insights-container');
+                    if (insightsContainer) {
+                        insightsContainer.innerHTML = ''; 
+                        if (data.insights && data.insights.length > 0) {
+                            data.insights.forEach(insight => {
+                                let styles = ''; let icon = '';
+                                if (insight.level === 'critical') {
+                                    styles = 'bg-destructive/10 border-destructive/20 text-destructive'; icon = '🚨';
+                                } else if (insight.level === 'warning') {
+                                    styles = 'bg-warning/10 border-warning/20 text-warning'; icon = '⚠️';
+                                } else {
+                                    styles = 'bg-primary/10 border-primary/20 text-primary'; icon = '🛡️';
+                                }
+                                insightsContainer.innerHTML += `
+                                    <div class="${styles} border rounded-xl p-5 flex items-start shadow-sm mb-3">
+                                        <div class="text-xl mr-4">${icon}</div>
+                                        <div>
+                                            <h4 class="font-bold text-sm uppercase tracking-wide mb-1">${insight.title}</h4>
+                                            <p class="text-slate-300 text-sm leading-relaxed">${insight.message}</p>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        }
+                    }
+
+                    // 3. Render Table
+                    const tbody = document.getElementById('security-rules-list');
+                    const countDiv = document.getElementById('security-rules-count');
+                    
+                    if (tbody && countDiv) {
+                        if (!data.rules || data.rules.length === 0) {
+                            tbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="4">No active firewall rules found.</td></tr>';
+                            countDiv.innerText = "0 rules applied.";
+                            return;
+                        }
+
+                        tbody.innerHTML = '';
+                        data.rules.forEach(rule => {
+                            const tr = document.createElement('tr');
+                            tr.className = 'hover:bg-background/50 transition-colors';
+                            let actionColor = rule.action.includes('ALLOW') ? 'text-success' : 'text-destructive';
+
+                            tr.innerHTML = `
+                                <td class="p-5 font-mono text-primary">${rule.to}</td>
+                                <td class="p-5 font-bold ${actionColor}">${rule.action}</td>
+                                <td class="p-5 text-muted-foreground">${rule.from}</td>
+                                <td class="p-5 text-right">
+                                    <button onclick="deleteRule('${rule.to}', '${rule.action}')" class="text-muted-foreground hover:text-white hover:bg-destructive hover:border-destructive transition-colors text-[10px] font-bold uppercase tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border">Delete</button>
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        countDiv.innerText = `Showing ${data.rules.length} active rules`;
+                    }
+                }
+            } catch (err) { console.error("Error fetching security:", err); }
+        }
+
+        async function saveFail2BanConfig() {
+            const btn = document.getElementById('btn-save-f2b');
+            btn.disabled = true;
+            btn.innerHTML = 'Saving...';
+
+            const payload = {
+                port: parseInt(document.getElementById('f2b-port').value),
+                max_retries: parseInt(document.getElementById('f2b-retries').value),
+                find_time: parseInt(document.getElementById('f2b-findtime').value),
+                ban_time: parseInt(document.getElementById('f2b-bantime').value)
+            };
+
+            try {
+                const res = await fetch('/api/security/fail2ban/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById('modal-fail2ban').close();
+                    alert('Fail2Ban rules updated and service restarted successfully!');
+                } else {
+                    alert('Error saving rules: ' + data.message);
+                }
+            } catch (e) {
+                alert('Network error while saving config.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Save & Apply Rules';
+            }
+        }
+
+        
+        fetchSecurityData();
+        setInterval(fetchSecurityData, 10000); // Slower security polling (10s)
+    </script>
 </dialog>
 {{ end }}

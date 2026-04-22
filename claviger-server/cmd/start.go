@@ -10,12 +10,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"claviger-server/api"
 	"claviger-server/internal/docker"
 	"claviger-server/internal/firewall"
+	"claviger-server/internal/scheduler"
 	"claviger-server/network"
 	"claviger-server/storage"
 	"claviger-server/web"
@@ -171,6 +173,17 @@ func RunStart() {
 		}
 	})
 
+	mux.HandleFunc("/api/system/tasks", api.HubAccessMiddleware(db, api.HandleGetTasks))
+
+	// 2. The POST routes to run/toggle them
+	mux.HandleFunc("/api/system/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/run") {
+			api.HubAccessMiddleware(db, api.HandleRunTask)(w, r)
+		} else if strings.HasSuffix(r.URL.Path, "/toggle") {
+			api.HubAccessMiddleware(db, api.HandleToggleTask)(w, r)
+		}
+	})
+
 	// --- PROTECTED DOCKER API ROUTES ---
 	mux.HandleFunc("/api/containers", api.HubAccessMiddleware(db, api.HandleContainers(dockerEngine)))
 	mux.HandleFunc("/api/containers/action", api.HubAccessMiddleware(db, api.HandleContainerAction(dockerEngine)))
@@ -195,6 +208,11 @@ func RunStart() {
 			http.Error(w, "Template Error: "+err.Error(), http.StatusInternalServerError)
 		}
 	}))
+
+	db = storage.InitDB() // Or whatever you named your DB connection variable
+	defer db.Close()
+
+	scheduler.Start(db)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", hubIP, hubPort), // Locked to VPN only
