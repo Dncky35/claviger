@@ -7,9 +7,30 @@ import (
 	"path/filepath"
 )
 
-// AppManifest holds the raw docker-compose YAML for our supported apps
-var Catalog = map[string]string{
-	"adguard": `
+// AppManifest defines everything the system and UI needs to know about an app
+type AppManifest struct {
+	Name           string // Clean name for the UI (e.g., "AdGuard Home")
+	Category       string // "system_core" or "optional"
+	Description    string // Subtitle for the UI
+	Icon           string // Emoji icon for the UI
+	HasCustomSetup bool   // Does it have a first-time setup wizard?
+	SetupPort      int    // The port for the setup wizard (0 if none)
+	DashPort       int    // The port for the main dashboard
+	ComposeYAML    string // The raw docker-compose.yml file
+}
+
+// Catalog is our new universal App Registry
+var Catalog = map[string]AppManifest{
+	// --- SYSTEM CORE APPS ---
+	"adguard": {
+		Name:           "AdGuard Home",
+		Category:       "system_core",
+		Description:    "Network-wide ad blocking and local DNS.",
+		Icon:           "🛡️",
+		HasCustomSetup: true,
+		SetupPort:      3030,
+		DashPort:       8083,
+		ComposeYAML: `
 version: '3.3'
 services:
   adguardhome:
@@ -19,33 +40,60 @@ services:
     ports:
       - "53:53/tcp"
       - "53:53/udp"
-      - "3030:3000/tcp" # Setup Dashboard (Moved away from Next.js 3000)
-      - "8083:80/tcp"   # Main Web Interface (After setup is done)
+      - "3030:3000/tcp" # Setup Dashboard
+      - "8083:80/tcp"   # Main Web Interface
     volumes:
       - ./work:/opt/adguardhome/work
       - ./conf:/opt/adguardhome/conf
     labels:
       - "claviger.app=adguard"
 `,
+	},
+
+	// --- OPTIONAL EXTENSIONS ---
+	"vaultwarden": {
+		Name:           "Vaultwarden",
+		Category:       "optional",
+		Description:    "Private, self-hosted password manager (Bitwarden compatible).",
+		Icon:           "🔑",
+		HasCustomSetup: false, // No setup required, jumps straight to dashboard
+		SetupPort:      0,
+		DashPort:       8222, // Custom port to avoid conflicts with Claviger/Nginx
+		ComposeYAML: `
+version: '3.3'
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      - WEBSOCKET_ENABLED=true
+    ports:
+      - "8222:80/tcp"
+    volumes:
+      - ./vw-data:/data
+    labels:
+      - "claviger.app=vaultwarden"
+`,
+	},
 }
 
 // Install runs docker-compose for a specific app
 func Install(appID string) error {
-	yamlContent, exists := Catalog[appID]
+	manifest, exists := Catalog[appID] // NEW: We now extract the manifest struct
 	if !exists {
 		return fmt.Errorf("app %s is not in the catalog", appID)
 	}
 
 	// 1. Create a dedicated folder for the app data
-	// e.g., /var/lib/claviger/apps/adguard/
 	appDir := filepath.Join("/var/lib/claviger/apps", appID)
 	if err := os.MkdirAll(appDir, 0755); err != nil {
 		return fmt.Errorf("failed to create app directory: %v", err)
 	}
 
-	// 2. Write the docker-compose.yml file
+	// 2. Write the docker-compose.yml file (pulling from the manifest)
 	composePath := filepath.Join(appDir, "docker-compose.yml")
-	if err := os.WriteFile(composePath, []byte(yamlContent), 0644); err != nil {
+	if err := os.WriteFile(composePath, []byte(manifest.ComposeYAML), 0644); err != nil {
 		return fmt.Errorf("failed to write compose file: %v", err)
 	}
 
@@ -62,6 +110,7 @@ func Install(appID string) error {
 	return nil
 }
 
+// Uninstall cleanly removes an app's containers, networks, and persistent data
 func Uninstall(appID string) error {
 	appDir := filepath.Join("/var/lib/claviger/apps", appID)
 
@@ -71,9 +120,8 @@ func Uninstall(appID string) error {
 	}
 
 	// 2. Execute 'docker compose down -v'
-	// The '-v' flag is crucial: it deletes any anonymous Docker volumes associated with it
 	cmd := exec.Command("docker", "compose", "down", "-v")
-	cmd.Dir = appDir // Run it from the directory containing the manifest
+	cmd.Dir = appDir
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {

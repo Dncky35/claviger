@@ -12,27 +12,47 @@
             </h3>
         </div>
         
+        <!-- The JS will inject the installed apps into this empty div -->
         <div class="divide-y divide-border" id="uninstall-list">
-            <!-- Example Item (You will generate this dynamically via JS based on installed apps) -->
-            <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-lg bg-slate-800 border border-border flex items-center justify-center text-xl">🛡️</div>
-                    <div>
-                        <h4 class="text-sm font-bold text-slate-200">AdGuard Home</h4>
-                        <p class="text-xs text-slate-400 mt-0.5">DNS Sinkhole & DHCP Server</p>
-                    </div>
-                </div>
-                
-                <button id="btn-uninstall-adguard" onclick="uninstallApp('adguard')" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors border border-rose-500 shadow-sm shadow-rose-500/20 whitespace-nowrap">
-                    🗑️ Uninstall & Wipe Data
-                </button>
-            </div>
         </div>
     </div>
 
     <script>
+        // --- 1. RENDER THE LIST DYNAMICALLY ---
+        function renderUninstallList(apps) {
+            const listEl = document.getElementById('uninstall-list');
+            listEl.innerHTML = ''; // Clear it out
+
+            // Filter out apps that are NOT installed
+            const installedApps = apps.filter(app => app.status !== 'not_installed');
+
+            if (installedApps.length === 0) {
+                listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">No apps are currently installed.</div>`;
+                return;
+            }
+
+            installedApps.forEach(app => {
+                // We use the Icon and Description from the Go backend!
+                const row = `
+                <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50 transition-all hover:bg-background/80" id="uninstall-row-${app.id}">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-lg bg-slate-800 border border-border flex items-center justify-center text-xl">${app.icon}</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-200">${app.name}</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">${app.description}</p>
+                        </div>
+                    </div>
+                    
+                    <button id="btn-uninstall-${app.id}" onclick="uninstallApp('${app.id}')" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors border border-rose-500 shadow-sm shadow-rose-500/20 whitespace-nowrap">
+                        🗑️ Uninstall & Wipe Data
+                    </button>
+                </div>`;
+                listEl.insertAdjacentHTML('beforeend', row);
+            });
+        }
+
+        // --- 2. THE UNINSTALL ACTION ---
         async function uninstallApp(appId) {
-            // Double confirmation for destructive actions
             if (!confirm(`WARNING: This will permanently delete ${appId} and ALL its configuration data. Are you absolutely sure?`)) return;
 
             const btn = document.getElementById(`btn-uninstall-${appId}`);
@@ -58,8 +78,9 @@
                     btn.innerHTML = '✅ Removed';
                     
                     setTimeout(() => {
-                        // Refresh the UI to hide the app from the uninstall list
+                        // Resync everything. This will automatically remove the row from this list!
                         syncAppStates(); 
+                        if (typeof loadContainers === "function") loadContainers();
                     }, 1500);
                 } else {
                     throw new Error(data.message || "Unknown server error");

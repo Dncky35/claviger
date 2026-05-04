@@ -5,65 +5,118 @@ import (
 	"net/http"
 	"os"
 
+	"claviger-server/internal/apps"
 	"claviger-server/internal/docker"
 	"claviger-server/internal/security"
 )
 
-// HandleContainers returns the list of Docker containers, or tells the UI Docker isn't installed
+// AppStatus is the smart, unified data packet we send to the Javascript UI
+type AppStatus struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Category      string `json:"category"`
+	Description   string `json:"description"` // ADD THIS
+	Icon          string `json:"icon"`        // ADD THIS
+	Status        string `json:"status"`
+	SetupComplete bool   `json:"setup_complete"`
+	ActionPort    int    `json:"action_port"`
+	ActionText    string `json:"action_text"`
+}
+
+// HandleContainers merges Docker state, Native state, and the App Catalog
 func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		// --- Check Native Apps ---
-		fail2banState := "not_installed"
+		var appList []AppStatus
+
+		// ---------------------------------------------------------
+		// 1. PROCESS NATIVE APPS (Fail2Ban)
+		// ---------------------------------------------------------
+		fail2banStatus := "not_installed"
 		if security.IsFail2BanInstalled() {
 			if security.IsFail2BanRunning() {
-				fail2banState = "running"
+				fail2banStatus = "running"
 			} else {
-				fail2banState = "stopped"
+				fail2banStatus = "stopped"
+			}
+		}
+		appList = append(appList, AppStatus{
+			ID:            "fail2ban",
+			Name:          "Fail2Ban",
+			Category:      "system_core",
+			Description:   "Fail2Ban is a daemon to prevent against brute-force attacks",
+			Icon:          "🔐",
+			Status:        fail2banStatus,
+			SetupComplete: true, // Fail2Ban needs no UI setup wizard
+			ActionPort:    0,
+			ActionText:    "",
+		})
+
+		// ---------------------------------------------------------
+		// 2. FETCH DOCKER STATE
+		// ---------------------------------------------------------
+		containerMap := make(map[string]string) // Quick lookup map: {"adguard": "running"}
+		rawContainers := []docker.ContainerInfo{}
+		dockerInstalled := false
+
+		if engine != nil && engine.Client != nil {
+			dockerInstalled = true
+			if containers, err := engine.ListContainers(r.Context()); err == nil {
+				rawContainers = containers
+				// Map the live container states
+				for _, c := range containers {
+					containerMap[c.Name] = c.State
+				}
 			}
 		}
 
-		nativeApps := map[string]string{
-			"fail2ban": fail2banState,
-		}
+		// ---------------------------------------------------------
+		// 3. MERGE CATALOG WITH DOCKER STATE
+		// ---------------------------------------------------------
+		for id, manifest := range apps.Catalog {
+			status := "not_installed"
+			if liveState, exists := containerMap[id]; exists {
+				status = liveState
+			}
 
-		// --- NEW: Check AdGuard Setup State ---
-		// If this file exists, the setup wizard is finished
-		adguardSetupDone := false
-		if _, err := os.Stat("/var/lib/claviger/apps/adguard/conf/AdGuardHome.yaml"); err == nil {
-			adguardSetupDone = true
-		}
-		// --------------------------------------
+			// Default routing assumes setup is complete
+			setupComplete := true
+			actionPort := manifest.DashPort
+			actionText := "Open Dashboard ↗"
 
-		if engine == nil || engine.Client == nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"docker_installed": false,
-				"containers":       []docker.ContainerInfo{},
-				"native_apps":      nativeApps,
-				"adguard_setup":    adguardSetupDone, // Add to response
+			// Override routing if this specific app needs a setup wizard
+			if manifest.HasCustomSetup && status != "not_installed" {
+				if id == "adguard" {
+					// Specific smart check for AdGuard
+					if _, err := os.Stat("/var/lib/claviger/apps/adguard/conf/AdGuardHome.yaml"); err != nil {
+						setupComplete = false
+						actionPort = manifest.SetupPort
+						actionText = "Finish Setup ↗"
+					}
+				}
+			}
+
+			appList = append(appList, AppStatus{
+				ID:            id,
+				Name:          manifest.Name,
+				Category:      manifest.Category,
+				Description:   manifest.Description, // ADD THIS
+				Icon:          manifest.Icon,        // ADD THIS
+				Status:        status,
+				SetupComplete: setupComplete,
+				ActionPort:    actionPort,
+				ActionText:    actionText,
 			})
-			return
 		}
 
-		containers, err := engine.ListContainers(r.Context())
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"docker_installed": true,
-				"error":            err.Error(),
-				"containers":       []docker.ContainerInfo{},
-				"native_apps":      nativeApps,
-				"adguard_setup":    adguardSetupDone, // Add to response
-			})
-			return
-		}
-
+		// ---------------------------------------------------------
+		// 4. SEND TO FRONTEND
+		// ---------------------------------------------------------
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"docker_installed": true,
-			"containers":       containers,
-			"native_apps":      nativeApps,
-			"adguard_setup":    adguardSetupDone, // Add to response
+			"docker_installed": dockerInstalled,
+			"registry_apps":    appList,       // The clean list for the UI to build buttons
+			"raw_containers":   rawContainers, // The raw list just in case we need deep Docker stats
 		})
 	}
 }

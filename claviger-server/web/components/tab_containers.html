@@ -71,12 +71,12 @@
                 const tbody = document.getElementById('containers-table-body');
                 tbody.innerHTML = ''; 
 
-                if (data.containers.length === 0) {
+               if (data.raw_containers.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">No containers running. Ready to deploy some apps!</td></tr>';
                     return;
                 }
 
-                data.containers.forEach(c => {
+                data.raw_containers.forEach(c => {
                     // Tailwind Status Badges
                     let statusBadge = '';
                     if (c.state === 'running') {

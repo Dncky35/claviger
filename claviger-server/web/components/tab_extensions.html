@@ -1,0 +1,85 @@
+{{ define "tab_extensions" }}
+<div id="tab-extensions" class="hidden space-y-6 animate-fade-in">
+    
+    <!-- Header -->
+    <div>
+        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">🧩 Extensions</h2>
+        <p class="text-muted-foreground text-sm mt-1">Enhance your Edge Node with 1-click self-hosted applications.</p>
+    </div>
+
+    <!-- The Marketplace Grid (JS will inject cards here) -->
+    <div id="extensions-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Cards will be dynamically injected here -->
+    </div>
+
+    <script>
+        // --- THE EXTENSIONS RENDERER ---
+        function renderExtensionsList(apps) {
+            const gridEl = document.getElementById('extensions-grid');
+            if (!gridEl) return;
+            gridEl.innerHTML = ''; // Clear the grid
+
+            // Filter out system apps, we only want the "optional" ones here!
+            const optionalApps = apps.filter(app => app.category === 'optional');
+
+            if (optionalApps.length === 0) {
+                gridEl.innerHTML = `<div class="col-span-full p-12 text-center border border-dashed border-slate-700 rounded-2xl text-slate-500 text-sm">No optional extensions are currently available in the catalog.</div>`;
+                return;
+            }
+
+            optionalApps.forEach(app => {
+                // 1. Determine Button States
+                const isInstalled = app.status !== 'not_installed';
+                const isRunning = app.status === 'running';
+                
+                // Badge Logic
+                let badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">Not Installed</span>`;
+                if (isInstalled) {
+                    if (isRunning) {
+                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Running</span>`;
+                    } else {
+                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-warning/10 text-warning border border-warning/20">Stopped</span>`;
+                    }
+                }
+
+                // Button Logic
+                let installBtnClass = isInstalled ? 'hidden' : '';
+                let dashBtnClass = isInstalled && app.action_port > 0 ? '' : 'hidden';
+
+                // 2. Build the Card
+                const card = `
+                <div class="bg-surface rounded-2xl border border-border overflow-hidden flex flex-col transition-all hover:border-slate-600 hover:shadow-lg hover:shadow-black/20 group relative">
+                    <!-- Subtle Glow Effect -->
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-primary/10 transition-colors"></div>
+                    
+                    <div class="p-6 flex-grow z-10">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner">
+                                ${app.icon}
+                            </div>
+                            ${badgeHtml}
+                        </div>
+                        
+                        <h3 class="text-lg font-bold text-slate-100 mb-2">${app.name}</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">${app.description}</p>
+                    </div>
+
+                    <div class="p-4 bg-slate-900/50 border-t border-slate-800 z-10 flex gap-2">
+                        <!-- Install Button -->
+                        <button id="btn-install-${app.id}" onclick="installApp('${app.id}')" class="${installBtnClass} w-full py-2.5 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm">
+                            Install App
+                        </button>
+
+                        <!-- Dashboard Button (Only shows if installed) -->
+                        <button id="btn-dash-${app.id}" onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')" class="${dashBtnClass} w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-lg transition-colors border border-slate-700">
+                            ${app.action_text}
+                        </button>
+                    </div>
+                </div>`;
+                
+                gridEl.insertAdjacentHTML('beforeend', card);
+            });
+        }
+    </script>
+</div>
+{{ end }}
