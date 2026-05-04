@@ -61,3 +61,29 @@ func Install(appID string) error {
 
 	return nil
 }
+
+func Uninstall(appID string) error {
+	appDir := filepath.Join("/var/lib/claviger/apps", appID)
+
+	// 1. Check if the app directory actually exists
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		return fmt.Errorf("app %s is not installed (directory missing)", appID)
+	}
+
+	// 2. Execute 'docker compose down -v'
+	// The '-v' flag is crucial: it deletes any anonymous Docker volumes associated with it
+	cmd := exec.Command("docker", "compose", "down", "-v")
+	cmd.Dir = appDir // Run it from the directory containing the manifest
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("docker compose down failed: %s\nError: %v", string(output), err)
+	}
+
+	// 3. The Data Wipe (Scorched Earth for this app)
+	if err := os.RemoveAll(appDir); err != nil {
+		return fmt.Errorf("failed to wipe app data directory: %v", err)
+	}
+
+	return nil
+}

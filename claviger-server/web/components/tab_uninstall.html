@@ -1,0 +1,77 @@
+{{ define "tab_uninstall" }}
+<div id="tab-uninstall" class="space-y-6 hidden animate-fade-in">
+    <div>
+        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">App Management</h2>
+        <p class="text-muted-foreground text-sm mt-1">Safely remove extensions and wipe their persistent data.</p>
+    </div>
+
+    <div class="bg-surface rounded-2xl border border-rose-500/30 shadow-sm overflow-hidden">
+        <div class="p-4 bg-rose-500/10 border-b border-rose-500/20">
+            <h3 class="text-rose-400 font-bold text-sm flex items-center gap-2">
+                <span>⚠️</span> Danger Zone
+            </h3>
+        </div>
+        
+        <div class="divide-y divide-border" id="uninstall-list">
+            <!-- Example Item (You will generate this dynamically via JS based on installed apps) -->
+            <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-slate-800 border border-border flex items-center justify-center text-xl">🛡️</div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-200">AdGuard Home</h4>
+                        <p class="text-xs text-slate-400 mt-0.5">DNS Sinkhole & DHCP Server</p>
+                    </div>
+                </div>
+                
+                <button id="btn-uninstall-adguard" onclick="uninstallApp('adguard')" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors border border-rose-500 shadow-sm shadow-rose-500/20 whitespace-nowrap">
+                    🗑️ Uninstall & Wipe Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function uninstallApp(appId) {
+            // Double confirmation for destructive actions
+            if (!confirm(`WARNING: This will permanently delete ${appId} and ALL its configuration data. Are you absolutely sure?`)) return;
+
+            const btn = document.getElementById(`btn-uninstall-${appId}`);
+            const originalHtml = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.classList.replace('bg-rose-600', 'bg-slate-700');
+            btn.classList.replace('hover:bg-rose-700', 'cursor-not-allowed');
+            btn.classList.add('animate-pulse');
+            btn.innerHTML = '⏳ Destroying...';
+
+            try {
+                const res = await fetch('/api/apps/uninstall', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ app_id: appId })
+                });
+                const data = await res.json();
+                
+                if (res.ok && data.status === 'success') {
+                    btn.classList.remove('animate-pulse');
+                    btn.classList.replace('bg-slate-700', 'bg-emerald-600');
+                    btn.innerHTML = '✅ Removed';
+                    
+                    setTimeout(() => {
+                        // Refresh the UI to hide the app from the uninstall list
+                        syncAppStates(); 
+                    }, 1500);
+                } else {
+                    throw new Error(data.message || "Unknown server error");
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.classList.replace('bg-slate-700', 'bg-rose-600');
+                btn.classList.remove('cursor-not-allowed', 'animate-pulse');
+                btn.innerHTML = originalHtml;
+                alert(`Uninstall Failed:\n\n${e.message}`);
+            }
+        }
+    </script>
+</div>
+{{ end }}
