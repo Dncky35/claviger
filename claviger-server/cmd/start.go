@@ -89,6 +89,11 @@ func RunStart() {
 	db := storage.InitDB()
 	defer db.Close()
 
+	// --- THE FIX: Ensure Setup Was Completed ---
+	if storage.GetConfig(db, "node_id") == "" {
+		log.Fatal("❌ Node is not configured! Please run 'sudo claviger-server setup' first.")
+	}
+
 	// --- Read Dynamic Ports from DB ---
 	wgPort := storage.GetConfig(db, "wg_port")
 	hubPort := storage.GetConfig(db, "hub_port")
@@ -112,7 +117,21 @@ func RunStart() {
 	}
 
 	if err := network.StartWireGuard(); err != nil {
-		log.Fatalf("❌ Failed to start WireGuard: %v\n(If it is already running, run 'sudo wg-quick down wg0')", err)
+
+		// try to down wg0 and start again, in case it was a leftover state from an unclean shutdown
+		log.Printf("⚠️ Initial WireGuard start failed: %v\nAttempting to recover by bringing down wg0 and retrying...", err)
+		if err := network.StopWireGuard(); err != nil {
+			log.Printf("⚠️ Failed to bring down wg0: %v", err)
+		} else {
+			log.Println("✅ Successfully brought down wg0. Retrying WireGuard start...")
+			if err := network.StartWireGuard(); err != nil {
+				log.Fatalf("❌ Recovery attempt failed. Please check the WireGuard configuration and logs: %v", err)
+			} else {
+				log.Println("✅ WireGuard started successfully on retry!")
+			}
+		}
+	} else {
+		log.Println("✅ WireGuard started successfully!")
 	}
 
 	// Restore Global Internet State

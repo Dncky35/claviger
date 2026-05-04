@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	"claviger-server/internal/apps" // Required for the cascade teardown
 	"claviger-server/internal/system"
 	"claviger-server/network"
 	"claviger-server/storage"
@@ -33,6 +34,9 @@ func ensureSSHAccess() {
 	fmt.Println("✅ iptables fallback rule added for Port 22 (SSH).")
 }
 
+// =====================================================================
+// COMMAND: RESET (Factory Reset the Configuration)
+// =====================================================================
 func RunReset() {
 	if os.Geteuid() != 0 {
 		log.Fatal("❌ Permission Denied. Reset must be run with root privileges (e.g., 'sudo claviger-server reset')")
@@ -41,7 +45,7 @@ func RunReset() {
 	fmt.Println("⚠️  Resetting Claviger Edge Node...")
 
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Are you sure you want to reset this node? This will stop the VPN and wipe all configuration. [y/N]: ")
+	fmt.Print("Are you sure you want to reset this node? This will wipe all apps, stop the VPN, and clear all configurations. [y/N]: ")
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(strings.ToLower(input))
 
@@ -50,26 +54,36 @@ func RunReset() {
 		return
 	}
 
-	// 1. Deploy Safety Net
+	// 1. The Teardown Cascade (Surgical Strike on Docker Apps)
+	fmt.Println("🗑️  Destroying installed extensions and wiping container data...")
+	for appID := range apps.Catalog {
+		// We attempt to uninstall every app in the registry.
+		// If it's not installed, the error is ignored.
+		if err := apps.Uninstall(appID); err == nil {
+			fmt.Printf("   ✅ Removed %s\n", appID)
+		}
+	}
+
+	// 2. Deploy Safety Net
 	ensureSSHAccess()
 
-	// --- NEW: Remove Background Service ---
-	// We must do this before shutting down the network, otherwise
-	// systemd will instantly try to restart the daemon!
+	// 3. Remove Background Service
 	if err := system.RemoveSystemdService(); err != nil {
 		log.Printf("⚠️ Warning: %v\n", err)
 	}
 
-	// 2. Gracefully stop the VPN
+	// 4. Gracefully stop the VPN
+	fmt.Println("🔌 Stopping WireGuard network...")
 	network.StopWireGuard()
 
-	// 3. Delete the physical WireGuard configuration file
+	// 5. Delete the physical WireGuard configuration file
 	fmt.Println("🗑️  Removing WireGuard configuration files...")
 	if err := os.Remove("/etc/wireguard/wg0.conf"); err != nil && !os.IsNotExist(err) {
 		fmt.Printf("⚠️  Could not remove wg0.conf: %v\n", err)
 	}
 
-	// 4. Wipe the SQLite database state
+	// 6. Wipe the SQLite database state
+	fmt.Println("💾 Clearing database configurations...")
 	db := storage.InitDB()
 	defer db.Close()
 	storage.ClearConfig(db)
@@ -77,5 +91,62 @@ func RunReset() {
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("✅ NODE FACTORY RESET COMPLETE")
 	fmt.Println(strings.Repeat("=", 60))
-	fmt.Println("You can now run 'sudo claviger-server setup' to attach this server to a new Cloudrocean license.")
+	fmt.Println("You can now run 'sudo claviger-server setup' to re-provision this server.")
+}
+
+// =====================================================================
+// COMMAND: UNINSTALL (The Scorched Earth Nuclear Option)
+// =====================================================================
+func RunUninstall() {
+	if os.Geteuid() != 0 {
+		log.Fatal("❌ Permission Denied. Uninstall must be run with root privileges (e.g., 'sudo claviger-server uninstall')")
+	}
+
+	fmt.Println("🧨 UNINSTALLING CLAVIGER EDGE NODE")
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("WARNING: Are you absolutely sure? This will delete the database, all apps, and the Claviger binary itself. [y/N]: ")
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(strings.ToLower(input))
+
+	if input != "y" && input != "yes" {
+		fmt.Println("❌ Uninstall cancelled.")
+		return
+	}
+
+	// 1. The Teardown Cascade
+	fmt.Println("🗑️  Destroying installed extensions...")
+	for appID := range apps.Catalog {
+		_ = apps.Uninstall(appID)
+	}
+
+	// 2. Deploy Safety Net
+	ensureSSHAccess()
+
+	// 3. Remove Background Service
+	_ = system.RemoveSystemdService()
+
+	// 4. Gracefully stop the VPN
+	fmt.Println("🔌 Stopping WireGuard network...")
+	network.StopWireGuard()
+
+	// 5. Scorched Earth Data Wipe
+	fmt.Println("🔥 Wiping all system files, databases, and backups...")
+	os.Remove("/etc/wireguard/wg0.conf")
+
+	// This physically deletes the SQLite db, the backup keys, the app folders... everything.
+	if err := os.RemoveAll("/var/lib/claviger"); err != nil {
+		fmt.Printf("⚠️  Could not completely wipe /var/lib/claviger: %v\n", err)
+	}
+
+	// 6. Self-Delete the Executable
+	fmt.Println("💣 Removing Claviger binary...")
+	binaryPath, err := os.Executable()
+	if err == nil {
+		os.Remove(binaryPath)
+	}
+
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("✅ CLAVIGER COMPLETELY UNINSTALLED")
+	fmt.Println(strings.Repeat("=", 60))
 }

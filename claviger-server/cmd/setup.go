@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -300,6 +301,12 @@ SaveConfig = false
 	fmt.Println("🔄 Installing background services...")
 	if err := system.InstallSystemdService(); err != nil {
 		log.Printf("⚠️ Warning: Could not install auto-start service: %v\n", err)
+	}
+
+	// --- Enable WireGuard Tunnel Firewall Rules ---
+	fmt.Println("🛡️  Configuring firewall rules for VPN interface...")
+	if err := exec.Command("ufw", "allow", "in", "on", "wg0").Run(); err != nil {
+		log.Printf("⚠️ Warning: Could not automatically configure UFW (is UFW installed and active?): %v\n", err)
 	}
 
 	// --- THE TERMINAL REVEAL ---
