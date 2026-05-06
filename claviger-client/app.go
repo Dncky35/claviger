@@ -11,6 +11,7 @@ import (
 	"claviger-client/internal/config"
 	"claviger-client/internal/vpn"
 
+	"github.com/getlantern/systray"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -48,6 +49,49 @@ func (a *App) startup(ctx context.Context) {
 	a.engine.SetStateCallback(func(newState string) {
 		wailsRuntime.EventsEmit(ctx, "vpn-state-change", newState)
 	})
+
+	// ---------------------------------------------------------
+	// SYSTEM TRAY BOOT
+	// Boot the tray in the background so it survives window closures
+	// ---------------------------------------------------------
+	go systray.Run(a.onTrayReady, a.onTrayExit)
+}
+
+// =====================================================================
+// SYSTEM TRAY MANAGEMENT
+// =====================================================================
+
+// onTrayReady builds the right-click menu for the taskbar icon
+func (a *App) onTrayReady() {
+	systray.SetIcon(trayIcon) // Uses the embedded png from main.go
+	systray.SetTitle("Claviger")
+	systray.SetTooltip("Claviger Client")
+
+	mShow := systray.AddMenuItem("Show Dashboard", "Open the Claviger interface")
+	systray.AddSeparator()
+	mQuit := systray.AddMenuItem("Quit Claviger", "Completely shut down the VPN and exit")
+
+	// Listen for clicks in the background
+	go func() {
+		for {
+			select {
+			case <-mShow.ClickedCh:
+				// Bring the UI back to the screen
+				wailsRuntime.WindowShow(a.ctx)
+			case <-mQuit.ClickedCh:
+				// Ensure we disconnect gracefully before quitting
+				a.engine.Disconnect()
+				systray.Quit()
+				wailsRuntime.Quit(a.ctx)
+				os.Exit(0)
+			}
+		}
+	}()
+}
+
+// onTrayExit handles cleanup if the tray closes natively
+func (a *App) onTrayExit() {
+	// Background cleanup
 }
 
 // =====================================================================
@@ -79,6 +123,23 @@ func (a *App) Disconnect() error {
 // Returns: "disconnected", "connecting", "verifying", "secured", or "reconnecting"
 func (a *App) GetTunnelState() string {
 	return a.engine.GetState()
+}
+
+// ToggleGlobalRouting updates the user's routing preference in the secure vault
+func (a *App) ToggleGlobalRouting(isEnabled bool) error {
+	if a.vault == nil {
+		return fmt.Errorf("vault is not initialized")
+	}
+
+	a.vault.UseGlobalRouting = isEnabled
+
+	// Save immediately so it survives app restarts
+	if err := config.Save(a.vault); err != nil {
+		return fmt.Errorf("failed to save routing preference: %v", err)
+	}
+
+	log.Printf("🌐 Global Routing preference updated: %v", isEnabled)
+	return nil
 }
 
 // LeaveNetwork disconnects the VPN, wipes the local keys, and resets the app

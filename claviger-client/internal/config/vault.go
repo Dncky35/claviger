@@ -8,12 +8,13 @@ import (
 
 // ClientVault holds the state of the desktop app
 type ClientVault struct {
-	PrivateKey     string `json:"private_key"`
-	PublicKey      string `json:"public_key"`
-	AssignedIP     string `json:"assigned_ip"`
-	ServerKey      string `json:"server_public_key"`
-	ServerEndpoint string `json:"server_endpoint"` // The Server's IP:Port for the VPN tunnel
-	Status         string `json:"status"`          // "unregistered", "pending_approval", "active"
+	PrivateKey       string `json:"private_key"`
+	PublicKey        string `json:"public_key"`
+	AssignedIP       string `json:"assigned_ip"`
+	ServerKey        string `json:"server_public_key"`
+	ServerEndpoint   string `json:"server_endpoint"`    // The Server's IP:Port for the VPN tunnel
+	Status           string `json:"status"`             // "unregistered", "pending_approval", "active"
+	UseGlobalRouting bool   `json:"use_global_routing"` // true = 0.0.0.0/0 (All traffic), false = 10.8.0.0/24 (Split Tunnel)
 }
 
 // getVaultPath automatically finds the correct secure folder for Win/Mac/Linux
@@ -43,7 +44,8 @@ func Load() (*ClientVault, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Return an empty vault if it's a brand new installation
-			return &ClientVault{Status: "unregistered"}, nil
+			// Defaulting UseGlobalRouting to false (Split Tunnel) for safety
+			return &ClientVault{Status: "unregistered", UseGlobalRouting: false}, nil
 		}
 		return nil, err
 	}

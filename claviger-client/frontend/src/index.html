@@ -10,7 +10,7 @@
             theme: {
                 extend: {
                     colors: {
-                        background: '#0f172a', surface: '#1e293b', primary: '#3b82f6', border: '#334155', success: '#22c55e', destructive: '#ef4444', 'muted-foreground': '#94a3b8',
+                        background: '#0f172a', surface: '#1e293b', primary: '#3b82f6', border: '#334155', success: '#22c55e', warning: '#eab308', destructive: '#ef4444', 'muted-foreground': '#94a3b8',
                     }
                 }
             }
@@ -30,6 +30,7 @@
 
     <div id="fatal-error-log" class="hidden absolute top-12 left-4 right-4 bg-red-900/90 border border-red-500 p-4 rounded-lg z-[100] text-xs font-mono text-white break-words shadow-lg"></div>
 
+    <!-- VIEW 1: ENROLLMENT -->
     <div id="view-enroll" class="hidden flex-1 flex-col items-center justify-center p-8 relative">
         
         <div class="text-center space-y-2 mb-8">
@@ -91,43 +92,66 @@
         </div>
     </div>
 
-    <div id="view-dashboard" class="hidden flex-1 flex-col items-center justify-center p-8 relative">
+    <!-- VIEW 2: DASHBOARD -->
+    <div id="view-dashboard" class="flex-1 flex-col items-center justify-center p-8 relative hidden">
         
         <div class="grid grid-cols-5 gap-8 w-full max-w-3xl bg-surface border border-border p-8 rounded-3xl shadow-2xl items-center relative overflow-hidden">
             
+            <!-- Left Side: Status Shield -->
             <div class="col-span-2 flex flex-col items-center justify-center space-y-6 border-r border-border/50 pr-4">
                 <div class="relative w-28 h-28 flex items-center justify-center">
-                    <div class="absolute inset-0 bg-success/20 rounded-full animate-ping" style="animation-duration: 3s;"></div>
-                    <div class="absolute inset-2 bg-success/30 rounded-full animate-pulse"></div>
-                    <div class="relative z-10 w-20 h-20 bg-success rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.4)] transform rotate-12">
-                        <div class="w-16 h-16 bg-background rounded-xl flex items-center justify-center -rotate-12">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-success"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                    <!-- Dynamic Rings (Hidden by default, shown by JS when connected) -->
+                    <div id="status-ring-1" class="absolute inset-0 bg-slate-500/10 rounded-full hidden"></div>
+                    <div id="status-ring-2" class="absolute inset-2 bg-slate-500/20 rounded-full hidden"></div>
+                    
+                    <!-- Main Shield (Starts Gray/Disconnected) -->
+                    <div id="status-shield" class="relative z-10 w-20 h-20 bg-slate-700 rounded-2xl flex items-center justify-center shadow-lg transition-colors duration-300 transform rotate-0">
+                        <div class="w-16 h-16 bg-background rounded-xl flex items-center justify-center transition-transform duration-300">
+                            <!-- Using a neutral icon initially -->
+                            <svg id="status-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-slate-400 transition-colors duration-300">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
                         </div>
                     </div>
                 </div>
                 <div class="text-center space-y-1">
-                    <h2 class="text-2xl font-bold text-white tracking-tight">Secured</h2>
-                    <p class="text-success font-medium tracking-wide uppercase text-[10px]">Zero-Trust Tunnel Active</p>
+                    <h2 id="status-title" class="text-2xl font-bold text-white tracking-tight">Disconnected</h2>
+                    <p id="status-subtitle" class="text-slate-400 font-medium tracking-wide uppercase text-[10px]">Tunnel Inactive</p>
                 </div>
             </div>
 
+            <!-- Right Side: Info & Controls -->
             <div class="col-span-3 pl-4 flex flex-col justify-center space-y-6">
                 
                 <div class="bg-background/50 border border-border/50 p-4 rounded-xl space-y-3">
-                    <div class="flex justify-between items-center border-b border-border/50 pb-2">
+                    <div class="flex justify-between items-center border-b border-border/50 pb-3">
                         <span class="text-xs text-muted-foreground font-bold uppercase tracking-wider">Assigned IP</span>
                         <span id="dash-ip" class="font-mono text-primary font-bold text-sm bg-primary/10 px-2 py-0.5 rounded">10.8.0.x</span>
                     </div>
-                    <div class="flex justify-between items-center">
+                    <div class="flex justify-between items-center border-b border-border/50 pb-3">
                         <span class="text-xs text-muted-foreground font-bold uppercase tracking-wider">Target Node</span>
                         <span id="dash-endpoint" class="font-mono text-slate-300 text-sm">Waiting...</span>
+                    </div>
+
+                    <!-- NEW: Global Routing Toggle -->
+                    <div class="flex items-center justify-between pt-1">
+                        <div class="space-y-0.5 pr-4">
+                            <label for="toggle-global-route" class="text-sm font-bold text-slate-200 cursor-pointer">Global Routing</label>
+                            <p class="text-[10px] text-muted-foreground leading-tight">Route all internet traffic through Node.</p>
+                            <!-- Warning text shown by JS when disabled -->
+                            <p id="route-warning" class="text-[10px] text-amber-500 font-medium hidden animate-fade-in mt-1">Disconnect tunnel to change routing.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-global-route" class="sr-only peer" onchange="handleToggleRouting()">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-disabled:opacity-40 peer-disabled:cursor-not-allowed"></div>
+                        </label>
                     </div>
                 </div>
 
                 <div class="space-y-3">
                     <button id="btn-toggle-vpn" onclick="handleToggleVPN()" class="w-full bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white py-4 rounded-xl font-bold transition-colors text-sm shadow-sm flex items-center justify-center gap-3">
-                        <div id="status-indicator" class="w-3 h-3 rounded-full bg-success shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
-                        <span id="toggle-text">Disconnect Tunnel</span>
+                        <div id="btn-status-indicator" class="w-3 h-3 rounded-full bg-slate-500"></div>
+                        <span id="toggle-text">Connect Tunnel</span>
                     </button>
                     <button onclick="handleLeaveNetwork()" class="w-full text-[11px] font-bold text-muted-foreground hover:text-destructive transition-colors pt-2 uppercase tracking-wider flex items-center justify-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>

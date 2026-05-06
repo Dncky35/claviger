@@ -12,17 +12,23 @@ import (
 //go:embed all:frontend/src
 var assets embed.FS
 
+// 👇 THIS IS THE MISSING PIECE! 👇
+//
+//go:embed build/appicon.ico
+var trayIcon []byte
+
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:     "Claviger Zero Trust",
-		Width:     900, // 👈 Wide desktop layout
-		Height:    550, // 👈 Slightly shorter so it looks like a sleek dashboard
-		MinWidth:  800, // 👈 Prevents the user from squishing the UI
-		MinHeight: 500,
+		Title:             "Claviger Client",
+		Width:             900, // 👈 Wide desktop layout
+		Height:            550, // 👈 Slightly shorter so it looks like a sleek dashboard
+		MinWidth:          800, // 👈 Prevents the user from squishing the UI
+		MinHeight:         500,
+		HideWindowOnClose: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

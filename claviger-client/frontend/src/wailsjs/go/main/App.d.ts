@@ -15,3 +15,5 @@ export function GetVault():Promise<config.ClientVault>;
 export function LeaveNetwork():Promise<void>;
 
 export function ProcessApproval(arg1:string):Promise<void>;
+
+export function ToggleGlobalRouting(arg1:boolean):Promise<void>;

@@ -172,37 +172,85 @@ func (e *Engine) startWatchdog() {
 // OS-SPECIFIC TUNNEL ROUTING
 // ==========================================
 
-// assignOSTunnelIP tells the operating system to send 10.8.0.x traffic into our memory tunnel
-func assignOSTunnelIP(interfaceName, assignedIP string) error {
-	var cmd *exec.Cmd
+// assignOSTunnelIP tells the operating system how to route traffic into our memory tunnel
+func assignOSTunnelIP(interfaceName, assignedIP string, useGlobalRouting bool) error {
+	var cmds []*exec.Cmd
 
 	switch runtime.GOOS {
 	case "linux":
-		// Linux uses 'ip' commands to bring up the link and assign the IP
-		exec.Command("ip", "link", "set", "dev", interfaceName, "up").Run()
-		cmd = exec.Command("ip", "address", "add", assignedIP+"/24", "dev", interfaceName)
+		// 1. Bring interface up and assign IP (this automatically routes the 10.8.0.0/24 subnet)
+		cmds = append(cmds, exec.Command("ip", "link", "set", "dev", interfaceName, "up"))
+		cmds = append(cmds, exec.Command("ip", "address", "add", assignedIP+"/24", "dev", interfaceName))
+
+		// 2. Global Routing Overrides
+		if useGlobalRouting {
+			cmds = append(cmds, exec.Command("ip", "route", "add", "0.0.0.0/1", "dev", interfaceName))
+			cmds = append(cmds, exec.Command("ip", "route", "add", "128.0.0.0/1", "dev", interfaceName))
+		}
 
 	case "windows":
-		// Windows uses netsh to assign the IP
-		cmd = exec.Command("netsh", "interface", "ipv4", "set", "address",
+		// 1. Assign IP to the Wintun adapter (automatically routes the 10.8.0.0/24 subnet)
+		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "address",
 			fmt.Sprintf("name=\"%s\"", interfaceName),
 			"static", assignedIP, "255.255.255.0", "none",
-		)
+		))
+
+		// 2. Global Routing Overrides
+		if useGlobalRouting {
+			// Windows requires the 'mask' syntax
+			cmds = append(cmds, exec.Command("route", "add", "0.0.0.0", "mask", "128.0.0.0", assignedIP))
+			cmds = append(cmds, exec.Command("route", "add", "128.0.0.0", "mask", "128.0.0.0", assignedIP))
+		}
 
 	case "darwin":
-		// macOS uses ifconfig
-		cmd = exec.Command("ifconfig", interfaceName, assignedIP, assignedIP, "up")
-		exec.Command("route", "-n", "add", "-net", "10.8.0.0/24", "-interface", interfaceName).Run()
+		// 1. Bring macOS utun interface up and assign point-to-point IP
+		cmds = append(cmds, exec.Command("ifconfig", interfaceName, assignedIP, assignedIP, "up"))
+
+		// 2. Routing
+		if useGlobalRouting {
+			cmds = append(cmds, exec.Command("route", "-n", "add", "-net", "0.0.0.0/1", "-interface", interfaceName))
+			cmds = append(cmds, exec.Command("route", "-n", "add", "-net", "128.0.0.0/1", "-interface", interfaceName))
+		} else {
+			cmds = append(cmds, exec.Command("route", "-n", "add", "-net", "10.8.0.0/24", "-interface", interfaceName))
+		}
 
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("OS command failed: %v | output: %s", err, string(output))
+	// Execute all queued commands sequentially
+	for _, cmd := range cmds {
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("OS command failed: %s | output: %s | error: %v", cmd.String(), string(output), err)
+		}
 	}
+
 	return nil
+}
+
+// cleanupGlobalRoutes acts as a fail-safe sweeper. It aggressively attempts to delete
+// the global override routes. If they don't exist, it silently ignores the error.
+func cleanupGlobalRoutes() {
+	var cmds []*exec.Cmd
+
+	switch runtime.GOOS {
+	case "linux":
+		cmds = append(cmds, exec.Command("ip", "route", "del", "0.0.0.0/1"))
+		cmds = append(cmds, exec.Command("ip", "route", "del", "128.0.0.0/1"))
+	case "windows":
+		cmds = append(cmds, exec.Command("route", "delete", "0.0.0.0", "mask", "128.0.0.0"))
+		cmds = append(cmds, exec.Command("route", "delete", "128.0.0.0", "mask", "128.0.0.0"))
+	case "darwin":
+		cmds = append(cmds, exec.Command("route", "-n", "delete", "-net", "0.0.0.0/1"))
+		cmds = append(cmds, exec.Command("route", "-n", "delete", "-net", "128.0.0.0/1"))
+	}
+
+	for _, cmd := range cmds {
+		// We intentionally ignore the error here. If it fails, it just means
+		// the user was using Split Tunneling and the route wasn't there anyway!
+		_ = cmd.Run()
+	}
 }
 
 // ==========================================
@@ -236,17 +284,32 @@ func (e *Engine) Connect(vault *config.ClientVault) error {
 	privKey, _ := wgtypes.ParseKey(vault.PrivateKey)
 	pubKey, _ := wgtypes.ParseKey(vault.ServerKey)
 
+	// ==========================================
+	// THE ROUTING SWITCH (FIXED FOR UAPI SYNTAX)
+	// ==========================================
+	var allowedIPsBlock string
+	if vault.UseGlobalRouting {
+		log.Println("🌐 Global Routing enabled: Preparing to route ALL traffic through the tunnel.")
+		// UAPI requires each IP block to be declared on its own separate line!
+		allowedIPsBlock = "allowed_ip=0.0.0.0/0\nallowed_ip=::/0"
+	} else {
+		log.Println("🔒 Split Tunnel enabled: Only accessing the secure Hub subnet.")
+		allowedIPsBlock = "allowed_ip=10.8.0.0/24"
+	}
+
+	// Notice that %s replaced allowed_ip=%s in the template below
 	uapiConfig := fmt.Sprintf(`private_key=%s
 listen_port=0
 replace_peers=true
 public_key=%s
 endpoint=%s
-allowed_ip=10.8.0.0/24
+%s
 persistent_keepalive_interval=25
 `,
 		hex.EncodeToString(privKey[:]),
 		hex.EncodeToString(pubKey[:]),
 		vault.ServerEndpoint,
+		allowedIPsBlock, // Inject our properly formatted multi-line block here!
 	)
 
 	if err := e.wgDevice.IpcSet(uapiConfig); err != nil {
@@ -257,7 +320,7 @@ persistent_keepalive_interval=25
 	e.wgDevice.Up()
 
 	realInterfaceName, _ := tunDevice.Name()
-	if err := assignOSTunnelIP(realInterfaceName, vault.AssignedIP); err != nil {
+	if err := assignOSTunnelIP(realInterfaceName, vault.AssignedIP, vault.UseGlobalRouting); err != nil {
 		e.wgDevice.Close()
 		e.setState(StateDisconnected) // Revert on fail
 		return fmt.Errorf("failed to route OS traffic: %v", err)
@@ -283,15 +346,19 @@ func (e *Engine) Disconnect() error {
 		e.watchdogCancel()
 	}
 
-	// 2. Destroy the memory interface and clear OS routes
+	// 2. THE SWEEPER: Clean up any lingering Global Routing rules before destroying the interface
+	log.Println("🧹 Sweeping OS routing tables...")
+	cleanupGlobalRoutes()
+
+	// 3. Destroy the memory interface and clear OS routes
 	if e.wgDevice != nil {
 		e.wgDevice.Close()
 		e.wgDevice = nil
 	}
 
-	// 3. Tell the UI we are fully shut down
+	// 4. Tell the UI we are fully shut down
 	e.setState(StateDisconnected) // ⚪ Update UI
 
-	log.Println("✅ Disconnected.")
+	log.Println("✅ Disconnected. Network routes restored to normal.")
 	return nil
 }

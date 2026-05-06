@@ -29,3 +29,7 @@ export function LeaveNetwork() {
 export function ProcessApproval(arg1) {
   return window['go']['main']['App']['ProcessApproval'](arg1);
 }
+
+export function ToggleGlobalRouting(arg1) {
+  return window['go']['main']['App']['ToggleGlobalRouting'](arg1);
+}

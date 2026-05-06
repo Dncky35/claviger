@@ -7,6 +7,7 @@ export namespace config {
 	    server_public_key: string;
 	    server_endpoint: string;
 	    status: string;
+	    use_global_routing: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ClientVault(source);
@@ -20,6 +21,7 @@ export namespace config {
 	        this.server_public_key = source["server_public_key"];
 	        this.server_endpoint = source["server_endpoint"];
 	        this.status = source["status"];
+	        this.use_global_routing = source["use_global_routing"];
 	    }
 	}
 
