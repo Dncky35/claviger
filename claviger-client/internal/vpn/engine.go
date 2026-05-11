@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"net"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -261,14 +262,24 @@ func (e *Engine) cleanupGlobalRoutes() {
 // ==========================================
 
 // Connect creates a virtual interface and configures WireGuard entirely in memory
+// Connect creates a virtual interface and configures WireGuard entirely in memory
 func (e *Engine) Connect(vault *config.ClientVault) error {
 	if e.GetState() != StateDisconnected {
 		return fmt.Errorf("VPN is already connected or attempting to connect")
 	}
 
-	e.setState(StateConnecting) // 🟡 Update UI
+	e.setState(StateConnecting)
 
 	log.Printf("🚀 Starting Embedded Claviger Engine...")
+
+	// 🎯 THE FIX: Resolve the domain to a raw IP address before doing anything!
+	udpAddr, err := net.ResolveUDPAddr("udp", vault.ServerEndpoint)
+	if err != nil {
+		e.setState(StateDisconnected)
+		return fmt.Errorf("failed to resolve server endpoint (%s): %v", vault.ServerEndpoint, err)
+	}
+	resolvedEndpoint := udpAddr.String()   // e.g., "46.225.66.35:51820"
+	e.activeServerIP = udpAddr.IP.String() // Save the raw IP so the sweeper can delete the route later
 
 	interfaceName := "claviger0"
 	if runtime.GOOS == "darwin" {
@@ -277,7 +288,7 @@ func (e *Engine) Connect(vault *config.ClientVault) error {
 
 	tunDevice, err := tun.CreateTUN(interfaceName, device.DefaultMTU)
 	if err != nil {
-		e.setState(StateDisconnected) // Revert on fail
+		e.setState(StateDisconnected)
 		return fmt.Errorf("failed to create TUN device: %v", err)
 	}
 
@@ -287,20 +298,14 @@ func (e *Engine) Connect(vault *config.ClientVault) error {
 	privKey, _ := wgtypes.ParseKey(vault.PrivateKey)
 	pubKey, _ := wgtypes.ParseKey(vault.ServerKey)
 
-	// ==========================================
-	// THE ROUTING SWITCH (FIXED FOR UAPI SYNTAX)
-	// ==========================================
 	var allowedIPsBlock string
 	if vault.UseGlobalRouting {
-		log.Println("🌐 Global Routing enabled: Preparing to route ALL traffic through the tunnel.")
-		// UAPI requires each IP block to be declared on its own separate line!
 		allowedIPsBlock = "allowed_ip=0.0.0.0/0\nallowed_ip=::/0"
 	} else {
-		log.Println("🔒 Split Tunnel enabled: Only accessing the secure Hub subnet.")
 		allowedIPsBlock = "allowed_ip=10.8.0.0/24"
 	}
 
-	// Notice that %s replaced allowed_ip=%s in the template below
+	// 🎯 USE THE RESOLVED IP HERE
 	uapiConfig := fmt.Sprintf(`private_key=%s
 listen_port=0
 replace_peers=true
@@ -311,27 +316,28 @@ persistent_keepalive_interval=25
 `,
 		hex.EncodeToString(privKey[:]),
 		hex.EncodeToString(pubKey[:]),
-		vault.ServerEndpoint,
-		allowedIPsBlock, // Inject our properly formatted multi-line block here!
+		resolvedEndpoint, // 👈 Inject the resolved raw IP here!
+		allowedIPsBlock,
 	)
 
 	if err := e.wgDevice.IpcSet(uapiConfig); err != nil {
 		e.wgDevice.Close()
-		e.setState(StateDisconnected) // Revert on fail
+		e.setState(StateDisconnected)
 		return fmt.Errorf("failed to configure memory device: %v", err)
 	}
 	e.wgDevice.Up()
 
 	realInterfaceName, _ := tunDevice.Name()
-	if err := assignOSTunnelIP(realInterfaceName, vault.AssignedIP, vault.UseGlobalRouting, vault.ServerEndpoint); err != nil {
+
+	// 🎯 PASS THE RESOLVED IP TO THE ROUTING ENGINE
+	if err := assignOSTunnelIP(realInterfaceName, vault.AssignedIP, vault.UseGlobalRouting, resolvedEndpoint); err != nil {
 		e.wgDevice.Close()
 		e.setState(StateDisconnected)
 		return fmt.Errorf("failed to route OS traffic: %v", err)
 	}
 
-	// SUCCESS! The tunnel exists. Now we wait for Proof of Life.
-	e.setState(StateVerifying) // 🔵 Update UI
-	e.startWatchdog()          // 🐕 Unleash the hounds
+	e.setState(StateVerifying)
+	e.startWatchdog()
 
 	return nil
 }
