@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"claviger-server/internal/apps" // Required for the cascade teardown
+	"claviger-server/internal/firewall"
 	"claviger-server/internal/system"
 	"claviger-server/network"
 	"claviger-server/storage"
@@ -20,6 +21,10 @@ func ensureSSHAccess() {
 	if runtime.GOOS != "linux" {
 		return
 	}
+
+	firewall.DisableInternet()  // Remove internet access to prevent lockout, but ensure SSH remains open
+	firewall.TeardownFirewall() // Remove all firewall rules to ensure a clean slate, but we'll add back SSH access immediately after
+
 	fmt.Println("🛡️  Ensuring SSH (Port 22) is open to prevent lockout...")
 
 	cmd := exec.Command("ufw", "status")

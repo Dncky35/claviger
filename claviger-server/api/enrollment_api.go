@@ -67,7 +67,7 @@ func HandleRegisterConfirm(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Fetch the Server's Public IP to put into the token
-		serverIP := storage.GetConfig(db, "public_ip")
+		serverIP := storage.GetConfig(db, "vpn_endpoint")
 		if serverIP == "" {
 			http.Error(w, `{"message": "Server public IP not configured. Run setup again."}`, http.StatusInternalServerError)
 			return

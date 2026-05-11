@@ -12,6 +12,7 @@ type ClientVault struct {
 	PublicKey        string `json:"public_key"`
 	AssignedIP       string `json:"assigned_ip"`
 	ServerKey        string `json:"server_public_key"`
+	DeviceID         string `json:"device_id"`
 	ServerEndpoint   string `json:"server_endpoint"`    // The Server's IP:Port for the VPN tunnel
 	Status           string `json:"status"`             // "unregistered", "pending_approval", "active"
 	UseGlobalRouting bool   `json:"use_global_routing"` // true = 0.0.0.0/0 (All traffic), false = 10.8.0.0/24 (Split Tunnel)

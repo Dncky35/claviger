@@ -9,11 +9,11 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 
 	"claviger-server/internal/auth"
+	"claviger-server/internal/firewall"
 	"claviger-server/internal/system"
 	"claviger-server/network"
 	"claviger-server/storage"
@@ -100,9 +100,9 @@ func RunSetup(args []string) {
 	db := storage.InitDB()
 	defer db.Close()
 
-	// Since we removed the API token, we check for a node_id to see if setup was already run
+	// --- THE GUARDRAIL: Block if already setup ---
 	if storage.GetConfig(db, "node_id") != "" {
-		log.Fatal("❌ This node is already configured.")
+		log.Fatal("❌ Node is already configured! Please run 'sudo claviger-server reset' if you want to start over.")
 	}
 
 	reader := bufio.NewReader(os.Stdin)
@@ -305,9 +305,11 @@ SaveConfig = false
 
 	// --- Enable WireGuard Tunnel Firewall Rules ---
 	fmt.Println("🛡️  Configuring firewall rules for VPN interface...")
-	if err := exec.Command("ufw", "allow", "in", "on", "wg0").Run(); err != nil {
-		log.Printf("⚠️ Warning: Could not automatically configure UFW (is UFW installed and active?): %v\n", err)
-	}
+	// if err := exec.Command("ufw", "allow", "in", "on", "wg0").Run(); err != nil {
+	// 	log.Printf("⚠️ Warning: Could not automatically configure UFW (is UFW installed and active?): %v\n", err)
+	// }
+
+	firewall.SetupFirewall()
 
 	// --- THE TERMINAL REVEAL ---
 	fmt.Println("\n" + strings.Repeat("=", 65))

@@ -12,6 +12,7 @@ import (
 	"claviger-client/internal/vpn"
 
 	"github.com/getlantern/systray"
+	"github.com/google/uuid"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -172,14 +173,22 @@ func (a *App) GenerateRequest() (string, error) {
 		hostname = "Unknown-Desktop"
 	}
 
-	// Save the Private Key to the Vault immediately!
+	// 1. Generate a permanent Device ID if one doesn't exist yet
+	if a.vault.DeviceID == "" {
+		a.vault.DeviceID = uuid.New().String()
+	}
+
+	// 2. Save the Private Key, Public Key, and Device ID to the Vault immediately
 	a.vault.PrivateKey = privKey
 	a.vault.PublicKey = pubKey
 	a.vault.Status = "pending_approval"
-	config.Save(a.vault)
 
-	// Call our new Auth package to build the token
-	return auth.GenerateRequestToken(pubKey, hostname, runtime.GOOS, "dummy-id-123")
+	if err := config.Save(a.vault); err != nil {
+		return "", fmt.Errorf("failed to save vault: %v", err)
+	}
+
+	// 3. Call the Auth package to build the token using the real, persistent UUID
+	return auth.GenerateRequestToken(pubKey, hostname, runtime.GOOS, a.vault.DeviceID)
 }
 
 // ProcessApproval catches the "Visa" from the Admin and updates the Vault
