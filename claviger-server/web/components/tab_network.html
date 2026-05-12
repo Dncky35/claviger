@@ -5,6 +5,7 @@
         <h2 class="text-2xl font-bold tracking-tight text-white">🌍 Network & Gateway</h2>
     </div>
 
+    <!-- GLOBAL ROUTING -->
     <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
             <h3 class="text-lg font-bold text-slate-100 flex items-center gap-3">
@@ -23,6 +24,33 @@
     <hr class="border-border my-6">
     <h3 class="text-lg font-bold text-slate-100">Gateway Apps</h3>
 
+    <!-- MASTER GATEWAY (NPM) -->
+    <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden mb-6">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+        <div class="z-10">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-400 text-xl">🌐</div>
+                <h3 class="text-lg font-bold text-slate-100">Master Gateway <span class="text-xs text-slate-500 font-normal ml-2">(Nginx Proxy Manager)</span></h3>
+                <span id="badge-app-npm" class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">Checking...</span>
+            </div>
+            <p class="text-muted-foreground text-sm max-w-2xl">
+                Acts as the front door for all incoming internet traffic. Provides free automated SSL certificates and routes subdomains securely to your Claviger apps.
+            </p>
+            <div id="npm-requirements" class="hidden mt-3 bg-blue-900/20 border border-blue-800/50 rounded-lg p-3 text-xs text-blue-200/80 max-w-xl">
+                <strong>Requirements:</strong> Ports 80 and 443 must be available on your server. If you have an existing Nginx container, please map it to an internal port before initializing.
+            </div>
+        </div>
+        <div class="z-10 flex items-center shrink-0">
+            <button id="btn-install-npm" onclick="installApp('npm')" class="hidden px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-blue-500/20">
+                Initialize Gateway
+            </button>
+            <button id="btn-dash-npm" onclick="window.open('http://' + window.location.hostname + ':81', '_blank')" class="hidden px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700">
+                Open Dashboard ↗
+            </button>
+        </div>
+    </div>
+
+    <!-- ADGUARD HOME -->
     <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
         <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
         <div class="z-10">
@@ -35,10 +63,11 @@
                 A network-wide software for blocking ads, tracking, and malware. When installed, it acts as the primary DNS resolver.
             </p>
         </div>
-        <div class="z-10 flex items-center shrink-0">
-            <button id="btn-install-adguard" onclick="installApp('adguard')" class="hidden px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
+        <div class="z-10 flex flex-col items-end shrink-0 gap-2">
+            <button id="btn-install-adguard" onclick="installApp('adguard')" class="hidden px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
                 Install App
             </button>
+            <!-- Note: The ActionPort from the API will automatically override this URL if configured correctly in your main JS -->
             <button id="btn-dash-adguard" onclick="window.open('http://' + window.location.hostname + ':3030', '_blank')" class="hidden px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700">
                 Open Dashboard ↗
             </button>
@@ -48,14 +77,15 @@
         </div>
     </div>
 
-        <hr class="border-border my-8">
+    <hr class="border-border my-8">
     <h3 class="text-lg font-bold text-slate-100 mb-4">Server Configuration</h3>
 
+    <!-- ENDPOINT CONFIGURATION -->
     <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm">
         
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-border/50">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-xl">🌐</div>
+                <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-xl">📡</div>
                 <div>
                     <h3 class="text-md font-bold text-slate-100">Public VPN Endpoint</h3>
                     <p class="text-xs text-slate-400">The IP or Domain clients use to connect to this server.</p>
@@ -86,6 +116,7 @@
         </div>
     </div>
 
+    <!-- MODAL: DNS WARNING -->
     <dialog id="modal-dns-warning" class="bg-surface border border-amber-500/30 rounded-xl shadow-2xl p-0 w-[90%] max-w-md backdrop:bg-black/80 text-slate-200">
         <div class="p-5 border-b border-border flex justify-between items-center bg-amber-500/10">
             <h3 class="font-bold text-lg text-amber-500 flex items-center gap-2"><span>⚠️</span> DNS Verification Failed</h3>
@@ -111,7 +142,7 @@
     </dialog>
 
     <script>
-                // Fetch the current endpoint to populate the UI
+        // Fetch the current endpoint to populate the UI
         async function fetchSystemSettings() {
             const displayEl = document.getElementById('current-endpoint-display');
             const inputEl = document.getElementById('input-endpoint');
@@ -140,6 +171,30 @@
                     displayEl.classList.add('text-red-400');
                     displayEl.classList.remove('text-emerald-400', 'text-amber-400');
                 }
+            }
+        }
+
+        // Proactively check Gateway port status to display requirements cleanly
+        async function checkGatewayStatus() {
+            try {
+                const res = await fetch('/api/gateway/status');
+                const data = await res.json();
+                const reqBox = document.getElementById('npm-requirements');
+                
+                // If NPM is not running and ports are blocked, show the warning persistently
+                if (!data.is_running && !data.ports_clear) {
+                    reqBox.classList.remove('hidden');
+                    reqBox.innerHTML = `<strong>⚠️ Port Conflict:</strong> ${data.message}`;
+                    reqBox.classList.replace('text-blue-200/80', 'text-red-400');
+                    reqBox.classList.replace('bg-blue-900/20', 'bg-red-900/20');
+                    reqBox.classList.replace('border-blue-800/50', 'border-red-800/50');
+                } else if (!data.is_running) {
+                    reqBox.classList.remove('hidden');
+                } else {
+                    reqBox.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error("Failed to check gateway status:", e);
             }
         }
 
@@ -208,7 +263,8 @@
         }
 
         fetchSystemSettings();
-        setInterval(fetchSystemSettings, 60000); // Slow settings polling (1m)
+        checkGatewayStatus();
+        setInterval(fetchSystemSettings, 60000); 
     </script>
 </div>
 {{end}}

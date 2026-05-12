@@ -2,12 +2,15 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
 	"claviger-server/internal/apps"
 	"claviger-server/internal/docker"
 	"claviger-server/internal/security"
+	"claviger-server/storage"
 )
 
 // AppStatus is the smart, unified data packet we send to the Javascript UI
@@ -29,6 +32,10 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 
 		var appList []AppStatus
+
+		// 🎯 OPEN DB CONNECTION TO FETCH DYNAMIC PORTS
+		db := storage.InitDB()
+		defer db.Close()
 
 		// ---------------------------------------------------------
 		// 1. PROCESS NATIVE APPS (Fail2Ban)
@@ -56,7 +63,7 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 		// ---------------------------------------------------------
 		// 2. FETCH DOCKER STATE
 		// ---------------------------------------------------------
-		containerMap := make(map[string]string) // Quick lookup map: {"adguard": "running"}
+		containerMap := make(map[string]string) // Quick lookup map
 		rawContainers := []docker.ContainerInfo{}
 		dockerInstalled := false
 
@@ -64,7 +71,6 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 			dockerInstalled = true
 			if containers, err := engine.ListContainers(r.Context()); err == nil {
 				rawContainers = containers
-				// Map the live container states
 				for _, c := range containers {
 					containerMap[c.Name] = c.State
 				}
@@ -72,7 +78,7 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 		}
 
 		// ---------------------------------------------------------
-		// 3. MERGE CATALOG WITH DOCKER STATE
+		// 3. MERGE CATALOG WITH DOCKER STATE & DB PORTS
 		// ---------------------------------------------------------
 		for id, manifest := range apps.Catalog {
 			status := "not_installed"
@@ -80,10 +86,17 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 				status = liveState
 			}
 
-			// Default routing assumes setup is complete
 			setupComplete := true
-			actionPort := manifest.DashPort
+			actionPort := 0
 			actionText := "Open Dashboard ↗"
+
+			// 🎯 THE FIX: FETCH PORT FROM DATABASE OR ASSIGN STATIC
+			if manifest.NeedsDynamicPort {
+				portStr := storage.GetConfig(db, fmt.Sprintf("app_%s_port", id))
+				if portStr != "" {
+					actionPort, _ = strconv.Atoi(portStr)
+				}
+			}
 
 			// Override routing if this specific app needs a setup wizard
 			if manifest.HasCustomSetup && status != "not_installed" {
@@ -101,8 +114,8 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 				ID:            id,
 				Name:          manifest.Name,
 				Category:      manifest.Category,
-				Description:   manifest.Description, // ADD THIS
-				Icon:          manifest.Icon,        // ADD THIS
+				Description:   manifest.Description,
+				Icon:          manifest.Icon,
 				Status:        status,
 				SetupComplete: setupComplete,
 				ActionPort:    actionPort,
@@ -115,8 +128,8 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 		// ---------------------------------------------------------
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"docker_installed": dockerInstalled,
-			"registry_apps":    appList,       // The clean list for the UI to build buttons
-			"raw_containers":   rawContainers, // The raw list just in case we need deep Docker stats
+			"registry_apps":    appList,
+			"raw_containers":   rawContainers,
 		})
 	}
 }

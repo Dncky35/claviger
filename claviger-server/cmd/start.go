@@ -186,6 +186,9 @@ func RunStart() {
 	mux.HandleFunc("/api/apps/uninstall", api.HubAccessMiddleware(db, api.HandleAppUninstall))
 	mux.HandleFunc("/api/apps/install", api.HubAccessMiddleware(db, api.HandleAppInstall))
 
+	// --- PROTECTED GATEWAY ROUTES ---
+	http.HandleFunc("/api/gateway/status", api.HubAccessMiddleware(db, api.HandleGatewayStatus()))
+
 	// --- PROTECTED SETTINGS ROUTES ---
 	mux.HandleFunc("/api/settings/endpoint", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {

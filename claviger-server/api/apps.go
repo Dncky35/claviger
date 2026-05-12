@@ -7,7 +7,9 @@ import (
 	"sync"
 
 	"claviger-server/internal/apps"
+	"claviger-server/internal/gateway"
 	"claviger-server/internal/security"
+	"claviger-server/storage"
 )
 
 type InstallReq struct {
@@ -39,7 +41,6 @@ func HandleAppInstall(w http.ResponseWriter, r *http.Request) {
 	// ---------------------------------------------------------
 	installMutex.Lock()
 	if activeInstalls[req.AppID] {
-		// App is already installing! Unlock and reject the request immediately.
 		installMutex.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusConflict) // 409 Conflict
@@ -50,26 +51,42 @@ func HandleAppInstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Lock it!
 	activeInstalls[req.AppID] = true
 	installMutex.Unlock()
 
-	// Ensure the lock is ALWAYS removed when this function finishes, even if it crashes
 	defer func() {
 		installMutex.Lock()
 		delete(activeInstalls, req.AppID)
 		installMutex.Unlock()
 	}()
-	// ---------------------------------------------------------
 
 	// ---------------------------------------------------------
 	// 2. ROUTE THE INSTALLATION
 	// ---------------------------------------------------------
 	var err error
-	if req.AppID == "fail2ban" {
+
+	db := storage.InitDB()
+	defer db.Close()
+
+	switch req.AppID {
+	case "fail2ban":
 		err = security.InstallFail2Ban()
-	} else {
-		err = apps.Install(req.AppID)
+	case "npm":
+		// 🎯 THE GATEWAY GUARDRAIL
+		// Before we let the catalog install NPM, make sure Ports 80/443 are free!
+		if portErr := gateway.CheckPorts(); portErr != nil {
+			installMutex.Lock()
+			delete(activeInstalls, req.AppID)
+			installMutex.Unlock()
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict) // 409 Conflict
+			json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": portErr.Error()})
+			return
+		}
+		err = apps.Install(db, req.AppID)
+	default:
+		err = apps.Install(db, req.AppID)
 	}
 
 	// ---------------------------------------------------------
