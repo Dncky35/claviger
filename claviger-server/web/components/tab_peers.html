@@ -6,10 +6,17 @@
             <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Network Access Control</h2>
             <p class="text-muted-foreground text-sm mt-1">Manage Zero Trust devices and role-based routing.</p>
         </div>
-        <button onclick="openRegistrationModal()" class="bg-primary hover:bg-primary/90 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)] px-5 py-2.5 rounded-xl font-semibold transition-all text-sm flex items-center gap-2 active:scale-95 shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-            Register New Device
-        </button>
+        <!-- ACTION BUTTONS -->
+        <div class="flex items-center gap-3 shrink-0">
+            <button onclick="openMobileModal()" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-5 py-2.5 rounded-xl font-semibold transition-all text-sm flex items-center gap-2 active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                Add Mobile Device
+            </button>
+            <button onclick="openRegistrationModal()" class="bg-primary hover:bg-primary/90 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)] px-5 py-2.5 rounded-xl font-semibold transition-all text-sm flex items-center gap-2 active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                Register Desktop
+            </button>
+        </div>
     </div>
 
     <div>
@@ -35,11 +42,14 @@
     </div>
 </div>
 
+<!-- ========================================== -->
+<!-- 1. DESKTOP REGISTRATION MODAL (Unchanged)  -->
+<!-- ========================================== -->
 <div id="modal-register" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
     <div class="bg-surface border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300" id="modal-register-content">
         
         <div class="border-b border-border p-5 flex justify-between items-center bg-background/50">
-            <h3 class="text-lg font-bold text-slate-100">Register Device</h3>
+            <h3 class="text-lg font-bold text-slate-100">Register Desktop</h3>
             <button onclick="closeRegistrationModal()" class="text-muted-foreground hover:text-white transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
@@ -64,8 +74,7 @@
                 <div>
                     <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Assign Network Role</label>
                     <select id="select-role" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-200 focus:border-primary outline-none">
-                        <option value="standard">Standard User</option>
-                        <option value="admin">Administrator</option>
+                        <!-- Populated by JS -->
                     </select>
                 </div>
                 
@@ -93,229 +102,372 @@
                     </button>
                 </div>
             </div>
-
         </div>
     </div>
-
-    <script>
-        // Global variable to hold the decoded request temporarily
-        let currentClientRequest = null;
-
-        // --- Modal Controls ---
-        function openRegistrationModal() {
-            document.getElementById('input-client-request').value = '';
-            document.getElementById('reg-error').classList.add('hidden');
-            switchModalState(1);
-            
-            const modal = document.getElementById('modal-register');
-            const content = document.getElementById('modal-register-content');
-            modal.classList.remove('hidden');
-            
-            // Tiny delay for smooth CSS animation
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                content.classList.remove('scale-95');
-            }, 10);
-            
-            fetchRolesForDropdown(); // Pre-load roles into the dropdown
-        }
-
-        function closeRegistrationModal() {
-            const modal = document.getElementById('modal-register');
-            const content = document.getElementById('modal-register-content');
-            modal.classList.add('opacity-0');
-            content.classList.add('scale-95');
-            
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                currentClientRequest = null;
-            }, 300); // Wait for transition
-        }
-
-        function switchModalState(stateNumber) {
-            document.getElementById('reg-state-1').classList.add('hidden');
-            document.getElementById('reg-state-2').classList.add('hidden');
-            document.getElementById('reg-state-3').classList.add('hidden');
-            document.getElementById(`reg-state-${stateNumber}`).classList.remove('hidden');
-        }
-
-        // --- API Interactions ---
-        async function fetchRolesForDropdown() {
-            try {
-                const res = await fetch('/api/roles');
-                if (res.ok) {
-                    const roles = await res.json();
-                    const select = document.getElementById('select-role');
-                    select.innerHTML = '';
-                    roles.forEach(r => {
-                        const opt = document.createElement('option');
-                        opt.value = r.id;
-                        opt.innerText = r.name;
-                        select.appendChild(opt);
-                    });
-                }
-            } catch (err) { console.error("Failed to load roles."); }
-        }
-
-        async function previewRegistration() {
-            const token = document.getElementById('input-client-request').value.trim();
-            const errText = document.getElementById('reg-error');
-            const btn = document.getElementById('btn-preview');
-
-            if (!token) {
-                errText.innerText = "Please paste a token first.";
-                errText.classList.remove('hidden');
-                return;
-            }
-
-            btn.innerText = "Decoding...";
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/register/preview', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: token })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    errText.classList.add('hidden');
-                    currentClientRequest = data.request; // Save for the confirm step
-                    document.getElementById('preview-hostname').innerText = data.request.hostname;
-                    document.getElementById('preview-platform').innerText = data.request.platform;
-                    switchModalState(2);
-                } else {
-                    errText.innerText = data.message || "Invalid Token.";
-                    errText.classList.remove('hidden');
-                }
-            } catch (err) {
-                errText.innerText = "Network Error.";
-                errText.classList.remove('hidden');
-            }
-            btn.innerText = "Decode & Preview";
-            btn.disabled = false;
-        }
-
-        async function confirmRegistration() {
-            const roleId = document.getElementById('select-role').value;
-            const btn = document.getElementById('btn-confirm');
-            
-            btn.innerText = "Applying Firewall Rules...";
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/register/confirm', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        request_data: currentClientRequest,
-                        role_id: roleId
-                    })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    document.getElementById('output-server-approval').value = data.approval_token;
-                    switchModalState(3);
-                    fetchPeersData(); // Refresh the table behind the modal
-                } else {
-                    alert(`Error: ${data.message}`);
-                    switchModalState(1); // Kick them back
-                }
-            } catch (err) {
-                alert("Registration failed due to network error.");
-                switchModalState(1);
-            }
-            btn.innerText = "Approve & Generate Visa";
-            btn.disabled = false;
-        }
-
-        function copyAndCloseRegistration() {
-            const token = document.getElementById('output-server-approval').value;
-            navigator.clipboard.writeText(token).then(() => {
-                closeRegistrationModal();
-            }).catch(() => {
-                alert("Copied failed. Please copy the token manually.");
-            });
-        }
-
-        // --- General List Management ---
-        async function revokeClient(clientId, clientName) {
-            if(!confirm(`🚨 DANGER: Are you sure you want to permanently revoke VPN access for ${clientName}? Their connection will drop instantly.`)) return;
-
-            try {
-                const res = await fetch('/api/revoke', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ client_id: clientId })
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    fetchPeersData();
-                } else {
-                    alert(`Error: ${data.message}`);
-                }
-            } catch (err) { alert("Revocation failed."); }
-        }
-
-        async function fetchPeersData() {
-            try {
-                const clientRes = await fetch('/api/clients');
-                if (clientRes.ok) {
-                    const clients = await clientRes.json();
-                    const activeTbody = document.getElementById('list-active-peers');
-                    
-                    if(!activeTbody) return;
-                    activeTbody.innerHTML = '';
-                    
-                    let activeCount = 0;
-
-                    clients.forEach(c => {
-                        // We now ONLY render active clients!
-                        if (c.status === 'active') {
-                            activeCount++;
-                            let stateBadge = '';
-                            if (c.is_online) {
-                                stateBadge = `
-                                    <div class="flex flex-col items-center justify-center">
-                                        <div class="flex items-center">
-                                            <div class="w-2 h-2 rounded-full bg-success mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
-                                            <span class="text-xs font-bold text-success uppercase tracking-wider">Online</span>
-                                        </div>
-                                    </div>`;
-                            } else {
-                                stateBadge = `
-                                    <div class="flex flex-col items-center justify-center">
-                                        <div class="flex items-center">
-                                            <div class="w-2 h-2 rounded-full bg-muted-foreground/40 mr-2"></div>
-                                            <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Offline</span>
-                                        </div>
-                                    </div>`;
-                            }
-
-                            const tr = document.createElement('tr');
-                            tr.className = 'hover:bg-background/50 transition-colors';
-                            tr.innerHTML = `
-                                <td class="p-4 font-bold text-slate-200">${c.name}</td>
-                                <td class="p-4 font-mono text-muted-foreground">${c.ip_address}</td>
-                                <td class="p-4 font-medium"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${c.role_id}</span></td>
-                                <td class="p-4">${stateBadge}</td>
-                                <td class="p-4 text-right">
-                                    <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
-                                </td>
-                            `;
-                            activeTbody.appendChild(tr);
-                        }
-                    });
-
-                    if(activeCount === 0) activeTbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="5">No managed devices found.</td></tr>';
-                }
-            } catch (err) { console.error("Error fetching clients:", err); }
-        }
-
-        fetchPeersData();
-        setInterval(fetchPeersData, 5000); // Poll for new enrollments every 5 seconds
-    </script>
 </div>
+
+<!-- ========================================== -->
+<!-- 2. MOBILE REGISTRATION MODAL (New)         -->
+<!-- ========================================== -->
+<div id="modal-mobile" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-surface border border-border w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300" id="modal-mobile-content">
+        
+        <div class="border-b border-border p-5 flex justify-between items-center bg-background/50">
+            <h3 class="text-lg font-bold text-slate-100">Add Mobile Device</h3>
+            <button onclick="closeMobileModal()" class="text-muted-foreground hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+
+        <div class="p-6">
+            <div id="mobile-state-1" class="space-y-5 block">
+                <p class="text-sm text-muted-foreground leading-relaxed">Enter a name for this device and assign a role. Claviger will securely generate the keys and display a QR code.</p>
+                
+                <div>
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Device Name</label>
+                    <input type="text" id="input-mobile-name" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-slate-600" placeholder="e.g. John's iPhone">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Assign Network Role</label>
+                    <select id="select-mobile-role" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-200 focus:border-primary outline-none">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                
+                <p id="mobile-error" class="text-xs text-destructive hidden font-medium"></p>
+                
+                <div class="pt-2">
+                    <button onclick="submitMobileRegistration()" id="btn-mobile-generate" class="w-full bg-primary hover:bg-primary/90 text-white px-5 py-3 rounded-lg font-bold text-sm transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="7" y="7" width="3" height="3"></rect><rect x="14" y="7" width="3" height="3"></rect><rect x="7" y="14" width="3" height="3"></rect><rect x="14" y="14" width="3" height="3"></rect></svg>
+                        Generate QR Code
+                    </button>
+                </div>
+            </div>
+
+            <div id="mobile-state-2" class="space-y-4 hidden text-center">
+                <h4 class="text-lg font-bold text-slate-100">Scan to Connect</h4>
+                <p class="text-xs text-muted-foreground pb-2">Open the official WireGuard app on your phone, tap <strong class="text-slate-300">+</strong>, and select <strong class="text-slate-300">"Create from QR code"</strong>.</p>
+                
+                <div class="bg-white p-3 rounded-xl inline-block mx-auto">
+                    <img id="mobile-qr-image" src="" alt="WireGuard QR Code" class="w-48 h-48 object-contain">
+                </div>
+
+                <div class="bg-background rounded-lg p-3 border border-border text-xs flex justify-between text-muted-foreground mt-2">
+                    <span>Assigned IP:</span>
+                    <span id="mobile-assigned-ip" class="font-mono text-emerald-400 font-bold"></span>
+                </div>
+                
+                <div class="pt-4">
+                    <button onclick="closeMobileModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-lg font-bold text-sm transition-colors">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Global variable to hold the decoded request temporarily
+    let currentClientRequest = null;
+
+    // --- Dynamic Roles Fetcher ---
+    async function fetchRolesForDropdown() {
+        try {
+            const res = await fetch('/api/roles');
+            if (res.ok) {
+                const roles = await res.json();
+                const selectDesktop = document.getElementById('select-role');
+                const selectMobile = document.getElementById('select-mobile-role');
+                
+                selectDesktop.innerHTML = '';
+                selectMobile.innerHTML = '';
+                
+                roles.forEach(r => {
+                    const opt1 = document.createElement('option');
+                    opt1.value = r.id; opt1.innerText = r.name;
+                    selectDesktop.appendChild(opt1);
+
+                    const opt2 = document.createElement('option');
+                    opt2.value = r.id; opt2.innerText = r.name;
+                    selectMobile.appendChild(opt2);
+                });
+            }
+        } catch (err) { console.error("Failed to load roles."); }
+    }
+
+    // ==========================================
+    // DESKTOP MODAL LOGIC 
+    // ==========================================
+    function openRegistrationModal() {
+        document.getElementById('input-client-request').value = '';
+        document.getElementById('reg-error').classList.add('hidden');
+        switchModalState(1);
+        
+        const modal = document.getElementById('modal-register');
+        const content = document.getElementById('modal-register-content');
+        modal.classList.remove('hidden');
+        
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }, 10);
+        
+        fetchRolesForDropdown(); 
+    }
+
+    function closeRegistrationModal() {
+        const modal = document.getElementById('modal-register');
+        const content = document.getElementById('modal-register-content');
+        modal.classList.add('opacity-0');
+        content.classList.add('scale-95');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            currentClientRequest = null;
+        }, 300);
+    }
+
+    function switchModalState(stateNumber) {
+        document.getElementById('reg-state-1').classList.add('hidden');
+        document.getElementById('reg-state-2').classList.add('hidden');
+        document.getElementById('reg-state-3').classList.add('hidden');
+        document.getElementById(`reg-state-${stateNumber}`).classList.remove('hidden');
+    }
+
+    async function previewRegistration() {
+        const token = document.getElementById('input-client-request').value.trim();
+        const errText = document.getElementById('reg-error');
+        const btn = document.getElementById('btn-preview');
+
+        if (!token) {
+            errText.innerText = "Please paste a token first.";
+            errText.classList.remove('hidden');
+            return;
+        }
+
+        btn.innerText = "Decoding..."; btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/register/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                errText.classList.add('hidden');
+                currentClientRequest = data.request; 
+                document.getElementById('preview-hostname').innerText = data.request.hostname;
+                document.getElementById('preview-platform').innerText = data.request.platform;
+                switchModalState(2);
+            } else {
+                errText.innerText = data.message || "Invalid Token.";
+                errText.classList.remove('hidden');
+            }
+        } catch (err) {
+            errText.innerText = "Network Error."; errText.classList.remove('hidden');
+        }
+        btn.innerText = "Decode & Preview"; btn.disabled = false;
+    }
+
+    async function confirmRegistration() {
+        const roleId = document.getElementById('select-role').value;
+        const btn = document.getElementById('btn-confirm');
+        
+        btn.innerText = "Applying Firewall Rules..."; btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/register/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ request_data: currentClientRequest, role_id: roleId })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                document.getElementById('output-server-approval').value = data.approval_token;
+                switchModalState(3);
+                fetchPeersData(); 
+            } else {
+                alert(`Error: ${data.message}`);
+                switchModalState(1); 
+            }
+        } catch (err) {
+            alert("Registration failed due to network error.");
+            switchModalState(1);
+        }
+        btn.innerText = "Approve & Generate Visa"; btn.disabled = false;
+    }
+
+    function copyAndCloseRegistration() {
+        const token = document.getElementById('output-server-approval').value;
+        navigator.clipboard.writeText(token).then(() => {
+            closeRegistrationModal();
+        }).catch(() => {
+            alert("Copied failed. Please copy the token manually.");
+        });
+    }
+
+    // ==========================================
+    // MOBILE MODAL LOGIC 
+    // ==========================================
+    function openMobileModal() {
+        document.getElementById('input-mobile-name').value = '';
+        document.getElementById('mobile-error').classList.add('hidden');
+        document.getElementById('mobile-state-1').classList.remove('hidden');
+        document.getElementById('mobile-state-2').classList.add('hidden');
+        
+        const modal = document.getElementById('modal-mobile');
+        const content = document.getElementById('modal-mobile-content');
+        modal.classList.remove('hidden');
+        
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }, 10);
+        
+        fetchRolesForDropdown(); 
+    }
+
+    function closeMobileModal() {
+        const modal = document.getElementById('modal-mobile');
+        const content = document.getElementById('modal-mobile-content');
+        modal.classList.add('opacity-0');
+        content.classList.add('scale-95');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            // Clear the QR image so it's fresh next time
+            document.getElementById('mobile-qr-image').src = '';
+        }, 300);
+    }
+
+    async function submitMobileRegistration() {
+        const nameInput = document.getElementById('input-mobile-name').value.trim();
+        const roleId = document.getElementById('select-mobile-role').value;
+        const errText = document.getElementById('mobile-error');
+        const btn = document.getElementById('btn-mobile-generate');
+
+        if (!nameInput) {
+            errText.innerText = "Device name is required.";
+            errText.classList.remove('hidden');
+            return;
+        }
+
+        btn.innerHTML = "Generating Keys... ⏳"; btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/enrollment/mobile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: nameInput, role: roleId })
+            });
+            const result = await res.json();
+
+            if (res.ok) {
+                errText.classList.add('hidden');
+                // Set the QR code image source
+                document.getElementById('mobile-qr-image').src = result.data.qr_code_base64;
+                document.getElementById('mobile-assigned-ip').innerText = result.data.assigned_ip;
+                
+                // Switch view
+                document.getElementById('mobile-state-1').classList.add('hidden');
+                document.getElementById('mobile-state-2').classList.remove('hidden');
+                
+                fetchPeersData(); // Refresh table
+            } else {
+                errText.innerText = result.message || "Failed to generate keys.";
+                errText.classList.remove('hidden');
+            }
+        } catch (err) {
+            errText.innerText = "Network Error."; errText.classList.remove('hidden');
+        }
+        btn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="7" y="7" width="3" height="3"></rect><rect x="14" y="7" width="3" height="3"></rect><rect x="7" y="14" width="3" height="3"></rect><rect x="14" y="14" width="3" height="3"></rect></svg>
+            Generate QR Code
+        `; 
+        btn.disabled = false;
+    }
+
+    // ==========================================
+    // LIST MANAGEMENT 
+    // ==========================================
+    async function revokeClient(clientId, clientName) {
+        if(!confirm(`🚨 DANGER: Are you sure you want to permanently revoke VPN access for ${clientName}? Their connection will drop instantly.`)) return;
+
+        try {
+            const res = await fetch('/api/revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ client_id: clientId })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                fetchPeersData();
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        } catch (err) { alert("Revocation failed."); }
+    }
+
+    async function fetchPeersData() {
+        try {
+            const clientRes = await fetch('/api/clients');
+            if (clientRes.ok) {
+                const clients = await clientRes.json();
+                const activeTbody = document.getElementById('list-active-peers');
+                
+                if(!activeTbody) return;
+                activeTbody.innerHTML = '';
+                
+                let activeCount = 0;
+
+                clients.forEach(c => {
+                    if (c.status === 'active') {
+                        activeCount++;
+                        let stateBadge = '';
+                        if (c.is_online) {
+                            stateBadge = `
+                                <div class="flex flex-col items-center justify-center">
+                                    <div class="flex items-center">
+                                        <div class="w-2 h-2 rounded-full bg-success mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                                        <span class="text-xs font-bold text-success uppercase tracking-wider">Online</span>
+                                    </div>
+                                </div>`;
+                        } else {
+                            stateBadge = `
+                                <div class="flex flex-col items-center justify-center">
+                                    <div class="flex items-center">
+                                        <div class="w-2 h-2 rounded-full bg-muted-foreground/40 mr-2"></div>
+                                        <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Offline</span>
+                                    </div>
+                                </div>`;
+                        }
+
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-background/50 transition-colors';
+                        tr.innerHTML = `
+                            <td class="p-4 font-bold text-slate-200">${c.name}</td>
+                            <td class="p-4 font-mono text-muted-foreground">${c.ip_address}</td>
+                            <td class="p-4 font-medium"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${c.role_id}</span></td>
+                            <td class="p-4">${stateBadge}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
+                            </td>
+                        `;
+                        activeTbody.appendChild(tr);
+                    }
+                });
+
+                if(activeCount === 0) activeTbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="5">No managed devices found.</td></tr>';
+            }
+        } catch (err) { console.error("Error fetching clients:", err); }
+    }
+
+    fetchPeersData();
+    setInterval(fetchPeersData, 5000); 
+</script>
 {{ end }}

@@ -176,6 +176,7 @@ func RunStart() {
 	mux.HandleFunc("/api/security", api.HubAccessMiddleware(db, api.HandleSecurityStats))
 	mux.HandleFunc("/api/security/action", api.HubAccessMiddleware(db, api.HandleSecurityAction))
 	mux.HandleFunc("/api/clients", api.HubAccessMiddleware(db, api.HandleClients(db)))
+	mux.HandleFunc("/api/enrollment/mobile", api.HubAccessMiddleware(db, api.HandleMobileEnrollment(db)))
 	mux.HandleFunc("/api/revoke", api.HubAccessMiddleware(db, api.HandleRevoke(db)))
 	mux.HandleFunc("/api/access/ssh", api.HubAccessMiddleware(db, api.HandleSSHKeys))
 	mux.HandleFunc("/api/roles", api.HubAccessMiddleware(db, api.HandleRoles(db)))

@@ -43,7 +43,7 @@ func HandleRegisterPreview() http.HandlerFunc {
 		}
 
 		// Return the decoded data to the frontend so it can populate the UI!
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"status":  "success",
 			"request": connReq,
 		})
@@ -95,6 +95,51 @@ func HandleRegisterConfirm(db *sql.DB) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":         "success",
 			"approval_token": finalToken,
+		})
+	}
+}
+
+// HandleMobileEnrollment processes a request to generate a QR code for a new mobile device.
+func HandleMobileEnrollment(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"message": "Method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Parse the incoming JSON (Name and Role)
+		var req auth.MobileEnrollReq
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"message": "Invalid request payload"}`, http.StatusBadRequest)
+			return
+		}
+
+		// Basic validation
+		if req.Name == "" || req.Role == "" {
+			http.Error(w, `{"message": "Device name and role are required"}`, http.StatusBadRequest)
+			return
+		}
+
+		// Fetch the Server's Public IP (the auth package handles fallbacks if it's empty)
+		serverIP := storage.GetConfig(db, "vpn_endpoint")
+
+		// Execute the "Burn After Reading" generation flow
+		resp, err := auth.EnrollMobileDevice(db, &req, serverIP)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"status":  "error",
+				"message": err.Error(),
+			})
+			return
+		}
+
+		// Success! Send the QR code and IP back to the React UI
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "success",
+			"data":   resp, // Contains QRCodeBase64, PublicKey, and AssignedIP
 		})
 	}
 }
