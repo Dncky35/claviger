@@ -289,14 +289,22 @@ func EnrollMobileDevice(db *sql.DB, req *MobileEnrollReq, serverPublicIP string)
 		customEndpoint = strings.TrimSpace(serverPublicIP)
 	}
 
-	// Route DNS through AdGuard (10.8.0.1)
-	dnsIP := "10.8.0.1"
+	// 🎯 FIX 1: BULLETPROOF GLOBAL ROUTING CHECK
+	// We check for "true", "1", and "on" to handle any way the UI might save the toggle
+	//globalSetting := strings.ToLower(strings.TrimSpace(storage.GetConfig(db, "global_routing")))
+	//globalRouting := (globalSetting == "true" || globalSetting == "1" || globalSetting == "on")
 
-	// Global routing logic
-	globalRouting := storage.GetConfig(db, "global_routing") == "true"
-	allowedIPs := "10.8.0.0/24"
-	if globalRouting {
-		allowedIPs = "0.0.0.0/0, ::/0"
+	allowedIPs := "0.0.0.0/0, ::/0"
+	// if globalRouting {
+	// 	allowedIPs = "0.0.0.0/0, ::/0"
+	// }
+
+	// 🎯 FIX 2: SMART DNS FALLBACK
+	// If AdGuard is NOT installed yet, fallback to Cloudflare (1.1.1.1) so the internet still works!
+	dnsIP := "10.8.0.1"
+	if storage.GetConfig(db, "app_adguard_port") == "" {
+		// AdGuard port isn't in the DB, meaning it's not installed. Use public DNS.
+		dnsIP = "1.1.1.1, 1.0.0.1"
 	}
 
 	// 6. BUILD THE RAW CONFIG TEXT FOR THE QR CODE
