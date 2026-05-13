@@ -204,6 +204,10 @@ func (a *App) ProcessApproval(tokenString string) error {
 	a.vault.ServerEndpoint = approval.ServerEndpoint
 	a.vault.Status = "active"
 
+	// 🎯 NEW: Capture the network identity provided by the server
+	a.vault.DNS = approval.DNS
+	a.vault.BaseSubnet = approval.BaseSubnet
+
 	if err := config.Save(a.vault); err != nil {
 		return fmt.Errorf("failed to save vault: %v", err)
 	}

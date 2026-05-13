@@ -177,28 +177,58 @@ func (e *Engine) startWatchdog() {
 // ==========================================
 
 // assignOSTunnelIP tells the operating system how to route traffic into our memory tunnel
-func assignOSTunnelIP(interfaceName, assignedIP string, useGlobalRouting bool, serverEndpoint string) error {
+// assignOSTunnelIP tells the operating system how to route traffic into our memory tunnel
+func assignOSTunnelIP(interfaceName, assignedIP, dnsSetting, baseSubnet string, useGlobalRouting bool, serverEndpoint string) error {
 	var cmds []*exec.Cmd
 	serverIP := strings.Split(serverEndpoint, ":")[0]
+
+	// The server might send multiple DNS IPs (e.g., "1.1.1.1, 1.0.0.1").
+	// For OS commands, we usually just need the primary one.
+	primaryDNS := strings.TrimSpace(strings.Split(dnsSetting, ",")[0])
+	if primaryDNS == "" {
+		primaryDNS = "1.1.1.1" // Ultimate failsafe
+	}
 
 	switch runtime.GOOS {
 	case "linux":
 		cmds = append(cmds, exec.Command("ip", "link", "set", "dev", interfaceName, "up"))
 		cmds = append(cmds, exec.Command("ip", "address", "add", assignedIP+"/24", "dev", interfaceName))
+
+		// 🎯 DYNAMIC DNS (Linux systemd-resolved)
+		// This tells Linux to send DNS queries into the tunnel
+		cmds = append(cmds, exec.Command("resolvectl", "dns", interfaceName, primaryDNS))
+		cmds = append(cmds, exec.Command("resolvectl", "domain", interfaceName, "~."))
+
 		if useGlobalRouting {
+			// 🛡️ THE ROUTING LOOP FIX (Linux)
+			gwOut, _ := exec.Command("sh", "-c", "ip route show default | awk '/default/ {print $3}'").Output()
+			gateway := strings.TrimSpace(string(gwOut))
+			if gateway != "" {
+				log.Printf("🛡️ Whitelisting Server IP %s via local gateway %s", serverIP, gateway)
+				cmds = append(cmds, exec.Command("ip", "route", "add", serverIP, "via", gateway))
+			}
+
 			cmds = append(cmds, exec.Command("ip", "route", "add", "0.0.0.0/1", "dev", interfaceName))
 			cmds = append(cmds, exec.Command("ip", "route", "add", "128.0.0.0/1", "dev", interfaceName))
+		} else {
+			// 🎯 DYNAMIC SPLIT TUNNEL (Linux)
+			cmds = append(cmds, exec.Command("ip", "route", "add", baseSubnet, "dev", interfaceName))
 		}
 
 	case "windows":
 		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "address",
 			fmt.Sprintf("name=\"%s\"", interfaceName), "static", assignedIP, "255.255.255.0", "none"))
 
-		if useGlobalRouting {
-			cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "dnsservers",
-				fmt.Sprintf("name=\"%s\"", interfaceName), "static", "8.8.8.8", "primary"))
+		// 🎯 METRIC PRIORITY (Force Windows to prefer the VPN)
+		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "interface",
+			fmt.Sprintf("name=\"%s\"", interfaceName), "metric=1"))
 
-			// 🛡️ THE ROUTING LOOP FIX: Find the local Wi-Fi router IP and whitelist the VPN server!
+		// 🎯 DYNAMIC DNS (Windows)
+		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "dnsservers",
+			fmt.Sprintf("name=\"%s\"", interfaceName), "static", primaryDNS, "primary"))
+
+		if useGlobalRouting {
+			// 🛡️ THE ROUTING LOOP FIX (Windows)
 			gwOut, _ := exec.Command("powershell", "-Command", "(Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric | Select-Object -First 1).NextHop").Output()
 			gateway := strings.TrimSpace(string(gwOut))
 
@@ -209,49 +239,99 @@ func assignOSTunnelIP(interfaceName, assignedIP string, useGlobalRouting bool, s
 
 			cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "add", "route", "0.0.0.0/1", interfaceName, "metric=1", "store=active"))
 			cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "add", "route", "128.0.0.0/1", interfaceName, "metric=1", "store=active"))
+		} else {
+			// 🎯 DYNAMIC SPLIT TUNNEL (Windows)
+			cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "add", "route", baseSubnet, interfaceName, "metric=1", "store=active"))
 		}
 
 	case "darwin":
 		cmds = append(cmds, exec.Command("ifconfig", interfaceName, assignedIP, assignedIP, "up"))
+
 		if useGlobalRouting {
+			// 🛡️ THE ROUTING LOOP FIX (macOS)
+			gwOut, _ := exec.Command("sh", "-c", "route -n get default | grep gateway | awk '{print $2}'").Output()
+			gateway := strings.TrimSpace(string(gwOut))
+			if gateway != "" {
+				log.Printf("🛡️ Whitelisting Server IP %s via local gateway %s", serverIP, gateway)
+				cmds = append(cmds, exec.Command("route", "-n", "add", "-host", serverIP, gateway))
+			}
+
 			cmds = append(cmds, exec.Command("route", "-n", "add", "-net", "0.0.0.0/1", "-interface", interfaceName))
 			cmds = append(cmds, exec.Command("route", "-n", "add", "-net", "128.0.0.0/1", "-interface", interfaceName))
 		} else {
-			cmds = append(cmds, exec.Command("route", "-n", "add", "-net", "10.8.0.0/24", "-interface", interfaceName))
+			// 🎯 DYNAMIC SPLIT TUNNEL (macOS)
+			cmds = append(cmds, exec.Command("route", "-n", "add", "-net", baseSubnet, "-interface", interfaceName))
 		}
+		// Note: macOS DNS is best handled via the 'scutil' registry API rather than simple bash commands.
+		// For now, the routing fixes the infinite loops!
+
 	default:
 		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
 
+	// Execute all commands
 	for _, cmd := range cmds {
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("OS command failed: %s | output: %s | error: %v", cmd.String(), string(output), err)
+			// Ignore "route already exists" errors on Windows/Mac
+			if !strings.Contains(string(output), "already exists") && !strings.Contains(string(output), "File exists") {
+				return fmt.Errorf("OS command failed: %s | output: %s | error: %v", cmd.String(), string(output), err)
+			}
 		}
 	}
 	return nil
 }
 
 // cleanupGlobalRoutes acts as a fail-safe sweeper.
+// It deletes the VPS whitelist route and clears the DNS traps.
 func (e *Engine) cleanupGlobalRoutes() {
 	var cmds []*exec.Cmd
 
+	interfaceName := "claviger0"
+	if runtime.GOOS == "darwin" {
+		interfaceName = "utun"
+	}
+
 	switch runtime.GOOS {
 	case "linux":
+		// 1. Revert DNS settings back to default
+		cmds = append(cmds, exec.Command("resolvectl", "revert", interfaceName))
+
+		// 2. Remove the Global Routes
 		cmds = append(cmds, exec.Command("ip", "route", "del", "0.0.0.0/1"))
 		cmds = append(cmds, exec.Command("ip", "route", "del", "128.0.0.0/1"))
+
+		// 3. Remove the Server Whitelist Route
+		if e.activeServerIP != "" {
+			cmds = append(cmds, exec.Command("ip", "route", "del", e.activeServerIP))
+		}
+
 	case "windows":
-		// Clean up the Server Whitelist route
+		// 1. Reset DNS back to DHCP (Automatic) for the adapter
+		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "dnsservers",
+			fmt.Sprintf("name=\"%s\"", interfaceName), "source=dhcp"))
+
+		// 2. Remove the Global Routes
+		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "delete", "route", "0.0.0.0/1", interfaceName))
+		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "delete", "route", "128.0.0.0/1", interfaceName))
+
+		// 3. Remove the Server Whitelist Route from the physical gateway
 		if e.activeServerIP != "" {
 			cmds = append(cmds, exec.Command("route", "delete", e.activeServerIP, "mask", "255.255.255.255"))
 		}
-		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "delete", "route", "0.0.0.0/1", "claviger0"))
-		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "delete", "route", "128.0.0.0/1", "claviger0"))
+
 	case "darwin":
+		// 1. Remove the Global Routes
 		cmds = append(cmds, exec.Command("route", "-n", "delete", "-net", "0.0.0.0/1"))
 		cmds = append(cmds, exec.Command("route", "-n", "delete", "-net", "128.0.0.0/1"))
+
+		// 2. Remove the Server Whitelist Route
+		if e.activeServerIP != "" {
+			cmds = append(cmds, exec.Command("route", "-n", "delete", "-host", e.activeServerIP))
+		}
 	}
 
+	// Execute commands silently (we ignore errors because if a route doesn't exist, that's fine!)
 	for _, cmd := range cmds {
 		_ = cmd.Run()
 	}
@@ -330,7 +410,7 @@ persistent_keepalive_interval=25
 	realInterfaceName, _ := tunDevice.Name()
 
 	// 🎯 PASS THE RESOLVED IP TO THE ROUTING ENGINE
-	if err := assignOSTunnelIP(realInterfaceName, vault.AssignedIP, vault.UseGlobalRouting, resolvedEndpoint); err != nil {
+	if err := assignOSTunnelIP(realInterfaceName, vault.AssignedIP, vault.DNS, vault.BaseSubnet, vault.UseGlobalRouting, resolvedEndpoint); err != nil {
 		e.wgDevice.Close()
 		e.setState(StateDisconnected)
 		return fmt.Errorf("failed to route OS traffic: %v", err)
@@ -350,24 +430,24 @@ func (e *Engine) Disconnect() error {
 
 	log.Println("🛑 Shutting down Embedded VPN tunnel...")
 
-	// 1. Kill the Watchdog goroutine FIRST so it stops updating the state
+	// 1. Kill the Watchdog goroutine FIRST so it stops trying to reconnect
 	if e.watchdogCancel != nil {
 		e.watchdogCancel()
 	}
 
-	// 2. THE SWEEPER: Clean up any lingering Global Routing rules before destroying the interface
-	log.Println("🧹 Sweeping OS routing tables...")
+	// 2. THE SWEEPER: Clean up OS routing and DNS *BEFORE* destroying the interface!
+	log.Println("🧹 Sweeping OS routing tables and resetting DNS...")
 	e.cleanupGlobalRoutes()
 
-	// 3. Destroy the memory interface and clear OS routes
+	// 3. Destroy the memory interface (This automatically drops the Split Tunnel subnets)
 	if e.wgDevice != nil {
 		e.wgDevice.Close()
 		e.wgDevice = nil
 	}
 
 	// 4. Tell the UI we are fully shut down
-	e.setState(StateDisconnected) // ⚪ Update UI
+	e.setState(StateDisconnected)
 
-	log.Println("✅ Disconnected. Network routes restored to normal.")
+	log.Println("✅ Disconnected. Network routes and DNS restored to normal.")
 	return nil
 }

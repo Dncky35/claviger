@@ -30,8 +30,8 @@ func EnrollFirstAdmin(db *sql.DB, req *ConnectionRequest, serverPublicIP string)
 
 	// 2. Save the Admin safely into the database as ACTIVE
 	_, err = db.Exec(`
-		INSERT INTO clients (id, name, public_key, ip_address, role_id, platform, device_id, status) 
-		VALUES (?, ?, ?, ?, 'admin', ?, ?, 'active')`,
+        INSERT INTO clients (id, name, public_key, ip_address, role_id, platform, device_id, status) 
+        VALUES (?, ?, ?, ?, 'admin', ?, ?, 'active')`,
 		clientID, req.Hostname, req.PublicKey, assignIP, req.Platform, req.DeviceID,
 	)
 	if err != nil {
@@ -70,7 +70,6 @@ func EnrollFirstAdmin(db *sql.DB, req *ConnectionRequest, serverPublicIP string)
 		wgPort = "51820"
 	}
 
-	// --- NEW: Check for Custom Domain with STRICT VALIDATION ---
 	// Clean up any hidden spaces or newlines from the DB or arguments
 	customEndpoint := strings.TrimSpace(storage.GetConfig(db, "vpn_endpoint"))
 	cleanServerIP := strings.TrimSpace(serverPublicIP)
@@ -84,34 +83,70 @@ func EnrollFirstAdmin(db *sql.DB, req *ConnectionRequest, serverPublicIP string)
 	if customEndpoint == "" {
 		return nil, fmt.Errorf("CRITICAL ERROR: Cannot generate connection token. The Server IP/Domain is completely empty")
 	}
-	// ------------------------------------
 
-	// 5. Construct and return the exact data the Client needs to connect!
+	// 🎯 ADAPTIVE HUB IP
+	hubIP := storage.GetConfig(db, "hub_ip")
+	if hubIP == "" {
+		hubIP = "10.8.0.1"
+	}
+
+	// Calculate the /24 Base Subnet dynamically (e.g., "10.8.0.1" -> "10.8.0.0/24")
+	baseSubnet := "10.8.0.0/24" // Safe fallback
+	lastDot := strings.LastIndex(hubIP, ".")
+	if lastDot != -1 {
+		baseSubnet = hubIP[:lastDot] + ".0/24"
+	}
+
+	// 🎯 ADAPTIVE DNS
+	dnsSetting := hubIP // AdGuard runs directly on the Hub IP!
+	if storage.GetConfig(db, "app_adguard_port") == "" {
+		dnsSetting = "1.1.1.1, 1.0.0.1" // AdGuard missing, use Cloudflare
+	}
+
+	// 6. Generate the Approval Token
 	approval := &ConnectionApproval{
 		Role:           "admin",
 		AssignedIP:     assignIP,
 		ServerPubKey:   serverPubKey,
 		ServerEndpoint: fmt.Sprintf("%s:%s", customEndpoint, wgPort),
+		DNS:            dnsSetting, // 🎯 Now dynamically uses the Hub IP
+		BaseSubnet:     baseSubnet, // 🎯 Now dynamically calculated
 	}
 
 	return approval, nil
 }
 
-// GetNextAvailableIP scans the database and finds the next empty 10.8.0.x address
+// GetNextAvailableIP scans the database and finds the next empty IP address in the Hub's subnet
 func GetNextAvailableIP(db *sql.DB) (string, error) {
-	// Start at 10.8.0.2 because .1 is the Claviger Hub
+	// 1. Fetch the Hub IP dynamically
+	hubIP := storage.GetConfig(db, "hub_ip")
+	if hubIP == "" {
+		hubIP = "10.8.0.1" // Safe fallback
+	}
+
+	// 2. Extract the base network prefix (e.g., "10.8.0.1" -> "10.8.0")
+	basePrefix := "10.8.0"
+	lastDot := strings.LastIndex(hubIP, ".")
+	if lastDot != -1 {
+		basePrefix = hubIP[:lastDot]
+	}
+
+	// 3. Start at .2 (because .1 is the Hub) and scan up to .254
 	for i := 2; i <= 254; i++ {
-		testIP := fmt.Sprintf("10.8.0.%d", i)
+		testIP := fmt.Sprintf("%s.%d", basePrefix, i)
 		var exists bool
+
 		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM clients WHERE ip_address = ?)", testIP).Scan(&exists)
 		if err != nil {
 			return "", err
 		}
+
 		if !exists {
-			return testIP, nil
+			return testIP, nil // Found an empty slot!
 		}
 	}
-	return "", fmt.Errorf("subnet full: no IP addresses available")
+
+	return "", fmt.Errorf("subnet %s.0/24 is full: no IP addresses available", basePrefix)
 }
 
 // EnrollStandardUser handles the UI registration flow for adding a new device
@@ -138,8 +173,8 @@ func EnrollStandardUser(db *sql.DB, req *ConnectionRequest, roleID string, serve
 
 	// 3. Save to Database as ACTIVE
 	_, err = db.Exec(`
-		INSERT INTO clients (id, name, public_key, ip_address, role_id, platform, device_id, status) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+        INSERT INTO clients (id, name, public_key, ip_address, role_id, platform, device_id, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
 		clientID, req.Hostname, req.PublicKey, assignIP, roleID, req.Platform, req.DeviceID,
 	)
 	if err != nil {
@@ -171,19 +206,38 @@ func EnrollStandardUser(db *sql.DB, req *ConnectionRequest, roleID string, serve
 		wgPort = "51820"
 	}
 
-	// --- NEW: Check for Custom Domain ---
 	customEndpoint := storage.GetConfig(db, "vpn_endpoint")
 	if customEndpoint == "" {
 		customEndpoint = serverPublicIP // Fallback to raw IP
 	}
-	// ------------------------------------
+
+	// 🎯 ADAPTIVE HUB IP
+	hubIP := storage.GetConfig(db, "hub_ip")
+	if hubIP == "" {
+		hubIP = "10.8.0.1"
+	}
+
+	// Calculate the /24 Base Subnet dynamically (e.g., "10.8.0.1" -> "10.8.0.0/24")
+	baseSubnet := "10.8.0.0/24" // Safe fallback
+	lastDot := strings.LastIndex(hubIP, ".")
+	if lastDot != -1 {
+		baseSubnet = hubIP[:lastDot] + ".0/24"
+	}
+
+	// 🎯 ADAPTIVE DNS
+	dnsSetting := hubIP // AdGuard runs directly on the Hub IP!
+	if storage.GetConfig(db, "app_adguard_port") == "" {
+		dnsSetting = "1.1.1.1, 1.0.0.1" // AdGuard missing, use Cloudflare
+	}
 
 	// 6. Generate the Approval Token
 	approval := &ConnectionApproval{
 		Role:           roleID,
 		AssignedIP:     assignIP,
 		ServerPubKey:   serverPubKey,
-		ServerEndpoint: fmt.Sprintf("%s:%s", customEndpoint, wgPort), // <-- Updated to use customEndpoint
+		ServerEndpoint: fmt.Sprintf("%s:%s", customEndpoint, wgPort),
+		DNS:            dnsSetting, // 🎯 Now dynamically uses the Hub IP
+		BaseSubnet:     baseSubnet, // 🎯 Now dynamically calculated
 	}
 
 	return approval, nil

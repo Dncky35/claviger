@@ -68,6 +68,8 @@ type ConnectionApproval struct {
 	AssignedIP     string `json:"assigned_ip"`
 	ServerPubKey   string `json:"server_public_key"`
 	ServerEndpoint string `json:"server_endpoint"`
+	DNS            string `json:"dns"`         // 🎯 NEW: e.g., "10.8.0.1" or "1.1.1.1"
+	BaseSubnet     string `json:"base_subnet"` // 🎯 NEW: e.g., "10.8.0.0/24" or "0.0.0.0/0"
 }
 
 // DecodeConnectionRequest takes the Base64 string from the user and turns it into a Go struct.
@@ -106,7 +108,7 @@ func EncodeConnectionApproval(approval *ConnectionApproval) (string, error) {
 		return "", fmt.Errorf("failed to encode approval token: %v", err)
 	}
 
-	// 3. Encode to Base64
+	// 3. Encode to Base64 so it can be easily copied/pasted
 	tokenString := base64.StdEncoding.EncodeToString(jsonData)
 	return tokenString, nil
 }

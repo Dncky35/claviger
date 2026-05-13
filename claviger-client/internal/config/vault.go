@@ -13,9 +13,11 @@ type ClientVault struct {
 	AssignedIP       string `json:"assigned_ip"`
 	ServerKey        string `json:"server_public_key"`
 	DeviceID         string `json:"device_id"`
-	ServerEndpoint   string `json:"server_endpoint"`    // The Server's IP:Port for the VPN tunnel
-	Status           string `json:"status"`             // "unregistered", "pending_approval", "active"
-	UseGlobalRouting bool   `json:"use_global_routing"` // true = 0.0.0.0/0 (All traffic), false = 10.8.0.0/24 (Split Tunnel)
+	ServerEndpoint   string `json:"server_endpoint"`
+	Status           string `json:"status"`
+	UseGlobalRouting bool   `json:"use_global_routing"`
+	DNS              string `json:"dns"`         // 🎯 NEW: From server (e.g., "10.8.0.1")
+	BaseSubnet       string `json:"base_subnet"` // 🎯 NEW: From server (e.g., "10.8.0.0/24")
 }
 
 // getVaultPath automatically finds the correct secure folder for Win/Mac/Linux
