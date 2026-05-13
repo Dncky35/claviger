@@ -33,7 +33,7 @@ var Catalog = map[string]AppManifest{
 		Description:      "The Master Gateway for SSL, subdomains, and routing.",
 		Icon:             "🌐",
 		HasCustomSetup:   false,
-		NeedsDynamicPort: false, // NPM MUST own ports 80, 443, and 81
+		NeedsDynamicPort: true, // NPM MUST own ports 80, 443, and 81
 		SetupPort:        0,
 		ComposeYAML: `
 version: '3.8'
