@@ -22,12 +22,20 @@ export function GetVault() {
   return window['go']['main']['App']['GetVault']();
 }
 
-export function LeaveNetwork() {
-  return window['go']['main']['App']['LeaveNetwork']();
-}
-
 export function ProcessApproval(arg1) {
   return window['go']['main']['App']['ProcessApproval'](arg1);
+}
+
+export function RemoveProfile(arg1) {
+  return window['go']['main']['App']['RemoveProfile'](arg1);
+}
+
+export function RenameProfile(arg1, arg2) {
+  return window['go']['main']['App']['RenameProfile'](arg1, arg2);
+}
+
+export function SetActiveProfile(arg1) {
+  return window['go']['main']['App']['SetActiveProfile'](arg1);
 }
 
 export function ToggleGlobalRouting(arg1) {

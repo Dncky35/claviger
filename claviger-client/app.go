@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 
 	"claviger-client/internal/auth"
 	"claviger-client/internal/config"
@@ -29,7 +30,9 @@ func NewApp() *App {
 	v, err := config.Load()
 	if err != nil {
 		log.Printf("⚠️ Could not load vault, creating fresh instance: %v", err)
-		v = &config.ClientVault{Status: "unregistered"}
+		v = &config.ClientVault{
+			Profiles: make(map[string]*config.ServerProfile),
+		}
 	}
 
 	return &App{
@@ -42,19 +45,12 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// ---------------------------------------------------------
 	// THE EVENT EMITTER HOOK
-	// We pass a callback to the Engine. Whenever the Watchdog changes
-	// the connection state, this instantly fires a Wails Event to JavaScript!
-	// ---------------------------------------------------------
 	a.engine.SetStateCallback(func(newState string) {
 		wailsRuntime.EventsEmit(ctx, "vpn-state-change", newState)
 	})
 
-	// ---------------------------------------------------------
 	// SYSTEM TRAY BOOT
-	// Boot the tray in the background so it survives window closures
-	// ---------------------------------------------------------
 	go systray.Run(a.onTrayReady, a.onTrayExit)
 }
 
@@ -62,27 +58,21 @@ func (a *App) startup(ctx context.Context) {
 // SYSTEM TRAY MANAGEMENT
 // =====================================================================
 
-// onTrayReady builds the right-click menu for the taskbar icon
 func (a *App) onTrayReady() {
 	systray.SetIcon(trayIcon) // Uses the embedded png from main.go
 	systray.SetTitle("Claviger")
 	systray.SetTooltip("Claviger Client")
 
-	// 👇 Delete the SetOnClick block entirely!
-
 	mShow := systray.AddMenuItem("Show Dashboard", "Open the Claviger interface")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit Claviger", "Completely shut down the VPN and exit")
 
-	// Listen for clicks in the background
 	go func() {
 		for {
 			select {
 			case <-mShow.ClickedCh:
-				// Bring the UI back to the screen
 				wailsRuntime.WindowShow(a.ctx)
 			case <-mQuit.ClickedCh:
-				// Ensure we disconnect gracefully before quitting
 				a.engine.Disconnect()
 				systray.Quit()
 				wailsRuntime.Quit(a.ctx)
@@ -92,29 +82,35 @@ func (a *App) onTrayReady() {
 	}()
 }
 
-// onTrayExit handles cleanup if the tray closes natively
 func (a *App) onTrayExit() {
 	// Background cleanup
 }
 
 // =====================================================================
-// EXPOSED FRONTEND FUNCTIONS
+// EXPOSED FRONTEND FUNCTIONS (Tunnel Controls)
 // =====================================================================
 
 // GetVault returns the current saved state so the UI knows what screen to show
 func (a *App) GetVault() *config.ClientVault {
 	if a.vault == nil {
-		return &config.ClientVault{Status: "unregistered"}
+		return &config.ClientVault{Profiles: make(map[string]*config.ServerProfile)}
 	}
 	return a.vault
 }
 
-// Connect turns the VPN tunnel ON
+// Connect turns the VPN tunnel ON using the currently active profile
 func (a *App) Connect() error {
-	if a.vault == nil || a.vault.Status != "active" {
-		return fmt.Errorf("device is not approved yet")
+	if a.vault == nil || a.vault.ActiveProfileID == "" {
+		return fmt.Errorf("no server selected")
 	}
-	return a.engine.Connect(a.vault)
+
+	profile, exists := a.vault.Profiles[a.vault.ActiveProfileID]
+	if !exists || profile.Status != "active" {
+		return fmt.Errorf("selected server is not approved yet")
+	}
+
+	// 🎯 Note: We now pass the specific PROFILE and the GLOBAL ROUTING flag
+	return a.engine.Connect(profile, a.vault.UseGlobalRouting)
 }
 
 // Disconnect turns the VPN tunnel OFF
@@ -123,7 +119,6 @@ func (a *App) Disconnect() error {
 }
 
 // GetTunnelState tells the UI exactly what the engine is doing
-// Returns: "disconnected", "connecting", "verifying", "secured", or "reconnecting"
 func (a *App) GetTunnelState() string {
 	return a.engine.GetState()
 }
@@ -133,29 +128,48 @@ func (a *App) ToggleGlobalRouting(isEnabled bool) error {
 	if a.vault == nil {
 		return fmt.Errorf("vault is not initialized")
 	}
-
 	a.vault.UseGlobalRouting = isEnabled
-
-	// Save immediately so it survives app restarts
 	if err := config.Save(a.vault); err != nil {
 		return fmt.Errorf("failed to save routing preference: %v", err)
 	}
-
-	log.Printf("🌐 Global Routing preference updated: %v", isEnabled)
 	return nil
 }
 
-// LeaveNetwork disconnects the VPN, wipes the local keys, and resets the app
-func (a *App) LeaveNetwork() error {
-	// 1. Ensure the tunnel is off
-	a.Disconnect()
+// =====================================================================
+// MULTI-SERVER MANAGEMENT (NEW FRONTEND CONTROLS)
+// =====================================================================
 
-	// 2. Wipe the vault in memory
-	a.vault = &config.ClientVault{
-		Status: "unregistered",
+// SetActiveProfile switches the currently selected server
+func (a *App) SetActiveProfile(profileID string) error {
+	if _, exists := a.vault.Profiles[profileID]; !exists {
+		return fmt.Errorf("profile does not exist")
 	}
 
-	// 3. Save the empty vault to the hard drive
+	// Must disconnect from the current server before switching!
+	a.Disconnect()
+
+	a.vault.ActiveProfileID = profileID
+	return config.Save(a.vault)
+}
+
+// RenameProfile allows the user to give a server a custom name
+func (a *App) RenameProfile(profileID, newName string) error {
+	profile, exists := a.vault.Profiles[profileID]
+	if !exists {
+		return fmt.Errorf("profile does not exist")
+	}
+	profile.Name = newName
+	return config.Save(a.vault)
+}
+
+// RemoveProfile deletes a server from the vault completely
+func (a *App) RemoveProfile(profileID string) error {
+	if a.vault.ActiveProfileID == profileID {
+		a.Disconnect()               // Disconnect if they are deleting the active server
+		a.vault.ActiveProfileID = "" // Clear selection
+	}
+
+	delete(a.vault.Profiles, profileID)
 	return config.Save(a.vault)
 }
 
@@ -163,7 +177,7 @@ func (a *App) LeaveNetwork() error {
 // THE ZERO-TRUST PROTOCOL (PASSPORT & VISA)
 // =====================================================================
 
-// GenerateRequest creates the local keys and outputs the "Passport" token
+// GenerateRequest creates the local keys and outputs the "Passport" token for a NEW server
 func (a *App) GenerateRequest() (string, error) {
 	privKey, pubKey, err := vpn.GenerateKeys()
 	if err != nil {
@@ -180,35 +194,55 @@ func (a *App) GenerateRequest() (string, error) {
 		a.vault.DeviceID = uuid.New().String()
 	}
 
-	// 2. Save the Private Key, Public Key, and Device ID to the Vault immediately
-	a.vault.PrivateKey = privKey
-	a.vault.PublicKey = pubKey
-	a.vault.Status = "pending_approval"
+	// 2. 🎯 CREATE A NEW PROFILE IN THE MAP
+	newProfileID := uuid.New().String()
+	newProfile := &config.ServerProfile{
+		ID:         newProfileID,
+		Name:       "Pending Server...",
+		PrivateKey: privKey,
+		PublicKey:  pubKey,
+		Status:     "pending_approval",
+	}
+
+	if a.vault.Profiles == nil {
+		a.vault.Profiles = make(map[string]*config.ServerProfile)
+	}
+
+	a.vault.Profiles[newProfileID] = newProfile
+	a.vault.ActiveProfileID = newProfileID // Auto-select the one we are enrolling
 
 	if err := config.Save(a.vault); err != nil {
 		return "", fmt.Errorf("failed to save vault: %v", err)
 	}
 
-	// 3. Call the Auth package to build the token using the real, persistent UUID
+	// 3. Call the Auth package to build the token
 	return auth.GenerateRequestToken(pubKey, hostname, runtime.GOOS, a.vault.DeviceID)
 }
 
-// ProcessApproval catches the "Visa" from the Admin and updates the Vault
+// ProcessApproval catches the "Visa" from the Admin and activates the pending profile
 func (a *App) ProcessApproval(tokenString string) error {
 	approval, err := auth.DecodeApprovalToken(tokenString)
 	if err != nil {
 		return err
 	}
 
-	// Update the Vault with the Server's map
-	a.vault.AssignedIP = approval.AssignedIP
-	a.vault.ServerKey = approval.ServerPubKey
-	a.vault.ServerEndpoint = approval.ServerEndpoint
-	a.vault.Status = "active"
+	// 1. Find the profile we just generated the request for
+	profile, exists := a.vault.Profiles[a.vault.ActiveProfileID]
+	if !exists {
+		return fmt.Errorf("could not find the pending profile to approve")
+	}
 
-	// 🎯 NEW: Capture the network identity provided by the server
-	a.vault.DNS = approval.DNS
-	a.vault.BaseSubnet = approval.BaseSubnet
+	// 2. Update the Profile with the Server's map
+	profile.AssignedIP = approval.AssignedIP
+	profile.ServerKey = approval.ServerPubKey
+	profile.ServerEndpoint = approval.ServerEndpoint
+	profile.DNS = approval.DNS
+	profile.BaseSubnet = approval.BaseSubnet
+	profile.Status = "active"
+
+	// Dynamically name the server based on its IP/Domain!
+	serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
+	profile.Name = fmt.Sprintf("Claviger Hub (%s)", serverIP)
 
 	if err := config.Save(a.vault); err != nil {
 		return fmt.Errorf("failed to save vault: %v", err)

@@ -12,8 +12,12 @@ export function GetTunnelState():Promise<string>;
 
 export function GetVault():Promise<config.ClientVault>;
 
-export function LeaveNetwork():Promise<void>;
-
 export function ProcessApproval(arg1:string):Promise<void>;
+
+export function RemoveProfile(arg1:string):Promise<void>;
+
+export function RenameProfile(arg1:string,arg2:string):Promise<void>;
+
+export function SetActiveProfile(arg1:string):Promise<void>;
 
 export function ToggleGlobalRouting(arg1:boolean):Promise<void>;

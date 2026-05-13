@@ -190,8 +190,6 @@ func (e *Engine) startWatchdog() {
 // ==========================================
 
 // assignOSTunnelIP tells the operating system how to route traffic into our memory tunnel
-// assignOSTunnelIP tells the operating system how to route traffic into our memory tunnel
-// assignOSTunnelIP tells the operating system how to route traffic into our memory tunnel
 func assignOSTunnelIP(interfaceName, assignedIP, dnsSetting, baseSubnet string, useGlobalRouting bool, serverEndpoint string) error {
 	// 🎯 Failsafe for older vaults
 	if baseSubnet == "" {
@@ -366,20 +364,22 @@ func (e *Engine) cleanupGlobalRoutes() {
 // ==========================================
 
 // Connect creates a virtual interface and configures WireGuard entirely in memory
-func (e *Engine) Connect(vault *config.ClientVault) error {
+// 🎯 UPDATED: Now accepts a specific ServerProfile and routing preference!
+func (e *Engine) Connect(profile *config.ServerProfile, useGlobalRouting bool) error {
 	if e.GetState() != StateDisconnected {
 		return fmt.Errorf("VPN is already connected or attempting to connect")
 	}
 
 	e.setState(StateConnecting)
 
-	log.Printf("🚀 Starting Embedded Claviger Engine...")
+	// Log the name of the server we are connecting to
+	log.Printf("🚀 Starting Embedded Claviger Engine for: %s...", profile.Name)
 
-	// 🎯 THE FIX: Resolve the domain to a raw IP address before doing anything!
-	udpAddr, err := net.ResolveUDPAddr("udp", vault.ServerEndpoint)
+	// 🎯 Resolve the domain to a raw IP address using the PROFILE's endpoint
+	udpAddr, err := net.ResolveUDPAddr("udp", profile.ServerEndpoint)
 	if err != nil {
 		e.setState(StateDisconnected)
-		return fmt.Errorf("failed to resolve server endpoint (%s): %v", vault.ServerEndpoint, err)
+		return fmt.Errorf("failed to resolve server endpoint (%s): %v", profile.ServerEndpoint, err)
 	}
 	resolvedEndpoint := udpAddr.String()   // e.g., "46.225.66.35:51820"
 	e.activeServerIP = udpAddr.IP.String() // Save the raw IP so the sweeper can delete the route later
@@ -389,7 +389,7 @@ func (e *Engine) Connect(vault *config.ClientVault) error {
 		interfaceName = "utun"
 	}
 
-	tunDevice, err := tun.CreateTUN(interfaceName, 1280) //device.DefaultMTU)
+	tunDevice, err := tun.CreateTUN(interfaceName, 1280) // device.DefaultMTU
 	if err != nil {
 		e.setState(StateDisconnected)
 		return fmt.Errorf("failed to create TUN device: %v", err)
@@ -398,14 +398,20 @@ func (e *Engine) Connect(vault *config.ClientVault) error {
 	logger := device.NewLogger(device.LogLevelVerbose, "claviger: ")
 	e.wgDevice = device.NewDevice(tunDevice, conn.NewDefaultBind(), logger)
 
-	privKey, _ := wgtypes.ParseKey(vault.PrivateKey)
-	pubKey, _ := wgtypes.ParseKey(vault.ServerKey)
+	// 🎯 Parse keys from the PROFILE
+	privKey, _ := wgtypes.ParseKey(profile.PrivateKey)
+	pubKey, _ := wgtypes.ParseKey(profile.ServerKey)
 
 	var allowedIPsBlock string
-	if vault.UseGlobalRouting {
+	if useGlobalRouting {
 		allowedIPsBlock = "allowed_ip=0.0.0.0/0\nallowed_ip=::/0"
 	} else {
-		allowedIPsBlock = "allowed_ip=10.8.0.0/24"
+		// 🎯 DYNAMIC SPLIT TUNNEL: Use the profile's BaseSubnet instead of hardcoding!
+		subnet := profile.BaseSubnet
+		if subnet == "" {
+			subnet = "10.8.0.0/24" // Safe fallback
+		}
+		allowedIPsBlock = fmt.Sprintf("allowed_ip=%s", subnet)
 	}
 
 	// 🎯 USE THE RESOLVED IP HERE
@@ -432,8 +438,8 @@ persistent_keepalive_interval=25
 
 	realInterfaceName, _ := tunDevice.Name()
 
-	// 🎯 PASS THE RESOLVED IP TO THE ROUTING ENGINE
-	if err := assignOSTunnelIP(realInterfaceName, vault.AssignedIP, vault.DNS, vault.BaseSubnet, vault.UseGlobalRouting, resolvedEndpoint); err != nil {
+	// 🎯 PASS THE PROFILE DATA TO THE ROUTING ENGINE
+	if err := assignOSTunnelIP(realInterfaceName, profile.AssignedIP, profile.DNS, profile.BaseSubnet, useGlobalRouting, resolvedEndpoint); err != nil {
 		e.wgDevice.Close()
 		e.setState(StateDisconnected)
 		return fmt.Errorf("failed to route OS traffic: %v", err)
