@@ -168,7 +168,10 @@ func RunStart() {
 	mux := http.NewServeMux()
 
 	// --- UNPROTECTED ROUTES ---
-	mux.HandleFunc("/api/client/status", api.HandleClientStatus(db))
+	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("pong"))
+	})
 
 	// --- PROTECTED ROUTES (Requires allow_hub = 1) ---
 	mux.HandleFunc("/api/status", api.HubAccessMiddleware(db, api.HandleStatus()))

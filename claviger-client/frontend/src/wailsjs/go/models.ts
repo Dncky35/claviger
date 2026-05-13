@@ -9,6 +9,8 @@ export namespace config {
 	    server_endpoint: string;
 	    status: string;
 	    use_global_routing: boolean;
+	    dns: string;
+	    base_subnet: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ClientVault(source);
@@ -24,6 +26,8 @@ export namespace config {
 	        this.server_endpoint = source["server_endpoint"];
 	        this.status = source["status"];
 	        this.use_global_routing = source["use_global_routing"];
+	        this.dns = source["dns"];
+	        this.base_subnet = source["base_subnet"];
 	    }
 	}
 

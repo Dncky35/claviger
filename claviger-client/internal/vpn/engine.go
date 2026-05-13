@@ -127,13 +127,13 @@ func (e *Engine) startWatchdog() {
 	e.watchdogCtx, e.watchdogCancel = context.WithCancel(context.Background())
 
 	go func(ctx context.Context) {
-		ticker := time.NewTicker(5 * time.Second) // Check every 5 seconds
+		// Start fast (every 2 seconds) to catch the initial connection instantly
+		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ctx.Done():
-				// User clicked Disconnect. Kill the watchdog gracefully.
 				log.Println("🛑 Watchdog loop terminated.")
 				return
 
@@ -146,25 +146,38 @@ func (e *Engine) startWatchdog() {
 				timeSince := time.Since(lastHandshake)
 				currentState := e.GetState()
 
-				// STATE MACHINE LOGIC
+				// 🎯 RELAXED STATE MACHINE LOGIC (Handshake Only)
 				switch currentState {
 				case StateVerifying:
-					// Handshake success! (Unix() > 0 filters out the year 1970 zero-value)
-					if lastHandshake.Unix() > 0 && timeSince < 45*time.Second {
+					// As soon as we get our FIRST handshake, we are Secured!
+					if lastHandshake.Unix() > 0 && timeSince < 120*time.Second {
+						log.Println("✅ First Handshake received! Tunnel is Secured.")
 						e.setState(StateSecured)
-					} else if timeSince > 15*time.Second {
-						// 15 seconds with no first handshake = Server unreachable
+
+						// Slow down the ticker to save CPU power while connected
+						ticker.Reset(30 * time.Second)
+					} else if timeSince > 15*time.Second && lastHandshake.Unix() == 0 {
+						// 15 seconds passed and NO first handshake ever arrived
 						e.setState(StateReconnecting)
 					}
+
 				case StateSecured:
-					// We missed almost two keep-alives (25s * 2). The server is gone!
-					if timeSince > 55*time.Second {
+					// WireGuard automatically handshakes every ~2 minutes.
+					// If we go 3 full minutes (180s) without a handshake, the server is genuinely offline.
+					if timeSince > 180*time.Second {
+						log.Println("⚠️ Watchdog: No handshake for 3 minutes. Server might be down.")
 						e.setState(StateReconnecting)
+
+						// Speed the ticker back up to quickly detect when it comes back online
+						ticker.Reset(5 * time.Second)
 					}
+
 				case StateReconnecting:
-					// The connection healed itself! Handshake resumed.
-					if lastHandshake.Unix() > 0 && timeSince < 45*time.Second {
+					// If the handshake magically updates, we are back online!
+					if lastHandshake.Unix() > 0 && timeSince < 60*time.Second {
+						log.Println("✅ Watchdog: Tunnel recovered!")
 						e.setState(StateSecured)
+						ticker.Reset(30 * time.Second)
 					}
 				}
 			}
@@ -178,7 +191,14 @@ func (e *Engine) startWatchdog() {
 
 // assignOSTunnelIP tells the operating system how to route traffic into our memory tunnel
 // assignOSTunnelIP tells the operating system how to route traffic into our memory tunnel
+// assignOSTunnelIP tells the operating system how to route traffic into our memory tunnel
 func assignOSTunnelIP(interfaceName, assignedIP, dnsSetting, baseSubnet string, useGlobalRouting bool, serverEndpoint string) error {
+	// 🎯 Failsafe for older vaults
+	if baseSubnet == "" {
+		baseSubnet = "10.8.0.0/24"
+		log.Println("⚠️ Warning: BaseSubnet was empty, falling back to 10.8.0.0/24")
+	}
+
 	var cmds []*exec.Cmd
 	serverIP := strings.Split(serverEndpoint, ":")[0]
 
@@ -189,13 +209,14 @@ func assignOSTunnelIP(interfaceName, assignedIP, dnsSetting, baseSubnet string, 
 		primaryDNS = "1.1.1.1" // Ultimate failsafe
 	}
 
+	// primaryDNS := "1.1.1.1" // 🎯 FIXED: Use a hardcoded DNS to prevent OS command injection from malicious server responses
+
 	switch runtime.GOOS {
 	case "linux":
 		cmds = append(cmds, exec.Command("ip", "link", "set", "dev", interfaceName, "up"))
 		cmds = append(cmds, exec.Command("ip", "address", "add", assignedIP+"/24", "dev", interfaceName))
 
 		// 🎯 DYNAMIC DNS (Linux systemd-resolved)
-		// This tells Linux to send DNS queries into the tunnel
 		cmds = append(cmds, exec.Command("resolvectl", "dns", interfaceName, primaryDNS))
 		cmds = append(cmds, exec.Command("resolvectl", "domain", interfaceName, "~."))
 
@@ -218,6 +239,11 @@ func assignOSTunnelIP(interfaceName, assignedIP, dnsSetting, baseSubnet string, 
 	case "windows":
 		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "address",
 			fmt.Sprintf("name=\"%s\"", interfaceName), "static", assignedIP, "255.255.255.0", "none"))
+
+		// 🎯 THE FIX: Force Windows OS to respect the 1280 MTU!
+		// This prevents the "fast ping, slow web page" TCP drop issue.
+		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "subinterface",
+			fmt.Sprintf("\"%s\"", interfaceName), "mtu=1280", "store=active"))
 
 		// 🎯 METRIC PRIORITY (Force Windows to prefer the VPN)
 		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "interface",
@@ -262,8 +288,6 @@ func assignOSTunnelIP(interfaceName, assignedIP, dnsSetting, baseSubnet string, 
 			// 🎯 DYNAMIC SPLIT TUNNEL (macOS)
 			cmds = append(cmds, exec.Command("route", "-n", "add", "-net", baseSubnet, "-interface", interfaceName))
 		}
-		// Note: macOS DNS is best handled via the 'scutil' registry API rather than simple bash commands.
-		// For now, the routing fixes the infinite loops!
 
 	default:
 		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
@@ -342,7 +366,6 @@ func (e *Engine) cleanupGlobalRoutes() {
 // ==========================================
 
 // Connect creates a virtual interface and configures WireGuard entirely in memory
-// Connect creates a virtual interface and configures WireGuard entirely in memory
 func (e *Engine) Connect(vault *config.ClientVault) error {
 	if e.GetState() != StateDisconnected {
 		return fmt.Errorf("VPN is already connected or attempting to connect")
@@ -366,7 +389,7 @@ func (e *Engine) Connect(vault *config.ClientVault) error {
 		interfaceName = "utun"
 	}
 
-	tunDevice, err := tun.CreateTUN(interfaceName, device.DefaultMTU)
+	tunDevice, err := tun.CreateTUN(interfaceName, 1280) //device.DefaultMTU)
 	if err != nil {
 		e.setState(StateDisconnected)
 		return fmt.Errorf("failed to create TUN device: %v", err)

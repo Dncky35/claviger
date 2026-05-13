@@ -68,6 +68,8 @@ func (a *App) onTrayReady() {
 	systray.SetTitle("Claviger")
 	systray.SetTooltip("Claviger Client")
 
+	// 👇 Delete the SetOnClick block entirely!
+
 	mShow := systray.AddMenuItem("Show Dashboard", "Open the Claviger interface")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit Claviger", "Completely shut down the VPN and exit")
