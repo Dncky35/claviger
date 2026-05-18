@@ -375,6 +375,9 @@ func (e *Engine) Connect(profile *config.ServerProfile, useGlobalRouting bool) e
 	// Log the name of the server we are connecting to
 	log.Printf("🚀 Starting Embedded Claviger Engine for: %s...", profile.Name)
 
+	log.Println("🧹 Running Pre-Flight Sweeper to destroy any Zombie Adapters...")
+	e.cleanupGlobalRoutes()
+
 	// 🎯 Resolve the domain to a raw IP address using the PROFILE's endpoint
 	udpAddr, err := net.ResolveUDPAddr("udp", profile.ServerEndpoint)
 	if err != nil {

@@ -1,45 +1,50 @@
 package main
 
 import (
-	"embed"
+	"fmt"
 	"log"
+	"os"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"claviger-client/internal/cli"
+	"claviger-client/internal/config"
 )
 
-//go:embed all:frontend/src
-var assets embed.FS
-
-// 👇 THIS IS THE MISSING PIECE! 👇
-//
-//go:embed build/appicon.ico
-var trayIcon []byte
-
 func main() {
-	// Create an instance of the app structure
-	app := NewApp()
-
-	// Create application with options
-	err := wails.Run(&options.App{
-		Title:             "Claviger Client",
-		Width:             900, // 👈 Wide desktop layout
-		Height:            550, // 👈 Slightly shorter so it looks like a sleek dashboard
-		MinWidth:          800, // 👈 Prevents the user from squishing the UI
-		MinHeight:         500,
-		HideWindowOnClose: true,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
-		},
-		BackgroundColour: &options.RGBA{R: 15, G: 23, B: 42, A: 1}, // Tailwind slate-900
-		OnStartup:        app.startup,
-		Bind: []interface{}{
-			app, // This binds all our app.go functions to JavaScript!
-		},
-	})
-
+	// 1. Load the Secure Vault
+	vault, err := config.Load()
 	if err != nil {
-		log.Fatal("Error starting Claviger Client:", err)
+		log.Fatalf("❌ Failed to load vault: %v", err)
+	}
+
+	// 2. Parse basic arguments
+	if len(os.Args) < 2 {
+		cli.PrintHelp()
+		os.Exit(1)
+	}
+
+	command := os.Args[1]
+
+	// 3. Command Router
+	switch command {
+	case "generate":
+		cli.HandleGenerate(vault)
+	case "approve":
+		if len(os.Args) < 3 {
+			log.Fatalf("❌ Usage: claviger approve <visa_token>")
+		}
+		cli.HandleApprove(vault, os.Args[2])
+	case "list":
+		cli.HandleList(vault)
+	case "remove":
+		if len(os.Args) < 3 {
+			log.Fatalf("❌ Usage: claviger remove <profile_id>")
+		}
+		cli.HandleRemove(vault, os.Args[2])
+	case "connect":
+		// Pass everything after "connect" to the handler so it can parse IDs and flags
+		cli.HandleConnect(vault, os.Args[2:])
+	default:
+		fmt.Printf("❌ Unknown command: %s\n", command)
+		cli.PrintHelp()
 	}
 }
