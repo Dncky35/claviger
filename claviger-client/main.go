@@ -7,6 +7,7 @@ import (
 
 	"claviger-client/internal/cli"
 	"claviger-client/internal/config"
+	"claviger-client/internal/gui" // 🎯 Import our new GUI package
 )
 
 func main() {
@@ -16,15 +17,15 @@ func main() {
 		log.Fatalf("❌ Failed to load vault: %v", err)
 	}
 
-	// 2. Parse basic arguments
-	if len(os.Args) < 2 {
-		cli.PrintHelp()
-		os.Exit(1)
+	// 🎯 2. HYBRID LAUNCHER: If no commands are passed, launch the GUI!
+	if len(os.Args) == 1 {
+		gui.Run(vault)
+		return // Exit when the GUI is closed
 	}
 
+	// 3. Command Router (For Headless CLI)
 	command := os.Args[1]
 
-	// 3. Command Router
 	switch command {
 	case "generate":
 		cli.HandleGenerate(vault)
@@ -41,7 +42,6 @@ func main() {
 		}
 		cli.HandleRemove(vault, os.Args[2])
 	case "connect":
-		// Pass everything after "connect" to the handler so it can parse IDs and flags
 		cli.HandleConnect(vault, os.Args[2:])
 	default:
 		fmt.Printf("❌ Unknown command: %s\n", command)

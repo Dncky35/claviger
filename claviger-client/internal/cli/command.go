@@ -17,7 +17,7 @@ import (
 )
 
 func PrintHelp() {
-	fmt.Println(`
+	fmt.Print(`
 🛡️  Claviger Zero Trust Engine (Headless CLI)
 
 Usage:
@@ -162,15 +162,16 @@ func HandleConnect(vault *config.ClientVault, args []string) {
 
 	// Scan the arguments for routing flags or a specific server ID
 	for _, arg := range args {
-		if arg == "--global" {
+		switch arg {
+		case "--global":
 			vault.UseGlobalRouting = true
 			fmt.Println("🌐 Mode: GLOBAL ROUTING (All traffic routed through VPN)")
 			config.Save(vault) // Save their preference for next time
-		} else if arg == "--split" {
+		case "--split":
 			vault.UseGlobalRouting = false
 			fmt.Println("🌗 Mode: SPLIT TUNNEL (Only internal traffic routed through VPN)")
 			config.Save(vault)
-		} else {
+		default:
 			targetID = arg // If it's not a flag, assume it's a Server ID
 		}
 	}
