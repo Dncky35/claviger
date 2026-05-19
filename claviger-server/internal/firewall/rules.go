@@ -78,9 +78,9 @@ func SetupFirewall() {
 	}
 
 	cmds := [][]string{
-		{"ufw", "allow", "51820/udp"},                                 // Allow WireGuard port
-		{"ufw", "allow", "in", "on", "wg0", "to", "any"},              // Allow traffic from wg0 interface
-		{"ufw", "route", "allow", "from", "10.8.0.0/24", "to", "any"}, // Allow VPN subnet to route
+		{"ufw", "allow", "51820/udp"},                                  // Allow WireGuard port
+		{"ufw", "allow", "in", "on", "wg0", "to", "any"},               // Allow traffic from wg0 interface
+		{"ufw", "allow", "in", "on", "wg0", "to", "any", "port", "22"}, // Allow VPN subnet to route
 	}
 
 	for _, args := range cmds {
@@ -99,7 +99,7 @@ func TeardownFirewall() {
 	cmds := [][]string{
 		{"ufw", "delete", "allow", "51820/udp"},
 		{"ufw", "delete", "allow", "in", "on", "wg0", "to", "any"},
-		{"ufw", "route", "delete", "allow", "from", "10.8.0.0/24", "to", "any"},
+		{"ufw", "delete", "allow", "in", "on", "wg0", "to", "any", "port", "22"},
 	}
 
 	for _, args := range cmds {

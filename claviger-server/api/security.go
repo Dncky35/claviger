@@ -1,7 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"os/exec"
 	"regexp"
@@ -37,9 +40,9 @@ func HandleSecurityStats(w http.ResponseWriter, r *http.Request) {
 
 	out, err := exec.Command("ufw", "status").Output()
 
-	hasSSH := false
-	hasWeb := false
-	hasDB := false
+	hasPublicSSH := false
+	hasPublicWeb := false
+	hasPublicDB := false
 
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
@@ -83,16 +86,30 @@ func HandleSecurityStats(w http.ResponseWriter, r *http.Request) {
 							From:   fromIP,
 						})
 
-						// --- SCANNER LOGIC ---
-						if action == "ALLOW" && (fromIP == "Anywhere" || fromIP == "Anywhere (v6)" || fromIP == "0.0.0.0/0") {
-							if strings.Contains(toPort, "22") {
-								hasSSH = true
-							}
-							if strings.Contains(toPort, "80") || strings.Contains(toPort, "443") {
-								hasWeb = true
-							}
-							if strings.Contains(toPort, "3306") || strings.Contains(toPort, "5432") || strings.Contains(toPort, "6379") {
-								hasDB = true
+						// 🎯 INTERFACE FILTER CHECK
+						// If the rule is explicitly locked down to a VPN or overlay interface,
+						// it is safe! We will ignore it for the public vulnerability checks.
+						toPortLower := strings.ToLower(toPort)
+						isProtectedByInterface := strings.Contains(toPortLower, "on wg") ||
+							strings.Contains(toPortLower, "on tailscale") ||
+							strings.Contains(toPortLower, "on tun") ||
+							strings.Contains(toPortLower, "on zt")
+
+						// --- SMART SCANNER LOGIC ---
+						if action == "ALLOW" && !isProtectedByInterface {
+							isPublicOrigin := fromIP == "Anywhere" || fromIP == "Anywhere (v6)" || fromIP == "0.0.0.0/0" || fromIP == "::/0"
+
+							if isPublicOrigin {
+								// Check both default SSH (22) and your custom deployment port (2278)
+								if strings.Contains(toPortLower, "22") || strings.Contains(toPortLower, "2278") {
+									hasPublicSSH = true
+								}
+								if strings.Contains(toPortLower, "80") || strings.Contains(toPortLower, "443") {
+									hasPublicWeb = true
+								}
+								if strings.Contains(toPortLower, "3306") || strings.Contains(toPortLower, "5432") || strings.Contains(toPortLower, "6379") {
+									hasPublicDB = true
+								}
 							}
 						}
 					}
@@ -101,7 +118,7 @@ func HandleSecurityStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// --- GENERATE INSIGHTS ---
+	// --- GENERATE SMART INSIGHTS ---
 	if stats.UFWStatus != "active" {
 		stats.Insights = append(stats.Insights, Insight{
 			Level:   "critical",
@@ -109,34 +126,34 @@ func HandleSecurityStats(w http.ResponseWriter, r *http.Request) {
 			Message: "Your firewall is inactive. All ports are currently exposed to the internet. Enable UFW immediately.",
 		})
 	} else {
-		if hasSSH {
+		if hasPublicSSH {
 			stats.Insights = append(stats.Insights, Insight{
 				Level:   "critical",
 				Title:   "Public SSH Exposed",
-				Message: "Port 22 is open to the world. To prevent bot brute-force attacks, delete this rule and use your Claviger VPN subnet (10.8.0.0/24) to connect via SSH.",
+				Message: "SSH access is wide open to the public internet. To prevent automated brute-force attacks, delete this public rule and restrict access exclusively to your Claviger/WireGuard interface.",
 			})
 		}
-		if hasWeb {
+		if hasPublicWeb {
 			stats.Insights = append(stats.Insights, Insight{
 				Level:   "warning",
 				Title:   "Public Web Traffic",
-				Message: "Ports 80/443 are open to everywhere. Consider using a Reverse Proxy or CDN (like Cloudflare, Fastly, or AWS) and restricting these ports to only allow traffic from their specific IP ranges.",
+				Message: "Ports 80/443 are open to everywhere. If you are using a reverse proxy or CDN like Cloudflare, make sure to restrict these ports to only accept Cloudflare's edge IP addresses.",
 			})
 		}
-		if hasDB {
+		if hasPublicDB {
 			stats.Insights = append(stats.Insights, Insight{
 				Level:   "critical",
 				Title:   "Database Exposed",
-				Message: "A database port (MySQL, Postgres, or Redis) is exposed to the public internet. Restrict this to localhost or your VPN subnet immediately.",
+				Message: "A database port (MySQL, Postgres, or Redis) is exposed to the public internet. Restrict this to localhost or your internal VPN interfaces immediately.",
 			})
 		}
 
-		// If they have a perfect setup!
+		// If they have a perfect, completely isolated configuration!
 		if len(stats.Insights) == 0 {
 			stats.Insights = append(stats.Insights, Insight{
 				Level:   "info",
 				Title:   "Zero Trust Aligned",
-				Message: "Your firewall rules look solid. No obvious external misconfigurations detected.",
+				Message: "Your firewall looks pristine. Administrative ports are isolated within your virtual overlay interfaces.",
 			})
 		}
 	}
@@ -151,7 +168,7 @@ type SecurityActionReq struct {
 	RuleAction string `json:"rule_action"` // "ALLOW" or "DENY"
 }
 
-// HandleSecurityAction processes POST requests to modify the firewall
+// HandleSecurityAction processes POST requests to modify the firewall safely.
 func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -160,12 +177,12 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 
 	var req SecurityActionReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	// --- SECURITY FIX: Block Command Injection ---
-	// Only allow numbers, or numbers followed by /tcp or /udp
+	// --- SECURITY FIX: Validate Port Format & Prevent Command Injection ---
+	// Validates pure numbers (22) or numbers with protocols (80/tcp, 51820/udp)
 	matched, _ := regexp.MatchString(`^[0-9]+(/[a-z]+)?$`, req.Port)
 	if (req.Action == "add" || req.Action == "delete") && !matched {
 		http.Error(w, "Invalid port format rejected for security reasons", http.StatusBadRequest)
@@ -176,35 +193,75 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 
 	switch req.Action {
 	case "enable":
-		// Automatically allow standard required ports
-		exec.Command("ufw", "allow", "22/tcp").Run()
-		exec.Command("ufw", "allow", "51820/udp").Run()
+		log.Println("🛡️ Enabling UFW with isolated Zero-Trust baseline rules...")
 
-		// THE FIX: Explicitly trust all internal VPN traffic so the Hub never gets blocked!
-		exec.Command("ufw", "allow", "in", "on", "wg0").Run()
+		// 1. Keep the public outer WireGuard gateway open
+		runUfwCmd("allow", "51820/udp")
 
-		// Finally, force enable UFW
-		err = exec.Command("ufw", "--force", "enable").Run()
+		// 2. 🎯 ZERO TRUST BASELINE: Only unlock SSH over the VPN tunnel!
+		// Change "22" to "2278" here if your server is running on the custom port.
+		runUfwCmd("allow", "in", "on", "wg0", "to", "any", "port", "22")
+
+		// 3. Force enable the firewall
+		err = runUfwCmd("--force", "enable")
 
 	case "disable":
-		err = exec.Command("ufw", "disable").Run()
+		log.Println("🧹 Disabling UFW and dropping baseline rules...")
+		// Clean up the unique rules so they don't stack up if re-enabled later
+		runUfwCmd("delete", "allow", "51820/udp")
+		runUfwCmd("delete", "allow", "in", "on", "wg0", "to", "any", "port", "22")
+
+		err = runUfwCmd("disable")
 
 	case "add":
-		// e.g., ufw allow 80
-		err = exec.Command("ufw", "allow", req.Port).Run()
+		log.Printf("➕ Adding custom firewall rule for port: %s", req.Port)
+		err = runUfwCmd("allow", req.Port)
 
 	case "delete":
-		// e.g., ufw delete allow 22
-		actionLower := strings.ToLower(req.RuleAction)
-		err = exec.Command("ufw", "delete", actionLower, req.Port).Run()
-	}
+		log.Printf("❌ Removing custom firewall rule for port: %s", req.Port)
+		actionLower := "allow"
+		if strings.ToLower(req.RuleAction) == "deny" {
+			actionLower = "deny"
+		}
+		err = runUfwCmd("delete", actionLower, req.Port)
 
-	w.Header().Set("Content-Type", "application/json")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": err.Error()})
+	default:
+		http.Error(w, "Unknown security action", http.StatusBadRequest)
 		return
 	}
 
+	// Sync changes into the active kernel
+	if err == nil {
+		runUfwCmd("reload")
+	}
+
+	// Response formatting
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		log.Printf("❌ Firewall action failed: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status":  "error",
+			"message": fmt.Sprintf("Firewall execution failed: %v", err),
+		})
+		return
+	}
+
+	log.Printf("✅ Firewall action [%s] executed successfully", req.Action)
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+// 🎯 HELPER: Executes commands while capturing standard error pipelines for clean logging
+func runUfwCmd(args ...string) error {
+	cmd := exec.Command("ufw", args...)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		// Returns the actual error string from UFW (e.g., "Rule already exists")
+		return fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return nil
 }

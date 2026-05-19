@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -256,7 +257,6 @@ func RunStart() {
 		fmt.Printf("👉 Access strictly isolated to VPN: http://%s:%s\n", hubIP, hubPort)
 		fmt.Println("\nPress Ctrl+C to safely shut down the daemon.")
 
-		// THE FIX: Instead of log.Fatalf, send the error to the channel
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errChan <- fmt.Errorf("Web Hub crashed: %v", err)
 		}
@@ -268,7 +268,6 @@ func RunStart() {
 	stopChan := make(chan os.Signal, 1)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
 
-	// THE FIX: Wait for EITHER a Ctrl+C OR a Web Server Crash
 	select {
 	case <-stopChan:
 		fmt.Println("\n\n🛑 User requested shutdown. Stopping Claviger Edge Daemon...")
@@ -276,6 +275,23 @@ func RunStart() {
 		fmt.Printf("\n\n❌ FATAL ERROR: %v\n", err)
 		fmt.Println("🛑 Initiating emergency cleanup...")
 	}
+
+	// ---------------------------------------------------------
+	// EMERGENCY FAILSAFE: RESTORE PUBLIC SSH ACCESS
+	// ---------------------------------------------------------
+	// 🎯 SAFETY FIRST: Before tearing down anything else, make sure port 22/2278
+	// is explicitly opened back up on the public interfaces so you don't lose connection!
+	fmt.Println("🔓 Restoring public SSH access safety net...")
+
+	// If your server uses standard 22, use "22/tcp". If using your custom port, change to "2278/tcp"
+	exec.Command("ufw", "allow", "22/tcp").Run()
+
+	// Remove the isolated wireguard interface rule so it doesn't leave dangling broken rules
+	exec.Command("ufw", "delete", "allow", "in", "on", "wg0", "to", "any", "port", "22").Run()
+
+	// Reload the firewall layout to apply the changes immediately
+	exec.Command("ufw", "reload").Run()
+	fmt.Println("   [✓] Public SSH access restored.")
 
 	// --- CLEAN UP IPTABLES NAT ROUTING ---
 	if storage.GetConfig(db, "allow_global_internet") == "true" {
