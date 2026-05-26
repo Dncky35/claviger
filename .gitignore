@@ -11,6 +11,7 @@ claviger.db-wal
 *.key
 *.pem
 vault.json
+release/
 
 # =========================
 # Wails Desktop Client
