@@ -9,42 +9,57 @@ import (
 	"claviger-client/internal/cli"
 	"claviger-client/internal/config"
 	"claviger-client/internal/gui"
-
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/dialog"
 )
 
 func main() {
-	// 🎯 1. SINGLE INSTANCE LOCK
-	// Attempt to bind to a specific local port. If it fails, Claviger is already running!
+	isGUI := len(os.Args) == 1
+
+	// 🎯 A channel to pass the "Wake Up" signal from the network to the Fyne UI
+	wakeUpChan := make(chan bool)
+
+	// 1. SMART SINGLE INSTANCE LOCK & WAKEUP
 	listener, err := net.Listen("tcp", "127.0.0.1:42899")
 	if err != nil {
-		// Launch a tiny alert window to tell the user to check their system tray
-		a := app.New()
-		w := a.NewWindow("Claviger Network")
-		d := dialog.NewInformation("Already Running", "Claviger is already running in your system tray!\nCheck the bottom right of your screen.", w)
-
-		// When they click OK, close this duplicate instance
-		d.SetOnClosed(func() { os.Exit(0) })
-		d.Show()
-
-		w.Resize(fyne.NewSize(350, 150))
-		w.CenterOnScreen()
-		w.ShowAndRun()
-		return
+		// Port is taken! The app is already running.
+		if isGUI {
+			// We are Instance B. Connect to Instance A and whisper "WAKEUP"
+			conn, dialErr := net.Dial("tcp", "127.0.0.1:42899")
+			if dialErr == nil {
+				conn.Write([]byte("WAKEUP"))
+				conn.Close()
+			}
+			os.Exit(0) // Quit silently!
+		}
+		log.Fatalf("❌ Claviger is already running in the background.")
 	}
-	defer listener.Close() // Keep the port locked until the app truly quits!
+	defer listener.Close()
 
-	// 2. Load the Secure Vault
+	// 2. We are Instance A! Start listening for whispers in the background.
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				continue
+			}
+			buf := make([]byte, 6)
+			conn.Read(buf)
+			if string(buf) == "WAKEUP" {
+				wakeUpChan <- true // Tell the GUI to show itself!
+			}
+			conn.Close()
+		}
+	}()
+
+	// 3. Load the Secure Vault
 	vault, vaultErr := config.Load()
 	if vaultErr != nil {
 		log.Fatalf("❌ Failed to load vault: %v", vaultErr)
 	}
 
-	// 3. HYBRID LAUNCHER: GUI vs CLI
-	if len(os.Args) == 1 {
-		gui.Run(vault)
+	// 4. HYBRID LAUNCHER
+	if isGUI {
+		// Pass the channel into the GUI so it can react
+		gui.Run(vault, wakeUpChan)
 		return
 	}
 
