@@ -82,6 +82,53 @@ func promptValidatedIP(reader *bufio.Reader, promptText string, defaultIP string
 	}
 }
 
+// promptYesNo handles [Y/n] questions safely
+func promptYesNo(reader *bufio.Reader, promptText string, defaultYes bool) bool {
+	defaultStr := "Y/n"
+	if !defaultYes {
+		defaultStr = "y/N"
+	}
+
+	for {
+		fmt.Printf("%s [%s]: ", promptText, defaultStr)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(strings.ToLower(input))
+
+		if input == "" {
+			return defaultYes
+		}
+		if input == "y" || input == "yes" {
+			return true
+		}
+		if input == "n" || input == "no" {
+			return false
+		}
+		fmt.Println("⚠️  Please enter 'y' or 'n'.")
+	}
+}
+
+// promptChoice handles numbered menus
+func promptChoice(reader *bufio.Reader, promptText string, options map[string]string, defaultChoice string) string {
+	fmt.Printf("\n%s\n", promptText)
+	for key, desc := range options {
+		fmt.Printf("  [%s] %s\n", key, desc)
+	}
+
+	for {
+		fmt.Printf("Select an option [%s]: ", defaultChoice)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input == "" {
+			return defaultChoice
+		}
+		if _, exists := options[input]; exists {
+			return input
+		}
+		fmt.Println("⚠️  Invalid selection. Please choose a valid number from the list.")
+	}
+}
+
 func RunSetup(args []string) {
 	// 1. Root / Sudo Enforcement
 	if os.Geteuid() != 0 {
@@ -221,6 +268,40 @@ func RunSetup(args []string) {
 	tempConfig["wg_public_key"] = serverPub
 
 	// ---------------------------------------------------------
+	// 4.5. THE INITIALIZATION INTERVIEW (App Architecture)
+	// ---------------------------------------------------------
+
+	// Question 1: Reverse Proxy
+	wantsProxy := promptYesNo(reader, "Will you be hosting Web Apps on public domains?", true)
+
+	if wantsProxy {
+		tempConfig["use_reverse_proxy"] = "true"
+
+		// Question 2: Cloudflare Integration
+		proxyOptions := map[string]string{
+			"1": "Cloudflare (Recommended: Free SSL, DDoS Protection, CDN)",
+			"2": "Standard/Direct (You will manage your own DNS records)",
+		}
+
+		providerChoice := promptChoice(reader, "Which DNS/Proxy provider will you use?", proxyOptions, "1")
+
+		if providerChoice == "1" {
+			tempConfig["proxy_provider"] = "cloudflare"
+			fmt.Println("✅ Cloudflare integration enabled. The UI will automatically sync Real-IP lists.")
+		} else {
+			tempConfig["proxy_provider"] = "standard"
+			fmt.Println("✅ Standard routing selected.")
+		}
+	} else {
+		// If they say no, they are just using Claviger for pure VPN routing
+		tempConfig["use_reverse_proxy"] = "false"
+		tempConfig["proxy_provider"] = "none"
+		fmt.Println("✅ Internal VPN routing only. (You can change this in the UI later).")
+	}
+
+	fmt.Println(strings.Repeat("-", 60))
+
+	// ---------------------------------------------------------
 	// 5. THE ZERO-TRUST ADMIN ENROLLMENT
 	// ---------------------------------------------------------
 	fmt.Println("\n" + strings.Repeat("=", 60))
@@ -309,7 +390,7 @@ SaveConfig = false
 	// 	log.Printf("⚠️ Warning: Could not automatically configure UFW (is UFW installed and active?): %v\n", err)
 	// }
 
-	firewall.SetupFirewall()
+	firewall.SetupFirewall(wgPort)
 
 	// --- THE TERMINAL REVEAL ---
 	fmt.Println("\n" + strings.Repeat("=", 65))

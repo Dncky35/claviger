@@ -113,8 +113,12 @@ func RunStart() {
 	// ---------------------------------------------------------
 	// 2. NETWORK BOOT (DYNAMIC PORTS)
 	// ---------------------------------------------------------
-	if err := network.CheckAndOpenFirewall(wgPort); err != nil {
-		log.Printf("⚠️ Firewall check warning: %v\n", err)
+	// if err := network.CheckAndOpenFirewall(wgPort); err != nil {
+	// 	log.Printf("⚠️ Firewall check warning: %v\n", err)
+	// }
+
+	if err := firewall.SetupFirewall(wgPort); err != nil {
+		log.Printf("⚠️ Firewall setup warning: %v\n", err)
 	}
 
 	if err := network.StartWireGuard(); err != nil {
@@ -177,15 +181,19 @@ func RunStart() {
 	// --- PROTECTED ROUTES (Requires allow_hub = 1) ---
 	mux.HandleFunc("/api/status", api.HubAccessMiddleware(db, api.HandleStatus()))
 	mux.HandleFunc("/api/system", api.HubAccessMiddleware(db, api.HandleSystemStats))
+
+	// --- PROTECTED SECURITY ROUTES ---
 	mux.HandleFunc("/api/security", api.HubAccessMiddleware(db, api.HandleSecurityStats))
 	mux.HandleFunc("/api/security/action", api.HubAccessMiddleware(db, api.HandleSecurityAction))
+	mux.HandleFunc("/api/security/install", api.HubAccessMiddleware(db, api.HandleInstallUFW))
+	mux.HandleFunc("/api/security/fail2ban/config", api.HubAccessMiddleware(db, api.HandleFail2BanConfig))
+
 	mux.HandleFunc("/api/clients", api.HubAccessMiddleware(db, api.HandleClients(db)))
 	mux.HandleFunc("/api/enrollment/mobile", api.HubAccessMiddleware(db, api.HandleMobileEnrollment(db)))
 	mux.HandleFunc("/api/revoke", api.HubAccessMiddleware(db, api.HandleRevoke(db)))
 	mux.HandleFunc("/api/access/ssh", api.HubAccessMiddleware(db, api.HandleSSHKeys))
 	mux.HandleFunc("/api/roles", api.HubAccessMiddleware(db, api.HandleRoles(db)))
 	mux.HandleFunc("/api/network/internet", api.HubAccessMiddleware(db, api.HandleNetworkSettings(db)))
-	mux.HandleFunc("/api/security/fail2ban/config", api.HubAccessMiddleware(db, api.HandleFail2BanConfig))
 
 	// --- PROTECTED INSTALL/UNINSTALL ROUTES ---
 	mux.HandleFunc("/api/apps/uninstall", api.HubAccessMiddleware(db, api.HandleAppUninstall))
@@ -283,11 +291,15 @@ func RunStart() {
 	// is explicitly opened back up on the public interfaces so you don't lose connection!
 	fmt.Println("🔓 Restoring public SSH access safety net...")
 
+	if err := firewall.TeardownFirewall(wgPort); err != nil {
+		log.Printf("⚠️ Error tearing down firewall: %v\n", err)
+	}
+
 	// If your server uses standard 22, use "22/tcp". If using your custom port, change to "2278/tcp"
 	exec.Command("ufw", "allow", "22/tcp").Run()
 
-	// Remove the isolated wireguard interface rule so it doesn't leave dangling broken rules
-	exec.Command("ufw", "delete", "allow", "in", "on", "wg0", "to", "any", "port", "22").Run()
+	// // Remove the isolated wireguard interface rule so it doesn't leave dangling broken rules
+	// exec.Command("ufw", "delete", "allow", "in", "on", "wg0", "to", "any", "port", "22").Run()
 
 	// Reload the firewall layout to apply the changes immediately
 	exec.Command("ufw", "reload").Run()

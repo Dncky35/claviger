@@ -143,15 +143,34 @@ func CheckAndOpenFirewall(port string) error {
 		return nil
 	}
 
+	// 1. Explicitly check if UFW is installed on the system
+	_, err := exec.LookPath("ufw")
+	if err != nil {
+		log.Println("ℹ️  UFW firewall is not installed on this system. Skipping firewall configuration.")
+		return nil
+	}
+
+	// 2. Check if UFW is active
 	cmd := exec.Command("ufw", "status")
 	output, err := cmd.Output()
 	if err != nil {
-		return nil // UFW not found or requires root
+		log.Printf("⚠️  UFW is installed, but status check failed (are you running as root?): %v", err)
+		return nil
 	}
 
+	// 3. If active, open the required port
 	if strings.Contains(string(output), "Status: active") {
-		log.Printf("🛡️ UFW is active. Opening custom port %s/udp...", port)
-		exec.Command("ufw", "allow", fmt.Sprintf("%s/udp", port)).Run()
+		log.Printf("🛡️  UFW is active. Opening WireGuard port %s/udp...", port)
+
+		allowCmd := exec.Command("ufw", "allow", fmt.Sprintf("%s/udp", port))
+		if err := allowCmd.Run(); err != nil {
+			log.Printf("❌ Failed to add UFW rule: %v", err)
+			return err
+		}
+
+		log.Printf("✅ Port %s/udp allowed in UFW.", port)
+	} else {
+		log.Println("ℹ️  UFW is installed but inactive. Skipping port configuration.")
 	}
 
 	return nil

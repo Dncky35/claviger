@@ -70,17 +70,27 @@ func disablePersistentForwarding() error {
 // =========================================================
 
 // SetupFirewall configures the baseline UFW rules and persistent kernel routing.
-func SetupFirewall() {
+func SetupFirewall(port string) error {
 	fmt.Println("🛡️  Configuring baseline firewall & kernel routing...")
+
+	if _, err := exec.LookPath("ufw"); err != nil {
+		log.Printf("⚠️ Warning: UFW not found, skipping firewall configuration: %v", err)
+		return fmt.Errorf("UFW not found: %v", err)
+	}
 
 	if err := enablePersistentForwarding(); err != nil {
 		log.Printf("⚠️ Warning: Failed to set persistent IP forwarding: %v", err)
+		return fmt.Errorf("failed to set persistent IP forwarding: %v", err)
 	}
 
 	cmds := [][]string{
-		{"ufw", "allow", "51820/udp"},                                  // Allow WireGuard port
-		{"ufw", "allow", "in", "on", "wg0", "to", "any"},               // Allow traffic from wg0 interface
-		{"ufw", "allow", "in", "on", "wg0", "to", "any", "port", "22"}, // Allow VPN subnet to route
+		// 1. The Front Door: Allow encrypted WireGuard traffic from the public internet
+		{"ufw", "allow", port + "/udp"},
+
+		// 2. The Private LAN (The Big Umbrella):
+		// Allow VPN clients to reach Docker containers, the Hub, and SSH (Port 22).
+		// (Standard users will hit the Go Middleware and be rejected by your Hub app!)
+		{"ufw", "allow", "in", "on", "wg0", "to", "any"},
 	}
 
 	for _, args := range cmds {
@@ -88,18 +98,22 @@ func SetupFirewall() {
 	}
 	exec.Command("ufw", "reload").Run()
 	fmt.Println("   [✓] Baseline Firewall configured.")
+	return nil
 }
 
 // TeardownFirewall removes the Claviger baseline rules and restores the kernel.
-func TeardownFirewall() {
+func TeardownFirewall(port string) error {
 	fmt.Println("🧹 Removing Claviger firewall rules...")
+
+	if _, err := exec.LookPath("ufw"); err != nil {
+		return fmt.Errorf("UFW not found: %v", err)
+	}
 
 	disablePersistentForwarding()
 
 	cmds := [][]string{
-		{"ufw", "delete", "allow", "51820/udp"},
+		{"ufw", "delete", "allow", port + "/udp"},
 		{"ufw", "delete", "allow", "in", "on", "wg0", "to", "any"},
-		{"ufw", "delete", "allow", "in", "on", "wg0", "to", "any", "port", "22"},
 	}
 
 	for _, args := range cmds {
@@ -107,4 +121,6 @@ func TeardownFirewall() {
 	}
 	exec.Command("ufw", "reload").Run()
 	fmt.Println("   [✓] Firewall restored to pre-install state.")
+
+	return nil
 }

@@ -22,8 +22,16 @@ func ensureSSHAccess() {
 		return
 	}
 
-	firewall.DisableInternet()  // Remove internet access to prevent lockout, but ensure SSH remains open
-	firewall.TeardownFirewall() // Remove all firewall rules to ensure a clean slate, but we'll add back SSH access immediately after
+	db := storage.InitDB()
+	defer db.Close()
+
+	wgPort := storage.GetConfig(db, "wg_port")
+	if wgPort == "" {
+		wgPort = "51820"
+	}
+
+	firewall.DisableInternet()        // Remove internet access to prevent lockout, but ensure SSH remains open
+	firewall.TeardownFirewall(wgPort) // Remove all firewall rules to ensure a clean slate, but we'll add back SSH access immediately after
 
 	fmt.Println("🛡️  Ensuring SSH (Port 22) is open to prevent lockout...")
 

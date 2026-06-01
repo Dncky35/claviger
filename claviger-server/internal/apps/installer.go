@@ -49,8 +49,15 @@ services:
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
+    networks:
+      - cloudrocean-net
     labels:
       - "claviger.app=npm"
+
+networks:
+  cloudrocean-net:
+    name: cloudrocean-net
+    driver: bridge
 `,
 	},
 
@@ -78,8 +85,14 @@ services:
     volumes:
       - ./work:/opt/adguardhome/work
       - ./conf:/opt/adguardhome/conf
+    networks:
+      - cloudrocean-net
     labels:
       - "claviger.app=adguard"
+
+networks:
+  cloudrocean-net:
+    external: true
 `,
 	},
 
@@ -105,8 +118,14 @@ services:
       - "{{.DynamicPort}}:80/tcp" # Assigned from 1808X block
     volumes:
       - ./vw-data:/data
+    networks:
+      - cloudrocean-net
     labels:
       - "claviger.app=vaultwarden"
+
+networks:
+  cloudrocean-net:
+    external: true
 `,
 	},
 }

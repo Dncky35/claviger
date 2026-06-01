@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -38,77 +39,83 @@ func HandleSecurityStats(w http.ResponseWriter, r *http.Request) {
 		Insights:  []Insight{},
 	}
 
-	out, err := exec.Command("ufw", "status").Output()
-
 	hasPublicSSH := false
 	hasPublicWeb := false
 	hasPublicDB := false
 
-	if err == nil {
-		lines := strings.Split(string(out), "\n")
-		parsingRules := false
+	// 1. 🎯 NEW: Check if UFW is actually installed on the system
+	if _, err := exec.LookPath("ufw"); err != nil {
+		stats.UFWStatus = "not_installed"
+	} else {
+		// 2. Only try to get status if it is installed
+		out, err := exec.Command("ufw", "status").Output()
 
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				continue
-			}
+		if err == nil {
+			lines := strings.Split(string(out), "\n")
+			parsingRules := false
 
-			if strings.HasPrefix(line, "Status: active") {
-				stats.UFWStatus = "active"
-				continue
-			}
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line == "" {
+					continue
+				}
 
-			if strings.HasPrefix(line, "--") {
-				parsingRules = true
-				continue
-			}
+				if strings.HasPrefix(line, "Status: active") {
+					stats.UFWStatus = "active"
+					continue
+				}
 
-			if parsingRules {
-				fields := strings.Fields(line)
-				if len(fields) >= 3 {
-					actionIdx := -1
-					for i, v := range fields {
-						if v == "ALLOW" || v == "DENY" || v == "REJECT" || v == "LIMIT" {
-							actionIdx = i
-							break
+				if strings.HasPrefix(line, "--") {
+					parsingRules = true
+					continue
+				}
+
+				if parsingRules {
+					fields := strings.Fields(line)
+					if len(fields) >= 3 {
+						actionIdx := -1
+						for i, v := range fields {
+							if v == "ALLOW" || v == "DENY" || v == "REJECT" || v == "LIMIT" {
+								actionIdx = i
+								break
+							}
 						}
-					}
 
-					if actionIdx > 0 && actionIdx < len(fields)-1 {
-						toPort := strings.Join(fields[:actionIdx], " ")
-						action := fields[actionIdx]
-						fromIP := strings.Join(fields[actionIdx+1:], " ")
+						if actionIdx > 0 && actionIdx < len(fields)-1 {
+							toPort := strings.Join(fields[:actionIdx], " ")
+							action := fields[actionIdx]
+							fromIP := strings.Join(fields[actionIdx+1:], " ")
 
-						stats.Rules = append(stats.Rules, FirewallRule{
-							To:     toPort,
-							Action: action,
-							From:   fromIP,
-						})
+							stats.Rules = append(stats.Rules, FirewallRule{
+								To:     toPort,
+								Action: action,
+								From:   fromIP,
+							})
 
-						// 🎯 INTERFACE FILTER CHECK
-						// If the rule is explicitly locked down to a VPN or overlay interface,
-						// it is safe! We will ignore it for the public vulnerability checks.
-						toPortLower := strings.ToLower(toPort)
-						isProtectedByInterface := strings.Contains(toPortLower, "on wg") ||
-							strings.Contains(toPortLower, "on tailscale") ||
-							strings.Contains(toPortLower, "on tun") ||
-							strings.Contains(toPortLower, "on zt")
+							// 🎯 INTERFACE FILTER CHECK
+							// If the rule is explicitly locked down to a VPN or overlay interface,
+							// it is safe! We will ignore it for the public vulnerability checks.
+							toPortLower := strings.ToLower(toPort)
+							isProtectedByInterface := strings.Contains(toPortLower, "on wg") ||
+								strings.Contains(toPortLower, "on tailscale") ||
+								strings.Contains(toPortLower, "on tun") ||
+								strings.Contains(toPortLower, "on zt")
 
-						// --- SMART SCANNER LOGIC ---
-						if action == "ALLOW" && !isProtectedByInterface {
-							isPublicOrigin := fromIP == "Anywhere" || fromIP == "Anywhere (v6)" || fromIP == "0.0.0.0/0" || fromIP == "::/0"
+							// --- SMART SCANNER LOGIC ---
+							if action == "ALLOW" && !isProtectedByInterface {
+								isPublicOrigin := fromIP == "Anywhere" || fromIP == "Anywhere (v6)" || fromIP == "0.0.0.0/0" || fromIP == "::/0"
 
-							if isPublicOrigin {
-								// Check both default SSH (22) and your custom deployment port (2278)
-								if strings.Contains(toPortLower, "22") || strings.Contains(toPortLower, "2278") {
-									hasPublicSSH = true
-								}
-								if strings.Contains(toPortLower, "80") || strings.Contains(toPortLower, "443") {
-									hasPublicWeb = true
-								}
-								if strings.Contains(toPortLower, "3306") || strings.Contains(toPortLower, "5432") || strings.Contains(toPortLower, "6379") {
-									hasPublicDB = true
+								if isPublicOrigin {
+									// Check both default SSH (22) and your custom deployment port (2278)
+									if strings.Contains(toPortLower, "22") || strings.Contains(toPortLower, "2278") {
+										hasPublicSSH = true
+									}
+									if strings.Contains(toPortLower, "80") || strings.Contains(toPortLower, "443") {
+										hasPublicWeb = true
+									}
+									if strings.Contains(toPortLower, "3306") || strings.Contains(toPortLower, "5432") || strings.Contains(toPortLower, "6379") {
+										hasPublicDB = true
+									}
 								}
 							}
 						}
@@ -119,11 +126,18 @@ func HandleSecurityStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// --- GENERATE SMART INSIGHTS ---
-	if stats.UFWStatus != "active" {
+	if stats.UFWStatus == "not_installed" {
+		// 🎯 NEW: Insight specifically for missing UFW
+		stats.Insights = append(stats.Insights, Insight{
+			Level:   "critical",
+			Title:   "Firewall Missing",
+			Message: "UFW (Uncomplicated Firewall) is not installed on this server. Without a firewall, your server is completely exposed. Please install UFW via your terminal (e.g., 'apt install ufw') to secure your environment.",
+		})
+	} else if stats.UFWStatus != "active" {
 		stats.Insights = append(stats.Insights, Insight{
 			Level:   "critical",
 			Title:   "Firewall Offline",
-			Message: "Your firewall is inactive. All ports are currently exposed to the internet. Enable UFW immediately.",
+			Message: "Your firewall is installed but currently inactive. All ports are exposed to the internet. Enable UFW immediately.",
 		})
 	} else {
 		if hasPublicSSH {
@@ -160,6 +174,38 @@ func HandleSecurityStats(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
+}
+
+// HandleInstallUFW executes the package manager to install UFW on the host OS
+func HandleInstallUFW(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Println("📦 UI Triggered: Attempting to install UFW...")
+
+	// 1. Run apt-get update first (best practice so it doesn't fail on old repo lists)
+	updateCmd := exec.Command("apt-get", "update")
+	_ = updateCmd.Run() // We ignore errors here, it's just a best-effort sync
+
+	// 2. Run the actual installation command
+	// Note: DEBIAN_FRONTEND=noninteractive stops APT from hanging on user prompts
+	installCmd := exec.Command("apt-get", "install", "-y", "ufw")
+	installCmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
+
+	output, err := installCmd.CombinedOutput()
+	if err != nil {
+		log.Printf("❌ Failed to install UFW: %v\nOutput: %s", err, string(output))
+		http.Error(w, "Failed to install UFW", http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("✅ UFW successfully installed via Web UI.")
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status": "success", "message": "UFW Installed"}`))
 }
 
 type SecurityActionReq struct {

@@ -153,7 +153,15 @@
             }
             // Reset all buttons to inactive
             if (btnEl) {
+                // 🎯 THE FIX: Check if it's hidden before wiping the classes!
+                const isHidden = btnEl.classList.contains('hidden');
+                
                 btnEl.className = inactiveClass;
+                
+                // If it was hidden, put the hidden class back!
+                if (isHidden) {
+                    btnEl.classList.add('hidden');
+                }
             }
         });
         
@@ -167,7 +175,10 @@
         }
         // Highlight selected button
         if (activeBtn) {
+            // 🎯 THE FIX: Preserve hidden state here too just in case
+            const isHidden = activeBtn.classList.contains('hidden');
             activeBtn.className = activeClass;
+            if (isHidden) activeBtn.classList.add('hidden');
         }
         
         // Fetch fresh data immediately when switching to a tab
