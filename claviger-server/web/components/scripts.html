@@ -183,7 +183,7 @@
         
         // Fetch fresh data immediately when switching to a tab
         if (tabId === 'network') { fetchNetworkStatus(); syncAppStates(); }
-        if (tabId === 'security') { fetchSecurityData(); syncAppStates(); }
+        if (tabId === 'security') { fetchSecurityData(); fetchFail2BanStatus();}
         if (tabId === 'clients') fetchPeersData();
         if (tabId === 'access') fetchSSHKeys();
         if (tabId === 'roles') fetchRolesData();

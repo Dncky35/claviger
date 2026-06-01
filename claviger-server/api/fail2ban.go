@@ -15,6 +15,55 @@ type Fail2BanConfigReq struct {
 	BanTime    int `json:"ban_time"`
 }
 
+// 1. UPDATE your existing HandleFail2BanStatus
+func HandleFail2BanStatus(w http.ResponseWriter, r *http.Request) {
+	installed := security.IsFail2BanInstalled()
+	running := false
+
+	// NEW: Prepare stats object
+	var stats security.Fail2BanStats
+
+	if installed {
+		running = security.IsFail2BanRunning()
+		if running {
+			stats = security.GetFail2BanStats() // 🎯 Fetch live stats!
+		}
+	}
+
+	response := map[string]interface{}{
+		"installed": installed,
+		"running":   running,
+		"stats":     stats, // 🎯 Append stats to response
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// 2. ADD the new Unban Endpoint
+func HandleFail2BanUnban(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"status": "error"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		IP string `json:"ip"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"status": "error"}`, http.StatusBadRequest)
+		return
+	}
+
+	if err := security.UnbanIP(req.IP); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
 // HandleFail2BanConfig parses the UI request and applies the firewall rules
 func HandleFail2BanConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
