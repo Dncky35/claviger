@@ -78,6 +78,9 @@
 
             // Loop through EVERY app the Go backend knows about
             data.registry_apps.forEach(app => {
+
+                if (!app.id || app.id === "fail2ban") return; // Sanity check to avoid rendering apps without an ID
+
                 const badge = document.getElementById(`badge-app-${app.id}`);
                 const installBtn = document.getElementById(`btn-install-${app.id}`);
                 const dashBtn = document.getElementById(`btn-dash-${app.id}`);
@@ -183,7 +186,7 @@
         
         // Fetch fresh data immediately when switching to a tab
         if (tabId === 'network') { fetchNetworkStatus(); syncAppStates(); }
-        if (tabId === 'security') { fetchSecurityData(); syncAppStates(); }
+        if (tabId === 'security') { fetchSecurityData(); fetchFail2BanStatus(); }
         if (tabId === 'clients') fetchPeersData();
         if (tabId === 'access') fetchSSHKeys();
         if (tabId === 'roles') fetchRolesData();

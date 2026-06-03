@@ -142,7 +142,7 @@ func HandleAppUninstall(w http.ResponseWriter, r *http.Request) {
 	// 2. Route the Uninstall
 	var err error
 	if req.AppID == "fail2ban" {
-		// err = security.UninstallFail2Ban()
+		err = security.UninstallFail2Ban()
 	} else {
 		err = apps.Uninstall(req.AppID)
 	}

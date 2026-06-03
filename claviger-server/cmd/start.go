@@ -186,6 +186,8 @@ func RunStart() {
 	mux.HandleFunc("/api/security", api.HubAccessMiddleware(db, api.HandleSecurityStats))
 	mux.HandleFunc("/api/security/action", api.HubAccessMiddleware(db, api.HandleSecurityAction))
 	mux.HandleFunc("/api/security/install", api.HubAccessMiddleware(db, api.HandleInstallUFW))
+	mux.HandleFunc("/api/security/fail2ban/status", api.HubAccessMiddleware(db, api.HandleFail2BanStatus))
+	mux.HandleFunc("/api/security/fail2ban/unban", api.HubAccessMiddleware(db, api.HandleFail2BanUnban))
 	mux.HandleFunc("/api/security/fail2ban/config", api.HubAccessMiddleware(db, api.HandleFail2BanConfig))
 
 	mux.HandleFunc("/api/clients", api.HubAccessMiddleware(db, api.HandleClients(db)))
