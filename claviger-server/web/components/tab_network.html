@@ -5,6 +5,7 @@
         <h2 class="text-2xl font-bold tracking-tight text-white">🌍 Network & Gateway</h2>
     </div>
 
+    <!-- GLOBAL ROUTING -->
     <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
             <h3 class="text-lg font-bold text-slate-100 flex items-center gap-3">
@@ -23,14 +24,7 @@
     <hr class="border-border my-6">
     <h3 class="text-lg font-bold text-slate-100">Gateway Apps</h3>
 
-    <div id="network-docker-warning" class="hidden mb-2 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-3 shadow-sm">
-        <span class="text-amber-500 text-xl mt-0.5">🐳</span>
-        <div>
-            <h4 class="text-amber-500 font-bold text-sm uppercase tracking-wide">Docker Engine Missing</h4>
-            <p class="text-amber-200/80 text-sm mt-1 leading-relaxed">Gateway applications require Docker to run securely in isolated containers. Please install Docker on your server to enable Master Gateway and AdGuard Home deployments.</p>
-        </div>
-    </div>
-
+    <!-- MASTER GATEWAY (NPM) -->
     <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden mb-6">
         <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
         <div class="z-10">
@@ -56,6 +50,7 @@
         </div>
     </div>
 
+    <!-- ADGUARD HOME -->
     <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
         <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
         <div class="z-10">
@@ -72,6 +67,7 @@
             <button id="btn-install-adguard" onclick="installApp('adguard')" class="hidden px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
                 Install App
             </button>
+            <!-- Note: The ActionPort from the API will automatically override this URL if configured correctly in your main JS -->
             <button id="btn-dash-adguard" onclick="window.open('http://' + window.location.hostname + ':3030', '_blank')" class="hidden px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700">
                 Open Dashboard ↗
             </button>
@@ -84,6 +80,7 @@
     <hr class="border-border my-8">
     <h3 class="text-lg font-bold text-slate-100 mb-4">Server Configuration</h3>
 
+    <!-- ENDPOINT CONFIGURATION -->
     <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm">
         
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-border/50">
@@ -119,6 +116,7 @@
         </div>
     </div>
 
+    <!-- MODAL: DNS WARNING -->
     <dialog id="modal-dns-warning" class="bg-surface border border-amber-500/30 rounded-xl shadow-2xl p-0 w-[90%] max-w-md backdrop:bg-black/80 text-slate-200">
         <div class="p-5 border-b border-border flex justify-between items-center bg-amber-500/10">
             <h3 class="font-bold text-lg text-amber-500 flex items-center gap-2"><span>⚠️</span> DNS Verification Failed</h3>
@@ -183,6 +181,7 @@
                 const data = await res.json();
                 const reqBox = document.getElementById('npm-requirements');
                 
+                // If NPM is not running and ports are blocked, show the warning persistently
                 if (!data.is_running && !data.ports_clear) {
                     reqBox.classList.remove('hidden');
                     reqBox.innerHTML = `<strong>⚠️ Port Conflict:</strong> ${data.message}`;
@@ -196,44 +195,6 @@
                 }
             } catch (e) {
                 console.error("Failed to check gateway status:", e);
-            }
-        }
-
-        // 🎯 NEW: Check Docker Status to explicitly disable Install buttons
-        async function checkDockerForNetworkTab() {
-            try {
-                const res = await fetch('/api/containers');
-                if (!res.ok) return;
-                const data = await res.json();
-                
-                if (!data.docker_installed) {
-                    // Show the global Docker missing banner
-                    document.getElementById('network-docker-warning').classList.remove('hidden');
-                    
-                    // Override NPM Button
-                    const btnNPM = document.getElementById('btn-install-npm');
-                    if (btnNPM) {
-                        btnNPM.classList.remove('hidden'); // Ensure it is seen
-                        btnNPM.disabled = true;
-                        btnNPM.onclick = null;
-                        btnNPM.innerText = 'Docker Required';
-                        // Switch from blue styling to disabled gray styling
-                        btnNPM.className = 'px-4 py-2 bg-slate-800 text-slate-500 text-sm font-medium rounded-lg border border-slate-700 cursor-not-allowed';
-                    }
-
-                    // Override AdGuard Button
-                    const btnAdGuard = document.getElementById('btn-install-adguard');
-                    if (btnAdGuard) {
-                        btnAdGuard.classList.remove('hidden');
-                        btnAdGuard.disabled = true;
-                        btnAdGuard.onclick = null;
-                        btnAdGuard.innerText = 'Docker Required';
-                        // Switch from green styling to disabled gray styling
-                        btnAdGuard.className = 'px-4 py-2 bg-slate-800 text-slate-500 text-sm font-medium rounded-lg border border-slate-700 cursor-not-allowed';
-                    }
-                }
-            } catch (e) {
-                console.error("Failed to check Docker status for network tab:", e);
             }
         }
 
@@ -303,7 +264,6 @@
 
         fetchSystemSettings();
         checkGatewayStatus();
-        checkDockerForNetworkTab(); // Initialize the Docker checker
         setInterval(fetchSystemSettings, 60000); 
     </script>
 </div>

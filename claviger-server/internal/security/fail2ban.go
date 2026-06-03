@@ -2,58 +2,15 @@ package security
 
 import (
 	"fmt"
-	"log"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
-	"strings"
 )
-
-type Fail2BanStats struct {
-	CurrentlyFailed int      `json:"currently_failed"`
-	TotalFailed     int      `json:"total_failed"`
-	CurrentlyBanned int      `json:"currently_banned"`
-	TotalBanned     int      `json:"total_banned"`
-	BannedIPs       []string `json:"banned_ips"`
-}
 
 // IsFail2BanInstalled checks if the binary exists on the system
 func IsFail2BanInstalled() bool {
 	_, err := exec.LookPath("fail2ban-client")
 	return err == nil
-}
-
-// UninstallFail2Ban completely removes the engine and purges all configuration files
-func UninstallFail2Ban() error {
-	log.Println("🧹 Starting Fail2Ban uninstallation process...")
-
-	// 1. Stop and disable the service gracefully (ignore errors if already stopped)
-	exec.Command("systemctl", "stop", "fail2ban").Run()
-	exec.Command("systemctl", "disable", "fail2ban").Run()
-
-	// 2. Purge the package using apt-get
-	// 'purge' tells APT to delete the package AND its default config files
-	purgeCmd := exec.Command("apt-get", "purge", "-y", "fail2ban")
-	purgeCmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
-	if err := purgeCmd.Run(); err != nil {
-		return fmt.Errorf("failed to purge fail2ban package: %v", err)
-	}
-
-	// Clean up any orphaned dependencies Fail2Ban might have brought in
-	exec.Command("apt-get", "autoremove", "-y").Run()
-
-	// 3. Force wipe the entire configuration directory
-	// APT sometimes leaves behind user-modified files (like our custom jail.d configs)
-	if err := os.RemoveAll("/etc/fail2ban"); err != nil {
-		return fmt.Errorf("failed to delete /etc/fail2ban directory: %v", err)
-	}
-
-	// 4. Reload the systemd daemon to clear the missing service
-	exec.Command("systemctl", "daemon-reload").Run()
-
-	return nil
 }
 
 // IsFail2BanRunning checks systemd for the active state
@@ -123,62 +80,4 @@ bantime = %d
 	}
 
 	return nil
-}
-
-// GetFail2BanStats parses the command line output of fail2ban-client
-func GetFail2BanStats() Fail2BanStats {
-	stats := Fail2BanStats{
-		BannedIPs: []string{}, // Initialize empty so JSON doesn't return null
-	}
-
-	// Note: "sshd" is the name of the jail we created in your setup script
-	out, err := exec.Command("fail2ban-client", "status", "sshd").Output()
-	if err != nil {
-		return stats // Return empty stats if it fails
-	}
-
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "Currently failed:") {
-			parts := strings.Split(line, ":")
-			if len(parts) == 2 {
-				stats.CurrentlyFailed, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
-			}
-		} else if strings.Contains(line, "Total failed:") {
-			parts := strings.Split(line, ":")
-			if len(parts) == 2 {
-				stats.TotalFailed, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
-			}
-		} else if strings.Contains(line, "Currently banned:") {
-			parts := strings.Split(line, ":")
-			if len(parts) == 2 {
-				stats.CurrentlyBanned, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
-			}
-		} else if strings.Contains(line, "Total banned:") {
-			parts := strings.Split(line, ":")
-			if len(parts) == 2 {
-				stats.TotalBanned, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
-			}
-		} else if strings.Contains(line, "Banned IP list:") {
-			parts := strings.Split(line, ":")
-			if len(parts) == 2 {
-				ipString := strings.TrimSpace(parts[1])
-				if ipString != "" {
-					// strings.Fields perfectly splits by spaces, tabs, etc.
-					stats.BannedIPs = strings.Fields(ipString)
-				}
-			}
-		}
-	}
-
-	return stats
-}
-
-// UnbanIP safely removes an IP from the jail
-func UnbanIP(ip string) error {
-	// Security Failsafe: Ensure it's a real IP address before passing to terminal
-	if net.ParseIP(ip) == nil {
-		return fmt.Errorf("invalid IP format")
-	}
-	return exec.Command("fail2ban-client", "set", "sshd", "unbanip", ip).Run()
 }

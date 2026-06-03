@@ -2,8 +2,6 @@ package api
 
 import (
 	"bytes"
-	"claviger-server/internal/firewall"
-	"claviger-server/storage"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -243,65 +241,23 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 	case "enable":
 		log.Println("🛡️ Enabling UFW with isolated Zero-Trust baseline rules...")
 
-		db := storage.InitDB()
-		defer db.Close()
-
-		// --- THE FIX: Ensure Setup Was Completed ---
-		if storage.GetConfig(db, "node_id") == "" {
-			log.Fatal("❌ Node is not configured! Please run 'sudo claviger-server setup' first.")
-		}
-
-		wgPort := storage.GetConfig(db, "wg_port")
-
-		if wgPort == "" {
-			wgPort = "51820"
-		}
-
-		if err := firewall.SetupFirewall(wgPort); err != nil {
-			log.Printf("❌ Failed to set up firewall: %v", err)
-			http.Error(w, fmt.Sprintf("Failed to set up firewall: %v", err), http.StatusInternalServerError)
-			return
-		}
 		// 1. Keep the public outer WireGuard gateway open
-		// runUfwCmd("allow", "51820/udp")
+		runUfwCmd("allow", "51820/udp")
 
 		// 2. 🎯 ZERO TRUST BASELINE: Only unlock SSH over the VPN tunnel!
 		// Change "22" to "2278" here if your server is running on the custom port.
-		// runUfwCmd("allow", "in", "on", "wg0", "to", "any", "port", "22")
+		runUfwCmd("allow", "in", "on", "wg0", "to", "any", "port", "22")
 
 		// 3. Force enable the firewall
-		// err = runUfwCmd("--force", "enable")
+		err = runUfwCmd("--force", "enable")
 
 	case "disable":
 		log.Println("🧹 Disabling UFW and dropping baseline rules...")
-
-		db := storage.InitDB()
-		defer db.Close()
-
-		// --- THE FIX: Ensure Setup Was Completed ---
-		if storage.GetConfig(db, "node_id") == "" {
-			log.Fatal("❌ Node is not configured! Please run 'sudo claviger-server setup' first.")
-		}
-
-		wgPort := storage.GetConfig(db, "wg_port")
-
-		if wgPort == "" {
-			wgPort = "51820"
-		}
-
-		if err := firewall.TeardownFirewall(wgPort); err != nil {
-			log.Printf("❌ Failed to tear down firewall: %v", err)
-			http.Error(w, fmt.Sprintf("Failed to tear down firewall: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		exec.Command("ufw", "allow", "22/tcp").Run() // Ensure SSH isn't locked out when firewall is disabled
-
 		// Clean up the unique rules so they don't stack up if re-enabled later
-		// runUfwCmd("delete", "allow", "51820/udp")
-		// runUfwCmd("delete", "allow", "in", "on", "wg0", "to", "any", "port", "22")
+		runUfwCmd("delete", "allow", "51820/udp")
+		runUfwCmd("delete", "allow", "in", "on", "wg0", "to", "any", "port", "22")
 
-		// err = runUfwCmd("disable")
+		err = runUfwCmd("disable")
 
 	case "add":
 		log.Printf("➕ Adding custom firewall rule for port: %s", req.Port)
