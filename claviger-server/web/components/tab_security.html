@@ -20,6 +20,34 @@
 
     <div id="security-insights-container" class="mb-6 space-y-4"></div>
 
+    <hr class="border-border my-8">
+    
+    <div id="cloudflare-container" class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col gap-4 relative overflow-hidden">
+        <div class="flex flex-col md:flex-row items-start justify-between gap-6">
+            <div class="z-10">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center text-orange-500 text-xl">☁️</div>
+                    <h3 class="text-lg font-bold text-slate-100">Cloudflare Strict Mode</h3>
+                    <span class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">Manual Sync</span>
+                </div>
+                <p class="text-muted-foreground text-sm max-w-2xl">
+                    Fetches the latest Cloudflare Edge IP ranges, configures Nginx to unmask visitor IPs, and configures UFW to block all non-Cloudflare traffic on ports 80 and 443.
+                </p>
+            </div>
+            <div class="z-10 flex items-center shrink-0 gap-2">
+                <button id="btn-sync-cloudflare" onclick="triggerCloudflareLockdown()" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-orange-500/20">
+                    Sync & Lockdown 80/443
+                </button>
+
+                <button onclick="triggerRevertLockdown()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-slate-700 transition-colors">
+                    Unlock Ports
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <hr class="border-border my-8">
+
     <div class="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse whitespace-nowrap">
@@ -454,12 +482,79 @@
             }
         }
 
-        
+        async function triggerCloudflareLockdown() {
+            if (!confirm("This will configure UFW to drop all internet traffic on ports 80 and 443 unless it originates from Cloudflare. Continue?")) return;
+
+            const btn = document.getElementById('btn-sync-cloudflare');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = 'Syncing... ⏳';
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                const res = await fetch('/api/security/cloudflare/lockdown', { method: 'POST' });
+                const data = await res.json(); // Safely parse the response (even if it's an error)
+
+                if (res.ok) {
+                    alert("✅ Success: " + data.message);
+                    fetchSecurityData(); // Refresh the UFW table so they see the new CF IPs!
+                } else {
+                    // This will catch your "Cloudflare lockdown is only applicable..." error!
+                    alert("❌ Failed: " + (data.message || await res.text()));
+                }
+            } catch (err) {
+                console.error("Lockdown error:", err);
+                alert("❌ A network error occurred.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        async function triggerRevertLockdown() {
+            if (!confirm("This will REOPEN ports 80/443 to the entire internet. Are you sure?")) return;
+
+            try {
+                const res = await fetch('/api/security/cloudflare/revert', { method: 'POST' });
+                if (res.ok) {
+                    alert("✅ Ports are now open to all traffic.");
+                    fetchSecurityData();
+                } else {
+                    alert("❌ Failed to revert.");
+                }
+            } catch (e) {
+                alert("Network error.");
+            }
+        }
+
+        async function syncProxyUIForSecurity() {
+            try {
+                const res = await fetch('/api/settings/proxy');
+                if (!res.ok) throw new Error("Failed to load proxy settings");
+                const data = await res.json();
+
+                const proxySection = document.getElementById('cloudflare-container');
+                if (!proxySection) return;
+
+                if (data.use_reverse_proxy) {
+                    proxySection.classList.remove('hidden');
+                } else {
+                    proxySection.classList.add('hidden');
+                }
+            } catch (err) {
+                console.error("Error syncing proxy UI:", err);
+            }
+        }
+
+        syncProxyUIForSecurity(); // Call this function on page load
         // Initial Fetch
         fetchSecurityData();
         fetchFail2BanStatus(); // <-- ADD THIS
 
         // Polling Timers
+        setInterval(syncProxyUIForSecurity, 15000); // Check proxy settings every 15 seconds
         setInterval(fetchSecurityData, 10000); 
         setInterval(fetchFail2BanStatus, 10000);
     </script>

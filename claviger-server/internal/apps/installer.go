@@ -49,6 +49,7 @@ services:
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
+      - /opt/claviger/proxy/cloudflare_ips.conf:/data/nginx/custom/http_top.conf
     networks:
       - cloudrocean-net
     labels:

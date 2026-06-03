@@ -20,6 +20,59 @@
         </button>
     </div>
 
+    <hr class="border-border my-8">
+    <h3 class="text-lg font-bold text-slate-100 mb-4">Web App Hosting & Gateway</h3>
+
+    <div id="proxy-disabled-state" class="hidden mb-8 p-8 bg-surface rounded-2xl border border-border shadow-sm flex flex-col items-center justify-center text-center relative overflow-hidden">
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-slate-800/50 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div class="relative z-10">
+            <div class="w-16 h-16 mx-auto bg-background rounded-2xl flex items-center justify-center text-3xl mb-5 border border-border shadow-inner">🔒</div>
+            <h3 class="text-xl font-bold text-slate-100">Internal VPN Routing Only</h3>
+            <p class="text-slate-400 text-sm max-w-md mx-auto mt-2 mb-6 leading-relaxed">
+                You currently have public web hosting disabled. Claviger is operating strictly as a private, isolated network gateway.
+            </p>
+            <button onclick="enableProxyFeature()" class="px-6 py-2.5 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-primary/20 hover:-translate-y-0.5">
+                Enable Web App Hosting
+            </button>
+        </div>
+    </div>
+
+    <div id="proxy-enabled-state" class="hidden space-y-6 mb-8">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface px-6 py-4 rounded-2xl border border-border shadow-sm">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500 text-xl border border-emerald-500/20 shadow-inner">🌐</div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-100">Web Hosting Active</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Master Gateway is managing public internet traffic.</p>
+                </div>
+            </div>
+            <button onclick="disableProxyFeature()" class="px-4 py-2 bg-background hover:bg-rose-500/10 text-slate-300 hover:text-rose-400 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors border border-border hover:border-rose-500/30">
+                Disable Hosting
+            </button>
+        </div>
+
+        <div id="banner-cloudflare" class="hidden bg-orange-500/10 border border-orange-500/20 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
+            <div class="text-2xl mt-0.5 bg-orange-500/20 w-10 h-10 flex items-center justify-center rounded-lg border border-orange-500/30">☁️</div>
+            <div>
+                <h4 class="font-bold text-orange-400 text-sm uppercase tracking-wider">Cloudflare Integration Active</h4>
+                <p class="text-orange-200/70 text-sm mt-1.5 leading-relaxed">Claviger will automatically sync Real-IP lists and configure Nginx to strictly accept traffic from Cloudflare Edge networks.</p>
+            </div>
+        </div>
+
+        <div id="banner-standard" class="hidden bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
+            <div class="text-2xl mt-0.5 bg-blue-500/20 w-10 h-10 flex items-center justify-center rounded-lg border border-blue-500/30">🌍</div>
+            <div>
+                <h4 class="font-bold text-blue-400 text-sm uppercase tracking-wider">Standard Direct DNS Active</h4>
+                <p class="text-blue-200/70 text-sm mt-1.5 leading-relaxed">You are managing your own DNS records. Ensure your domain A-Records point directly to this server's public IP.</p>
+            </div>
+        </div>
+
+        <div id="master-gateway-ui" class="space-y-6">
+            </div>
+    </div>
+
     <hr class="border-border my-6">
     <h3 class="text-lg font-bold text-slate-100">Gateway Apps</h3>
 
@@ -82,10 +135,9 @@
     </div>
 
     <hr class="border-border my-8">
-    <h3 class="text-lg font-bold text-slate-100 mb-4">Server Configuration</h3>
+    <h3 class="text-lg font-bold text-slate-100 mb-4">VPN Connection Settings</h3>
 
     <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm">
-        
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-border/50">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-xl">📡</div>
@@ -105,16 +157,16 @@
             <div class="flex-1 w-full">
                 <input type="text" id="input-endpoint" placeholder="Enter new IP or Domain (e.g., vpn.mydomain.com)" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
             </div>
-            <button id="btn-save-endpoint" onclick="saveEndpoint()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700 whitespace-nowrap">
+            <button id="btn-save-endpoint" onclick="saveEndpoint()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700 whitespace-nowrap shadow-sm">
                 Save Endpoint
             </button>
         </div>
 
-        <div class="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex gap-3 items-start">
-            <span class="text-amber-500 mt-0.5">⚠️</span>
+        <div class="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-3 items-start shadow-sm">
+            <span class="text-amber-500 mt-0.5 text-lg">⚠️</span>
             <p class="text-xs text-amber-200/80 leading-relaxed">
                 <strong>Safe Action:</strong> Changing this setting will not disconnect existing peers. However, it will change the connection address generated for all <em>future</em> peers and QR codes. 
-                <br><em>Note: If you use a custom domain, you must purchase it and point the A-Record to this server's IP address.</em>
+                <br><span class="opacity-75 block mt-1">Note: If you use a custom domain, you must purchase it and point the A-Record to this server's IP address.</span>
             </p>
         </div>
     </div>
@@ -139,6 +191,40 @@
             <button onclick="document.getElementById('modal-dns-warning').close()" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors">Cancel</button>
             <button onclick="saveEndpoint(true)" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold rounded-lg transition-colors shadow-sm shadow-amber-500/20">
                 Force Save Anyway
+            </button>
+        </div>
+    </dialog>
+
+    <dialog id="modal-proxy-setup" class="bg-surface border border-border rounded-xl shadow-2xl p-0 w-[90%] max-w-lg backdrop:bg-black/60 text-slate-200">
+        <div class="p-5 border-b border-border flex justify-between items-center bg-surface/50">
+            <h3 class="font-bold text-lg text-white flex items-center gap-2"><span>🌐</span> Enable Web App Hosting</h3>
+            <button onclick="document.getElementById('modal-proxy-setup').close()" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">✕</button>
+        </div>
+        
+        <div class="p-6 space-y-4">
+            <p class="text-sm text-slate-400 mb-2">Select how you want to route internet traffic to your Master Gateway. You can change this later.</p>
+
+            <label class="flex items-start gap-4 p-4 border border-border rounded-xl cursor-pointer hover:bg-slate-800/50 transition-all has-[:checked]:border-orange-500 has-[:checked]:bg-orange-500/10">
+                <input type="radio" name="proxy_choice" value="cloudflare" class="mt-1 accent-orange-500" checked>
+                <div>
+                    <h4 class="font-bold text-slate-200">Cloudflare Integration <span class="ml-2 text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full uppercase tracking-wider">Recommended</span></h4>
+                    <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">Free SSL, DDoS protection, and CDN caching. Claviger will lock down Nginx to strictly accept traffic only from Cloudflare Edge networks.</p>
+                </div>
+            </label>
+
+            <label class="flex items-start gap-4 p-4 border border-border rounded-xl cursor-pointer hover:bg-slate-800/50 transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
+                <input type="radio" name="proxy_choice" value="standard" class="mt-1 accent-blue-500">
+                <div>
+                    <h4 class="font-bold text-slate-200">Standard / Direct DNS</h4>
+                    <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">You manage your own DNS records directly. Use this if you are using an internal local domain or an unsupported proxy service.</p>
+                </div>
+            </label>
+        </div>
+
+        <div class="p-5 border-t border-border flex justify-end gap-3 bg-background/50 rounded-b-xl">
+            <button onclick="document.getElementById('modal-proxy-setup').close()" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors">Cancel</button>
+            <button onclick="saveProxySelection()" id="btn-save-proxy" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
+                Enable & Save
             </button>
         </div>
     </dialog>
@@ -301,9 +387,109 @@
             }
         }
 
+        function enableProxyFeature() {
+    document.getElementById('modal-proxy-setup').showModal();
+}
+
+// 2. Grabs the radio button selection and POSTs to Go
+async function saveProxySelection() {
+    const btn = document.getElementById('btn-save-proxy');
+    const selectedProvider = document.querySelector('input[name="proxy_choice"]:checked').value;
+
+    btn.disabled = true;
+    btn.innerHTML = 'Saving... ⏳';
+
+    try {
+        const res = await fetch('/api/settings/proxy/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                use_reverse_proxy: true,
+                proxy_provider: selectedProvider
+            })
+        });
+
+        if (res.ok) {
+            document.getElementById('modal-proxy-setup').close();
+            syncProxyUI(); // Instantly reshapes the UI!
+        } else {
+            alert("Failed to save proxy settings. Check logs.");
+        }
+    } catch (e) {
+        console.error("Save config error:", e);
+        alert("Network error occurred.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Enable & Save';
+    }
+}
+
+// 3. Allows the user to turn it back off and return to "Internal VPN Only" mode
+async function disableProxyFeature() {
+    if (!confirm("Are you sure you want to disable Web App Hosting? Nginx will be stopped and you will return to internal VPN routing only.")) return;
+
+    try {
+        const res = await fetch('/api/settings/proxy/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                use_reverse_proxy: false,
+                proxy_provider: 'none'
+            })
+        });
+
+        if (res.ok) {
+            syncProxyUI(); // Immediately hides the gateway UI and shows the disabled banner
+        } else {
+            alert("Failed to disable web hosting.");
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+        async function syncProxyUI() {
+            try {
+                const res = await fetch('/api/settings/proxy');
+                if (!res.ok) throw new Error("Failed to load proxy settings");
+                const data = await res.json();
+
+                const disabledState = document.getElementById('proxy-disabled-state');
+                const enabledState = document.getElementById('proxy-enabled-state');
+                const cfBanner = document.getElementById('banner-cloudflare');
+                const stdBanner = document.getElementById('banner-standard');
+
+                // Reset everything to hidden first to prevent UI flickering
+                disabledState.classList.add('hidden');
+                enabledState.classList.add('hidden');
+                cfBanner.classList.add('hidden');
+                stdBanner.classList.add('hidden');
+
+                if (data.use_reverse_proxy === true) {
+                    // Unhide the main proxy container
+                    enabledState.classList.remove('hidden');
+
+                    // Show specific alerts based on their DNS provider choice
+                    if (data.proxy_provider === "cloudflare") {
+                        cfBanner.classList.remove('hidden');
+                    } else if (data.proxy_provider === "standard") {
+                        stdBanner.classList.remove('hidden');
+                    }
+                } else {
+                    // They chose Internal VPN routing only during setup
+                    disabledState.classList.remove('hidden');
+                }
+
+            } catch (err) {
+                console.error("Error syncing proxy UI:", err);
+            }
+        }
+
+        syncProxyUI();
         fetchSystemSettings();
         checkGatewayStatus();
         checkDockerForNetworkTab(); // Initialize the Docker checker
+
         setInterval(fetchSystemSettings, 60000); 
     </script>
 </div>

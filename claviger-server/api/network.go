@@ -14,6 +14,12 @@ type InternetReq struct {
 	Enable bool `json:"enable"`
 }
 
+// ProxyConfig represents the initial setup choices
+type ProxyConfig struct {
+	UseReverseProxy bool   `json:"use_reverse_proxy"`
+	ProxyProvider   string `json:"proxy_provider"` // "cloudflare", "standard", or "none"
+}
+
 // HandleNetworkSettings manages global routing configurations
 func HandleNetworkSettings(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -66,4 +72,51 @@ func HandleNetworkSettings(db *sql.DB) http.HandlerFunc {
 
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func HandleGetProxyConfig(w http.ResponseWriter, r *http.Request) {
+
+	db := storage.InitDB()
+	defer db.Close()
+
+	useReverseProxy := storage.GetConfig(db, "use_reverse_proxy")
+	proxyProvider := storage.GetConfig(db, "proxy_provider")
+
+	if useReverseProxy == "" {
+		useReverseProxy = "false"
+	}
+	if proxyProvider == "" {
+		proxyProvider = "none"
+	}
+
+	config := ProxyConfig{
+		UseReverseProxy: useReverseProxy == "true",
+		ProxyProvider:   proxyProvider,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(config)
+}
+
+func HandleUpdateProxyConfig(w http.ResponseWriter, r *http.Request) {
+	var req ProxyConfig
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	db := storage.InitDB()
+	defer db.Close()
+
+	// Convert boolean back to string for your SQLite config table
+	useProxyStr := "false"
+	if req.UseReverseProxy {
+		useProxyStr = "true"
+	}
+
+	storage.SetConfig(db, "use_reverse_proxy", useProxyStr)
+	storage.SetConfig(db, "proxy_provider", req.ProxyProvider)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }

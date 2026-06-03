@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 
 	"claviger-server/internal/apps"
@@ -72,18 +73,36 @@ func HandleAppInstall(w http.ResponseWriter, r *http.Request) {
 	case "fail2ban":
 		err = security.InstallFail2Ban()
 	case "npm":
-		// 🎯 THE GATEWAY GUARDRAIL
-		// Before we let the catalog install NPM, make sure Ports 80/443 are free!
+		// 1. Ensure directory and file exist
+		os.MkdirAll("/opt/claviger/proxy", 0755)
+		confPath := "/opt/claviger/proxy/cloudflare_ips.conf"
+
+		// Create the file if it doesn't exist
+		if _, err := os.Stat(confPath); os.IsNotExist(err) {
+			os.WriteFile(confPath, []byte("# Empty initially. Run Lockdown to sync."), 0644)
+		}
+
+		// 2. 🎯 AUTOMATE OWNERSHIP:
+		// NPM expects UID 1000. Set this so you never see 'Read-only file system' errors.
+		// Note: This requires your Go app to run with sufficient privileges (sudo/root).
+		err = os.Chown(confPath, 1000, 1000)
+		if err != nil {
+			fmt.Printf("Warning: Could not set ownership on %s: %v\n", confPath, err)
+		}
+
+		// 3. Port conflict check
 		if portErr := gateway.CheckPorts(); portErr != nil {
 			installMutex.Lock()
 			delete(activeInstalls, req.AppID)
 			installMutex.Unlock()
 
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict) // 409 Conflict
+			w.WriteHeader(http.StatusConflict)
 			json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": portErr.Error()})
 			return
 		}
+
+		// 4. Safe to install
 		err = apps.Install(db, req.AppID)
 	default:
 		err = apps.Install(db, req.AppID)

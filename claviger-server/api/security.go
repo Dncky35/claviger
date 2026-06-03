@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"claviger-server/internal/firewall"
+	"claviger-server/internal/security"
 	"claviger-server/storage"
 	"encoding/json"
 	"fmt"
@@ -354,4 +355,54 @@ func runUfwCmd(args ...string) error {
 		return fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	return nil
+}
+
+func HandleCloudflareLockdown(w http.ResponseWriter, r *http.Request) {
+
+	db := storage.InitDB()
+	defer db.Close()
+
+	// Check if reverse proxy is set to Cloudflare before proceeding
+	proxyProvider := storage.GetConfig(db, "proxy_provider")
+	if proxyProvider != "cloudflare" {
+		http.Error(w, "Cloudflare lockdown is only applicable if Cloudflare is set as the proxy provider.", http.StatusBadRequest)
+		return
+	}
+
+	// 1. Fetch live IPs
+	ips, err := security.FetchCloudflareIPs()
+	if err != nil {
+		http.Error(w, "Failed to reach Cloudflare API", http.StatusBadGateway)
+		return
+	}
+
+	// 2. Generate Nginx Real-IP file
+	// We will mount this into NPM at /data/nginx/custom/http_top.conf
+	confPath := "/opt/claviger/proxy/cloudflare_ips.conf"
+	if err := security.GenerateNginxRealIPConfig(ips, confPath); err != nil {
+		http.Error(w, "Failed to generate Nginx config", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Apply UFW Rules
+	if err := security.LockdownUFW(ips); err != nil {
+		http.Error(w, "Failed to apply firewall rules", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Ports 80/443 are now locked down to Cloudflare Edge Networks.",
+	})
+}
+
+func HandleCloudflareRevert(w http.ResponseWriter, r *http.Request) {
+	if err := security.RevertLockdown(); err != nil {
+		http.Error(w, "Failed to revert lockdown", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "Firewall restored to open mode."})
 }
