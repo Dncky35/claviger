@@ -263,15 +263,9 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Failed to set up firewall: %v", err), http.StatusInternalServerError)
 			return
 		}
-		// 1. Keep the public outer WireGuard gateway open
-		// runUfwCmd("allow", "51820/udp")
-
-		// 2. 🎯 ZERO TRUST BASELINE: Only unlock SSH over the VPN tunnel!
-		// Change "22" to "2278" here if your server is running on the custom port.
-		// runUfwCmd("allow", "in", "on", "wg0", "to", "any", "port", "22")
 
 		// 3. Force enable the firewall
-		// err = runUfwCmd("--force", "enable")
+		err = runUfwCmd("--force", "enable")
 
 	case "disable":
 		log.Println("🧹 Disabling UFW and dropping baseline rules...")
@@ -298,11 +292,7 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 
 		exec.Command("ufw", "allow", "22/tcp").Run() // Ensure SSH isn't locked out when firewall is disabled
 
-		// Clean up the unique rules so they don't stack up if re-enabled later
-		// runUfwCmd("delete", "allow", "51820/udp")
-		// runUfwCmd("delete", "allow", "in", "on", "wg0", "to", "any", "port", "22")
-
-		// err = runUfwCmd("disable")
+		err = runUfwCmd("disable")
 
 	case "add":
 		log.Printf("➕ Adding custom firewall rule for port: %s", req.Port)
@@ -358,11 +348,9 @@ func runUfwCmd(args ...string) error {
 }
 
 func HandleCloudflareLockdown(w http.ResponseWriter, r *http.Request) {
-
 	db := storage.InitDB()
 	defer db.Close()
 
-	// Check if reverse proxy is set to Cloudflare before proceeding
 	proxyProvider := storage.GetConfig(db, "proxy_provider")
 	if proxyProvider != "cloudflare" {
 		http.Error(w, "Cloudflare lockdown is only applicable if Cloudflare is set as the proxy provider.", http.StatusBadRequest)
@@ -376,19 +364,15 @@ func HandleCloudflareLockdown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Generate Nginx Real-IP file
-	// We will mount this into NPM at /data/nginx/custom/http_top.conf
-	confPath := "/opt/claviger/proxy/cloudflare_ips.conf"
-	if err := security.GenerateNginxRealIPConfig(ips, confPath); err != nil {
-		http.Error(w, "Failed to generate Nginx config", http.StatusInternalServerError)
-		return
-	}
-
-	// 3. Apply UFW Rules
+	// 2. Apply UFW Rules (NGINX LOGIC REMOVED FROM HERE)
 	if err := security.LockdownUFW(ips); err != nil {
 		http.Error(w, "Failed to apply firewall rules", http.StatusInternalServerError)
 		return
 	}
+
+	// 3. Store the active IPs to SQLite for the Revert function
+	ipString := strings.Join(ips, ",")
+	storage.SetConfig(db, "cloudflare_active_ips", ipString)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
@@ -398,11 +382,27 @@ func HandleCloudflareLockdown(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleCloudflareRevert(w http.ResponseWriter, r *http.Request) {
-	if err := security.RevertLockdown(); err != nil {
+	db := storage.InitDB()
+	defer db.Close()
+
+	// 1. Read the exact IPs that were applied from the database
+	ipString := storage.GetConfig(db, "cloudflare_active_ips")
+	var activeIPs []string
+	if ipString != "" {
+		activeIPs = strings.Split(ipString, ",")
+	}
+
+	// 2. Revert the firewall using ONLY those IPs
+	if err := security.RevertLockdown(activeIPs); err != nil {
 		http.Error(w, "Failed to revert lockdown", http.StatusInternalServerError)
 		return
 	}
 
+	// 3. Clear the database record now that they are removed
+	storage.SetConfig(db, "cloudflare_active_ips", "")
+
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "Firewall restored to open mode."})
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Firewall restored to open mode."})
 }

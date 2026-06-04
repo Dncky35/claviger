@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"claviger-server/internal/firewall"
+	"claviger-server/internal/security"
 	"claviger-server/storage"
 )
 
@@ -112,6 +114,32 @@ func HandleUpdateProxyConfig(w http.ResponseWriter, r *http.Request) {
 	useProxyStr := "false"
 	if req.UseReverseProxy {
 		useProxyStr = "true"
+	}
+
+	if req.ProxyProvider != "cloudflare" && req.ProxyProvider != "standard" && req.ProxyProvider != "none" {
+		http.Error(w, "Invalid proxy provider", http.StatusBadRequest)
+		return
+	}
+
+	// 🎯 THE NEW LOGIC: Manage Nginx Real-IP Config based on selection
+	confPath := "/opt/claviger/proxy/cloudflare_ips.conf"
+
+	if useProxyStr == "true" && req.ProxyProvider == "cloudflare" {
+		// Fetch the IPs and write the Nginx Real-IP config
+		ips, err := security.FetchCloudflareIPs()
+		if err != nil {
+			http.Error(w, "Failed to fetch Cloudflare IPs from network", http.StatusBadGateway)
+			return
+		}
+		if err := security.GenerateNginxRealIPConfig(ips, confPath); err != nil {
+			http.Error(w, "Failed to generate Nginx config", http.StatusInternalServerError)
+			return
+		}
+		// (Optional: If NPM is already running, you could trigger a docker exec nginx reload here)
+	} else {
+		// If they switch to Standard or None, wipe the Real-IP config for safety
+		os.MkdirAll("/opt/claviger/proxy", 0755)
+		os.WriteFile(confPath, []byte("# Proxy is not set to Cloudflare. Real-IP unmasking disabled."), 0644)
 	}
 
 	storage.SetConfig(db, "use_reverse_proxy", useProxyStr)

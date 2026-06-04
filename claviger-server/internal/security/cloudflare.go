@@ -81,19 +81,13 @@ func LockdownUFW(ips []string) error {
 	return exec.Command("ufw", "reload").Run()
 }
 
-func RevertLockdown() error {
-	// 1. Re-fetch the list of IPs to iterate and delete
-	ips, err := FetchCloudflareIPs()
-	if err != nil {
-		return fmt.Errorf("failed to fetch CF IPs for cleanup: %v", err)
-	}
-
-	// 2. Remove the specific rules we created during lockdown
-	// We must mirror the command we used to create them:
-	// "ufw allow proto tcp from [IP] to any port 80,443"
-	for _, ip := range ips {
-		// We use Run() and ignore the error because if the rule is already gone,
-		// we don't want to stop the whole revert process.
+func RevertLockdown(activeIPs []string) error {
+	// 1. Remove the specific rules we created during lockdown using the EXACT list
+	for _, ip := range activeIPs {
+		// Skip empty strings just in case
+		if strings.TrimSpace(ip) == "" {
+			continue
+		}
 		exec.Command("ufw", "delete", "allow", "proto", "tcp", "from", ip, "to", "any", "port", "80,443").Run()
 	}
 
@@ -103,7 +97,7 @@ func RevertLockdown() error {
 	exec.Command("ufw", "allow", "443/tcp").Run()
 
 	// 4. Clear out the Nginx config so it's empty again
-	os.WriteFile("/opt/claviger/proxy/cloudflare_ips.conf", []byte(""), 0644)
+	// os.WriteFile("/opt/claviger/proxy/cloudflare_ips.conf", []byte(""), 0644)
 
 	// 5. Final reload to clean the state
 	return exec.Command("ufw", "reload").Run()

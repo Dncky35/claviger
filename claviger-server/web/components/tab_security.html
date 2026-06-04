@@ -12,15 +12,13 @@
             <button onclick="toggleUFW()" id="btn-toggle-ufw" class="bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm">
                 Disable UFW
             </button>
-            <button onclick="addRule()" class="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-xl font-medium transition-colors shadow-sm text-sm">
+            <button id="button-add-rule" onclick="addRule()" class="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-xl font-medium transition-colors shadow-sm text-sm">
                 + Add Rule
             </button>
         </div>
     </div>
 
     <div id="security-insights-container" class="mb-6 space-y-4"></div>
-
-    <hr class="border-border my-8">
     
     <div id="cloudflare-container" class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col gap-4 relative overflow-hidden">
         <div class="flex flex-col md:flex-row items-start justify-between gap-6">
@@ -34,7 +32,7 @@
                     Fetches the latest Cloudflare Edge IP ranges, configures Nginx to unmask visitor IPs, and configures UFW to block all non-Cloudflare traffic on ports 80 and 443.
                 </p>
             </div>
-            <div class="z-10 flex items-center shrink-0 gap-2">
+            <div id="cloudflare-controls" class="z-10 flex items-center shrink-0 gap-2">
                 <button id="btn-sync-cloudflare" onclick="triggerCloudflareLockdown()" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-orange-500/20">
                     Sync & Lockdown 80/443
                 </button>
@@ -218,6 +216,8 @@
                     // 1. Update Badge & Button
                     const badge = document.getElementById('ufw-badge');
                     const toggleBtn = document.getElementById('btn-toggle-ufw');
+                    const ruleBtn = document.getElementById('button-add-rule');
+                    const cloudflareControls = document.getElementById('cloudflare-controls');
                     
                     if (badge && toggleBtn) {
                         // Reset button disabled state in case it was stuck from a previous action
@@ -231,6 +231,9 @@
                             toggleBtn.innerText = 'Install UFW';
                             toggleBtn.className = 'bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
                             toggleBtn.onclick = () => installUFW();
+                            cloudflareControls.classList.add('hidden'); // Hide Cloudflare controls if firewall isn't installed
+                            ruleBtn.disabled = true; // Disable adding rules when UFW is not installed
+                            ruleBtn.classList.add('cursor-not-allowed', 'opacity-50'); // Disable adding rules when UFW is not installed
 
                         } else if (data.ufw_status === 'active') {
                             badge.className = 'ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-success/10 text-success border border-success/20';
@@ -239,6 +242,9 @@
                             toggleBtn.innerText = 'Disable UFW';
                             toggleBtn.className = 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border border-destructive/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
                             toggleBtn.onclick = () => toggleUFW('active');
+                            cloudflareControls.classList.remove('hidden'); // Show Cloudflare controls if firewall is active
+                            ruleBtn.disabled = false; // Disable adding rules when UFW is active to prevent lockouts
+                            ruleBtn.classList.remove('cursor-not-allowed', 'opacity-50');
 
                         } else {
                             badge.className = 'ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20';
@@ -247,6 +253,9 @@
                             toggleBtn.innerText = 'Enable UFW';
                             toggleBtn.className = 'bg-success/10 text-success hover:bg-success hover:text-white border border-success/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
                             toggleBtn.onclick = () => toggleUFW('inactive');
+                            cloudflareControls.classList.add('hidden'); // Hide Cloudflare controls if firewall is inactive
+                            ruleBtn.disabled = true;
+                            ruleBtn.classList.add('cursor-not-allowed', 'opacity-50'); // Disable adding rules when UFW is inactive
                         }
                     }
 

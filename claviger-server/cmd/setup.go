@@ -14,6 +14,7 @@ import (
 
 	"claviger-server/internal/auth"
 	"claviger-server/internal/firewall"
+	"claviger-server/internal/security"
 	"claviger-server/internal/system"
 	"claviger-server/network"
 	"claviger-server/storage"
@@ -287,7 +288,18 @@ func RunSetup(args []string) {
 
 		if providerChoice == "1" {
 			tempConfig["proxy_provider"] = "cloudflare"
-			fmt.Println("✅ Cloudflare integration enabled. The UI will automatically sync Real-IP lists.")
+			fmt.Println("✅ Cloudflare integration enabled.")
+
+			// Fetch the IPs and write the Nginx Real-IP config right away since they chose it during setup
+			ips, err := security.FetchCloudflareIPs()
+			if err != nil {
+				log.Fatalf("❌ Failed to fetch Cloudflare IPs from network: %v", err)
+			}
+			if err := security.GenerateNginxRealIPConfig(ips, "/opt/claviger/proxy/cloudflare_ips.conf"); err != nil {
+				log.Fatalf("❌ Failed to generate Nginx config: %v", err)
+			}
+			fmt.Println("✅ Nginx Real-IP configuration generated with current Cloudflare IPs.")
+
 		} else {
 			tempConfig["proxy_provider"] = "standard"
 			fmt.Println("✅ Standard routing selected.")
