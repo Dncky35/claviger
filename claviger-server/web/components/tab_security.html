@@ -547,7 +547,7 @@
                 const proxySection = document.getElementById('cloudflare-container');
                 if (!proxySection) return;
 
-                if (data.use_reverse_proxy) {
+                if (data.use_reverse_proxy && data.reverse_proxy_provider === 'cloudflare') {
                     proxySection.classList.remove('hidden');
                 } else {
                     proxySection.classList.add('hidden');

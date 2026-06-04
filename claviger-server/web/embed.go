@@ -4,5 +4,5 @@ import (
 	"embed"
 )
 
-//go:embed index.html components/*.html
+//go:embed index.html components/*.html static/*
 var TemplatesFS embed.FS
