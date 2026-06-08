@@ -1,84 +1,90 @@
-# 🗝️ Project Claviger
+# 🗝️ Claviger: Zero Trust VPN Gateway & Internal Developer Platform
 
-Claviger is a Zero Trust, Edge-Networking SaaS designed to automate and secure WireGuard deployments. It operates as a decentralized network appliance, providing secure machine-to-machine (M2M) provisioning, automated IP Address Management (IPAM), and role-based micro-segmentation.
+Claviger is an enterprise-grade Zero Trust networking appliance and self-hosted IDP designed for seamless infrastructure orchestration. It operates as a high-performance service daemon on Linux, providing deterministic routing, automated IP Address Management (IPAM), and a state-aware application marketplace. 
 
-Similar in architecture to enterprise solutions like Tailscale or Netmaker, Claviger separates the **Control Plane** (Auth & Billing) from the **Data Plane** (Network Routing).
-
----
-
-## 🏗️ Architecture
-
-
-
-Claviger is divided into three distinct components:
-
-### 1. The Control Plane (SaaS Backend)
-A centralized API that handles user authentication, license validation, and node provisioning. It generates one-time Setup Keys and permanent API tokens for the edge servers.
-* **Tech:** Python, FastAPI, PostgreSQL, SQLAlchemy.
-* **Security:** API route rate-limiting via Redis, cryptographic token hashing, strict Zero Trust endpoint verification.
-
-### 2. The Edge Node (`claviger-server`)
-A lightweight, self-contained daemon that runs on the user's Linux server. It handles the actual network routing, automatically configuring WireGuard interfaces and `iptables` rules based on the license state.
-* **Tech:** Golang, embedded SQLite (`modernc.org/sqlite`), WireGuard.
-* **Features:** Hot-reloads configs without dropping connections (`wg syncconf`), completely isolated embedded database, automated hourly heartbeat pings.
-
-### 3. The Dashboard (Frontend)
-A modern, multi-tenant web application where IT Admins can manage their Claviger networks, generate Setup Keys, and monitor node health.
-* **Tech:** Next.js, React, Tailwind CSS, Framer Motion.
-* **Features:** Subdomain routing (e.g., `claviger.cloudrocean.com`), Edge Middleware for strict security headers, responsive modern UI.
+By decoupling the **Control Plane** (centralized identity and enrollment) from the **Data Plane** (kernel-level WireGuard transit), Claviger ensures that sensitive cryptographic material and private network traffic never leave your sovereign infrastructure.
 
 ---
 
-## 🚀 Features
+## 🏗️ Architecture Overview
 
-* **Zero-Setup Provisioning:** Admins install the edge node via `apt-get` and authenticate using a single-use Setup Key. No MAC address tracking or manual configuration files required.
-* **Decentralized Data Plane:** The central SaaS never sees private WireGuard keys or network traffic.
-* **Fail-Silent Heartbeats:** Edge nodes ping the control plane hourly. If the SaaS goes down, nodes enter a 72-hour grace period to keep the VPN alive.
-* **Role-Based Access Control:** Instantiate distinct firewall rules dynamically based on user roles (e.g., restricting standard users from accessing specific ports on the subnet).
+The Claviger ecosystem is architected as a distributed system composed of two primary pillars:
 
----
-
-## 🛠️ Tech Stack
-
-**Frontend & API Gateway:**
-* Next.js 14+ (App Router)
-* React & Framer Motion
-* Tailwind CSS
-
-**Backend (Control Plane):**
-* Python 3.10+
-* FastAPI
-* PostgreSQL & Alembic (Migrations)
-* Redis (Rate Limiting)
-
-**Edge Node (Daemon):**
-* Golang 1.21+
-* SQLite (Pure Go driver)
-* WireGuard (`wg-tools`)
+*   **`claviger-server` (The Node Engine):** A Golang-based daemon that manages the Linux networking stack. It utilizes `wgctrl` for kernel-level WireGuard manipulation, Docker Compose for application lifecycle management, and an embedded SQLite instance for local state persistence.
+*   **`claviger-client` (The Management Interface):** A cross-platform GUI built with Fyne, enabling secure administrative enrollment via cryptographic "Visa" tokens. It facilitates remote node management and secure peer provisioning without direct SSH exposure.
 
 ---
 
-## 📁 Repository Structure
+## 🚀 Core Technical Features
 
-```text
-.
-├── backend/               # FastAPI Control Plane
-│   ├── app/
-│   │   ├── core/          # Database config, auth, rate limiters
-│   │   ├── models/        # SQLAlchemy ORM models (Account, ClavigerNode, SetupKey)
-│   │   ├── schemas/       # Pydantic validation models
-│   │   └── api/           # Routers (/auth, /nodes, /dashboard)
-│   ├── alembic/           # Database migrations
-│   └── requirements.txt
-├── edge-node/             # Golang Claviger Daemon
-│   ├── main.go            # CLI setup and daemon router
-│   ├── go.mod
-│   └── (embedded SQLite)
-├── frontend/              # Next.js Dashboard
-│   ├── app/
-│   │   ├── claviger-app/  # Claviger specific routing
-│   │   └── (main app)
-│   ├── components/
-│   └── middleware.ts      # Edge proxy and security headers
-├── .gitignore
-└── .gitattributes
+### 1. Infrastructure Orchestration & PaaS
+Claviger transforms standard Linux instances into a private PaaS through its **"App Tab" Marketplace**.
+*   **State-Aware Orchestration:** The engine dynamically generates and injects environment-specific variables into Docker Compose templates for services like **Vaultwarden**, **AdGuard Home**, and **Nginx Proxy Manager**.
+*   **Deterministic Dependency Gates:** System-core apps (e.g., NPM) are treated as master gateways, ensuring required network bridges (`cloudrocean-net`) and shared configuration volumes (Cloudflare IP lists) are provisioned before service instantiation.
+
+### 2. Network Engineering & Zero Trust
+*   **Hot-Injection Peer Management:** Claviger performs zero-reload peer injection. New devices are added to the WireGuard interface (`wg0`) in real-time using `wgctrl.ConfigureDevice`, preventing existing tunnel drops.
+*   **Sequential 1808X Port Allocation:** To avoid port collisions, the IDP implements a dynamic allocation strategy. Apps are assigned ports in a 100-port block starting from the user-defined `hub_port` (defaulting to the 1808X range).
+*   **Automated IPAM:** The system manages a virtual overlay subnet (default `10.8.0.0/24`). It dynamically discovers available addresses, reserving `.1` for the Hub and sequentially assigning `.2` through `.254` to peers.
+
+### 3. Security Automation & OS Hardening
+*   **RESTful Firewall-as-API:** A comprehensive security controller exposes UFW (Uncomplicated Firewall) management via a secure API. It features a smart scanner that detects and flags "Critical" vulnerabilities, such as public SSH (22) or Database exposure.
+*   **Cloudflare Authenticated Origin Pulls:** For web-facing nodes, Claviger automates the lockdown of ports 80/443. It fetches live Cloudflare IP ranges and reconfigures UFW to drop all traffic not originating from Cloudflare’s edge.
+*   **Failure Protection:** Integrated **Fail2Ban** orchestration allows admins to manage SSH jails, monitor banned IPs, and perform surgical unbans directly from the management UI.
+*   **Systemd Integration:** The daemon manages its own lifecycle as a standard Linux service, ensuring high availability and automatic recovery after host reboots.
+
+---
+
+## 🛠️ Tech Stack Breakdown
+
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Core Logic** | Golang 1.21+ | High-concurrency daemon execution |
+| **VPN Kernel** | WireGuard / `wgctrl` | High-performance encrypted transit |
+| **Orchestration** | Docker Compose | Application container lifecycle |
+| **Database** | SQLite (Pure Go) | Low-overhead local state persistence |
+| **Firewall** | UFW / `iptables` | Network boundary enforcement |
+| **Desktop UI** | Fyne (Go-GUI) | Cross-platform management client |
+| **Security** | Fail2Ban | SSH Brute-force protection |
+
+---
+
+## 🚀 Installation & Bootstrapping
+
+### 1. Server Provisioning (Linux)
+Execute the following on your target Linux server to begin the Zero-Trust enrollment:
+
+```bash
+# Build the daemon
+go build -o claviger-server .
+
+# Start the interactive setup wizard (Requires Root)
+sudo ./claviger-server setup
+```
+
+**The Setup Flow:**
+1.  **Identity Generation:** The node generates a unique UUID and cryptographic keypair.
+2.  **Network Validation:** The wizard validates UDP port availability (default `51820`) and TCP port availability for the management hub (default `18080`).
+3.  **Endpoint Verification:** Performs DNS/IP verification to ensure your node is reachable by clients.
+4.  **Admin Enrollment:** You will be prompted to paste a "Connection Request" token from your Claviger Desktop Client to link the node.
+
+### 2. Service Management
+Once configured, Claviger installs itself as a `systemd` unit:
+
+```bash
+sudo systemctl start claviger
+sudo systemctl enable claviger
+```
+
+### 3. Client Enrollment
+1.  Open the **Claviger Desktop App**.
+2.  Click **"Generate Connection Request"**.
+3.  Paste the resulting token into the server's setup terminal.
+4.  The server will provide an **Approval Token (Visa)**. Paste this back into the client to establish the secure tunnel.
+
+---
+
+## 🛡️ Disaster Recovery
+During setup, a **Disaster Recovery Key** (AES-256) is generated. 
+
+> ⚠️ **IMPORTANT:** Save this key immediately. If the server is destroyed, this key is the only way to decrypt and restore your network configurations and application data from backups. It is never stored in plain text and cannot be recovered if lost.
