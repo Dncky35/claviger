@@ -17,21 +17,28 @@ The Claviger ecosystem is architected as a distributed system composed of two pr
 
 ## 🚀 Core Technical Features
 
-### 1. Infrastructure Orchestration & PaaS
-Claviger transforms standard Linux instances into a private PaaS through its **"App Tab" Marketplace**.
-*   **State-Aware Orchestration:** The engine dynamically generates and injects environment-specific variables into Docker Compose templates for services like **Vaultwarden**, **AdGuard Home**, and **Nginx Proxy Manager**.
-*   **Deterministic Dependency Gates:** System-core apps (e.g., NPM) are treated as master gateways, ensuring required network bridges (`cloudrocean-net`) and shared configuration volumes (Cloudflare IP lists) are provisioned before service instantiation.
+### 1\. Network Engineering & Zero Trust
 
-### 2. Network Engineering & Zero Trust
-*   **Hot-Injection Peer Management:** Claviger performs zero-reload peer injection. New devices are added to the WireGuard interface (`wg0`) in real-time using `wgctrl.ConfigureDevice`, preventing existing tunnel drops.
-*   **Sequential 1808X Port Allocation:** To avoid port collisions, the IDP implements a dynamic allocation strategy. Apps are assigned ports in a 100-port block starting from the user-defined `hub_port` (defaulting to the 1808X range).
-*   **Automated IPAM:** The system manages a virtual overlay subnet (default `10.8.0.0/24`). It dynamically discovers available addresses, reserving `.1` for the Hub and sequentially assigning `.2` through `.254` to peers.
 
-### 3. Security Automation & OS Hardening
+*   **Hot-Injection Peer Management:** Claviger performs zero-reload peer injection. New devices are added to the WireGuard interface (wg0) in real-time using wgctrl.ConfigureDevice, ensuring seamless M2M connectivity without dropping existing tunnel sessions.
+*   **Sequential 1808X Port Allocation:** To avoid port collisions, the IDP implements a collision-aware dynamic allocation strategy. Services are automatically assigned ports in a 100-port block starting from the user-defined hub\_port (defaulting to the 1808X range).
+*   **Automated IPAM:** The system manages a virtual overlay subnet (default 10.8.0.0/24). It dynamically discovers available addresses, reserving .1 for the Hub and sequentially assigning .2 through .254 to peers.  
+*   **Role-Based Access Control (RBAC):** Claviger enforces identity-aware network segmentation by assigning granular roles to connected clients, ensuring strict adherence to the principle of least privilege:
+    *   **Hub Access Role:** Grants administrative privileges to interact with the gateway management plane, modify system configurations, and manage infrastructure lifecycle.
+    *   **Global Routing Role:** Enables full network traversal for designated "Master" nodes, allowing them to route traffic across the entire VPN overlay and access all internal services.
+    *   **Service-Bound Role:** Restricts client access to specific IP/Port mappings, effectively isolating individual developer tools (like Gitea or Vaultwarden) and preventing lateral movement within the network.
+
+
+### 2. Security Automation & OS Hardening
 *   **RESTful Firewall-as-API:** A comprehensive security controller exposes UFW (Uncomplicated Firewall) management via a secure API. It features a smart scanner that detects and flags "Critical" vulnerabilities, such as public SSH (22) or Database exposure.
 *   **Cloudflare Authenticated Origin Pulls:** For web-facing nodes, Claviger automates the lockdown of ports 80/443. It fetches live Cloudflare IP ranges and reconfigures UFW to drop all traffic not originating from Cloudflare’s edge.
 *   **Failure Protection:** Integrated **Fail2Ban** orchestration allows admins to manage SSH jails, monitor banned IPs, and perform surgical unbans directly from the management UI.
 *   **Systemd Integration:** The daemon manages its own lifecycle as a standard Linux service, ensuring high availability and automatic recovery after host reboots.
+
+### 3. Infrastructure Orchestration & PaaS
+Claviger transforms standard Linux instances into a private PaaS through its **"App Tab" Marketplace**.
+*   **State-Aware Orchestration:** The engine dynamically generates and injects environment-specific variables into Docker Compose templates for services like **Vaultwarden**, **AdGuard Home**, and **Nginx Proxy Manager**.
+*   **Deterministic Dependency Gates:** System-core apps (e.g., NPM) are treated as master gateways, ensuring required network bridges (`cloudrocean-net`) and shared configuration volumes (Cloudflare IP lists) are provisioned before service instantiation.
 
 ---
 
@@ -43,9 +50,7 @@ Claviger transforms standard Linux instances into a private PaaS through its **"
 | **VPN Kernel** | WireGuard / `wgctrl` | High-performance encrypted transit |
 | **Orchestration** | Docker Compose | Application container lifecycle |
 | **Database** | SQLite (Pure Go) | Low-overhead local state persistence |
-| **Firewall** | UFW / `iptables` | Network boundary enforcement |
 | **Desktop UI** | Fyne (Go-GUI) | Cross-platform management client |
-| **Security** | Fail2Ban | SSH Brute-force protection |
 
 ---
 
