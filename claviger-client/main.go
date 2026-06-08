@@ -12,27 +12,53 @@ import (
 )
 
 func main() {
-	isGUI := len(os.Args) == 1
+	logFile, err := os.OpenFile("claviger-debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		log.SetOutput(logFile)
+		defer logFile.Close()
+	}
+	log.Println("=====================================")
+	log.Println("🚀 Claviger Started. isGUI check executing...")
 
-	// 🎯 A channel to pass the "Wake Up" signal from the network to the Fyne UI
+	isGUI := len(os.Args) == 1
 	wakeUpChan := make(chan bool)
 
 	// 1. SMART SINGLE INSTANCE LOCK & WAKEUP
 	listener, err := net.Listen("tcp", "127.0.0.1:42899")
 	if err != nil {
-		// Port is taken! The app is already running.
+		log.Printf("⚠️ Port 42899 taken or blocked: %v", err)
 		if isGUI {
-			// We are Instance B. Connect to Instance A and whisper "WAKEUP"
 			conn, dialErr := net.Dial("tcp", "127.0.0.1:42899")
 			if dialErr == nil {
 				conn.Write([]byte("WAKEUP"))
 				conn.Close()
+				log.Println("Woke up existing instance. Exiting.")
+				os.Exit(0) // Valid wakeup!
 			}
-			os.Exit(0) // Quit silently!
+			// 🎯 THE FIX: If Dial fails, it means the port is blocked by Windows,
+			// NOT by another Claviger app. We should continue loading!
+			log.Printf("Could not wake up app (Dial failed: %v). Continuing anyway.", dialErr)
+		} else {
+			log.Fatalf("❌ Claviger is already running or port is blocked.")
 		}
-		log.Fatalf("❌ Claviger is already running in the background.")
+	} else {
+		defer listener.Close()
+		// We are Instance A! Start listening for whispers.
+		go func() {
+			for {
+				conn, err := listener.Accept()
+				if err != nil {
+					continue
+				}
+				buf := make([]byte, 6)
+				conn.Read(buf)
+				if string(buf) == "WAKEUP" {
+					wakeUpChan <- true
+				}
+				conn.Close()
+			}
+		}()
 	}
-	defer listener.Close()
 
 	// 2. We are Instance A! Start listening for whispers in the background.
 	go func() {

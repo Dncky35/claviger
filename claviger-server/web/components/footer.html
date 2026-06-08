@@ -1,16 +1,22 @@
 {{ define "footer" }}
-<footer class="bg-surface border-t border-border px-6 py-3 flex justify-between items-center shrink-0 z-50">
-    <div class="text-sm text-slate-400">
-        Powered by 
-        <a href="https://cloudrocean.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:text-blue-400 hover:underline transition-all font-medium ml-1">
-            cloudRocean
-        </a>
-    </div>
+<footer class="bg-surface border-t border-border px-6 py-1.5 flex justify-between items-center shrink-0 z-50">
     
-    <div class="flex items-center">
-        <button onclick="alert('Donation integration coming soon! Thank you for supporting open-source.')" class="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest shadow-sm">
-            <span>❤️</span> Donate
-        </button>
+    
+   <div>
+    
+   </div>
+
+    <div class="flex items-center gap-1.5 text-sm text-slate-400">
+        <span>Powered by</span> 
+        
+        <a href="https://cloudrocean.com/" target="_blank" rel="noopener noreferrer" >
+            <img src="/static/CloudROceanLogo512px.png" alt="Logo" class="h-24 w-24 object-contain" />
+        </a>
+        
+        
+        <!-- <a href="https://cloudrocean.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:text-blue-400 hover:underline transition-all font-medium">
+            CloudROcean
+        </a> -->
     </div>
 </footer>
 {{ end }}
