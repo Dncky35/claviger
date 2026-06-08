@@ -22,3 +22,4 @@ wg0.conf text eol=lf
 *.gif binary
 *.webp binary
 *.ico binary
+*.syso binary
