@@ -65,9 +65,6 @@ Execute the following on your target Linux server to begin the Zero-Trust enroll
 # Install the claviger-server
 curl -sSL https://raw.githubusercontent.com/Dncky35/claviger/main/claviger-server/installer.sh | sudo bash
 
-# Start the interactive setup wizard (Requires Root)
-sudo claviger-server setup
-
 ```
 
 **The Setup Flow:**
@@ -75,6 +72,11 @@ sudo claviger-server setup
 2.  **Network Validation:** The wizard validates UDP port availability (default `51820`) and TCP port availability for the management hub (default `18080`).
 3.  **Endpoint Verification:** Performs DNS/IP verification to ensure your node is reachable by clients.
 4.  **Admin Enrollment:** You will be prompted to paste a "Connection Request" token from your Claviger Desktop Client to link the node.
+
+```bash
+# Start the interactive setup wizard (Requires Root)
+sudo claviger-server setup
+```
 
 ### 2. Service Management
 Once configured, Claviger installs itself as a `systemd` unit:

@@ -103,6 +103,11 @@ func ListKeys() ([]SSHKey, error) {
 		}
 	}
 
+	// THE FIX: Check if the scanner stopped due to an error before returning
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading ssh keys file: %w", err)
+	}
+
 	return keys, nil
 }
 
