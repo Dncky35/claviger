@@ -29,11 +29,13 @@ The Claviger ecosystem is architected as a distributed system composed of two pr
     *   **Service-Bound Role:** Restricts client access to specific IP/Port mappings, effectively isolating individual developer tools (like Gitea or Vaultwarden) and preventing lateral movement within the network.
 
 
-### 2. Security Automation & OS Hardening
+### 2\. Security Automation & OS Hardening
+
 *   **RESTful Firewall-as-API:** A comprehensive security controller exposes UFW (Uncomplicated Firewall) management via a secure API. It features a smart scanner that detects and flags "Critical" vulnerabilities, such as public SSH (22) or Database exposure.
-*   **Cloudflare Authenticated Origin Pulls:** For web-facing nodes, Claviger automates the lockdown of ports 80/443. It fetches live Cloudflare IP ranges and reconfigures UFW to drop all traffic not originating from Cloudflare’s edge.
-*   **Failure Protection:** Integrated **Fail2Ban** orchestration allows admins to manage SSH jails, monitor banned IPs, and perform surgical unbans directly from the management UI.
+*   **Cloudflare Authenticated Origin Pulls (Opt-In):** For web-facing nodes, users can optionally enable an automated lockdown for ports 80/443. When activated, Claviger fetches live Cloudflare IP ranges and reconfigures UFW to drop all traffic not originating from Cloudflare’s edge, with an option to auto-update these IP ranges on a schedule.
+*   **Failure Protection:** Integrated **Fail2Ban** orchestration allows admins to manage SSH jails, monitor banned IPs, and perform surgical unbans directly from the management UI.    
 *   **Systemd Integration:** The daemon manages its own lifecycle as a standard Linux service, ensuring high availability and automatic recovery after host reboots.
+
 
 ### 3. Infrastructure Orchestration & PaaS
 Claviger transforms standard Linux instances into a private PaaS through its **"App Tab" Marketplace**.

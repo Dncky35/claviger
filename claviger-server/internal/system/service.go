@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 )
 
@@ -18,20 +17,20 @@ func InstallSystemdService() error {
 
 	log.Println("⚙️  Configuring systemd auto-start service...")
 
-	// 1. Get the absolute path to the currently running Claviger executable
+	// 1. Get the absolute path to the executable (e.g., /usr/local/bin/claviger-server)
 	execPath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("could not find executable path: %v", err)
 	}
 
-	// 2. Get the working directory (where claviger.db is stored)
-	workDir := filepath.Dir(execPath)
+	// 2. Define the strict Linux data directory (DO NOT use the bin folder!)
+	workDir := "/etc/claviger"
+	os.MkdirAll(workDir, 0755) // Create it safely
 
 	// 3. Define the systemd service file content
 	serviceContent := fmt.Sprintf(`[Unit]
 Description=Claviger Edge VPN Daemon
 After=network.target network-online.target
-Wants=network-online.target
 
 [Service]
 Type=simple
