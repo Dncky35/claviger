@@ -3,14 +3,25 @@ package storage
 import (
 	"database/sql"
 	"log"
+	"os"
+	"path/filepath"
 
 	_ "modernc.org/sqlite" // Pure Go SQLite driver
 )
 
 // InitDB initializes the local SQLite database and creates the necessary tables.
 func InitDB() *sql.DB {
-	// 1. Open the DB without the ignored query parameters
-	db, err := sql.Open("sqlite", "claviger.db")
+	// Define a global, absolute path for production state data
+	dbDir := "/var/lib/claviger"
+	dbPath := filepath.Join(dbDir, "claviger.db")
+
+	// Ensure the directory exists (equivalent to 'mkdir -p /var/lib/claviger')
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		log.Fatalf("❌ Failed to create database directory %s: %v", dbDir, err)
+	}
+
+	// 1. Open the DB using the absolute system path
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatalf("❌ Failed to open SQLite database: %v", err)
 	}
@@ -24,7 +35,6 @@ func InitDB() *sql.DB {
 	}
 
 	// 3. Give Go enough connections to handle concurrent API requests!
-	// 25 is the standard "sweet spot" for SQLite web servers.
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(25)
 
@@ -44,28 +54,22 @@ func InitDB() *sql.DB {
 	db.Exec(`INSERT OR IGNORE INTO config (key, value) VALUES ('hub_ip', '10.8.0.1')`)
 	db.Exec(`INSERT OR IGNORE INTO config (key, value) VALUES ('hub_port', '18080')`)
 
-	// 2. Roles Table (Updated for Granular Checkbox UX)
+	// 2. Roles Table
 	createRolesTable := `
 	CREATE TABLE IF NOT EXISTS roles (
 		id TEXT PRIMARY KEY,
 		name TEXT NOT NULL,
-		
-		-- The Checkboxes (0 = False, 1 = True)
 		allow_global_internet BOOLEAN DEFAULT 0,
 		allow_intranet BOOLEAN DEFAULT 0,
 		allow_hub BOOLEAN DEFAULT 0,
-		
-		-- The Input Fields
 		allowed_ports TEXT DEFAULT 'ALL',
 		allowed_ips TEXT DEFAULT 'ALL',
-		
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 	if _, err := db.Exec(createRolesTable); err != nil {
 		log.Fatalf("❌ Failed to create roles table: %v", err)
 	}
 
-	// Pre-seed the default roles with our new granular permissions
 	db.Exec(`INSERT OR IGNORE INTO roles (id, name, allow_global_internet, allow_intranet, allow_hub, allowed_ports, allowed_ips) 
 		VALUES ('admin', 'Administrator', 1, 1, 1, 'ALL', 'ALL')`)
 
@@ -78,7 +82,7 @@ func InitDB() *sql.DB {
 		id TEXT PRIMARY KEY,
 		name TEXT NOT NULL,
 		public_key TEXT UNIQUE NOT NULL, 
-		ip_address TEXT UNIQUE,       
+		ip_address TEXT UNIQUE,      
 		role_id TEXT NOT NULL,
 		platform TEXT,                
 		device_id TEXT,               
