@@ -27,7 +27,7 @@ else
     exit 1
 fi
 
-DOWNLOAD_URL="https://github.com/Dncky35/claviger/releases/download/Claviger/$FILE_NAME"
+DOWNLOAD_URL="https://github.com/Dncky35/claviger/releases/download/Claviger_Server/$FILE_NAME"
 
 # 3. Download the Binary
 echo "⬇️ Fetching the latest Claviger release..."
