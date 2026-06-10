@@ -46,7 +46,7 @@ chmod +x "$DEST_PATH"
 # 5. Hand over control to the Go Application!
 echo "⚙️ Initializing Claviger Systemd Integration..."
 # This triggers your Go code (InstallSystemdService)
-claviger-server setup
+# claviger-server setup
 
 # echo ""
 # echo "======================================================="
