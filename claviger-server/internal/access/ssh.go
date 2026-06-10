@@ -16,19 +16,24 @@ type SSHKey struct {
 	Raw     string `json:"raw"`
 }
 
-// getSSHFilePath safely finds the ~/.ssh/authorized_keys file of the REAL user
+// getSSHFilePath safely finds the ~/.ssh/authorized_keys file of the TARGET user
 func getSSHFilePath() (string, error) {
-	// 1. Check if the command was run via sudo by a standard user
-	sudoUser := os.Getenv("SUDO_USER")
-	
+	// 1. Check for an explicit application override (perfect for systemd)
+	targetUsername := os.Getenv("CLAVIGER_SSH_USER")
+
+	// 2. If not overridden, check if run via interactive sudo
+	if targetUsername == "" {
+		targetUsername = os.Getenv("SUDO_USER")
+	}
+
 	var targetUser *user.User
 	var err error
 
-	if sudoUser != "" && sudoUser != "root" {
-		// Get the home directory of the human who ran sudo
-		targetUser, err = user.Lookup(sudoUser)
+	// If we found a specific non-root user, look up their home directory
+	if targetUsername != "" && targetUsername != "root" {
+		targetUser, err = user.Lookup(targetUsername)
 	} else {
-		// Fallback: They are actually logged in as root directly
+		// 3. Fallback: No override or sudo environment found, use current process user (root)
 		targetUser, err = user.Current()
 	}
 
@@ -37,7 +42,7 @@ func getSSHFilePath() (string, error) {
 	}
 
 	sshDir := filepath.Join(targetUser.HomeDir, ".ssh")
-	
+
 	// SSH strictly requires the directory to be 0700
 	if err := os.MkdirAll(sshDir, 0700); err != nil {
 		return "", fmt.Errorf("could not create .ssh directory: %v", err)

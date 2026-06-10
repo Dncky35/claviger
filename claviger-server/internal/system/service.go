@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
 	"runtime"
 )
 
@@ -27,7 +28,20 @@ func InstallSystemdService() error {
 	workDir := "/etc/claviger"
 	os.MkdirAll(workDir, 0755) // Create it safely
 
-	// 3. Define the systemd service file content
+	// 3. Resolve the actual human user behind the sudo command
+	realUser := os.Getenv("SUDO_USER")
+	if realUser == "" || realUser == "root" {
+		// Fallback: Check who owns the current session if sudo wasn't used
+		u, err := user.Current()
+		if err == nil {
+			realUser = u.Username
+		} else {
+			realUser = "root" // Absolute fallback state
+		}
+	}
+	log.Printf("👤 Detected management user for SSH operations: %s", realUser)
+
+	// 4. Define the systemd service file content and inject the variables
 	serviceContent := fmt.Sprintf(`[Unit]
 Description=Claviger Edge VPN Daemon
 After=network.target network-online.target
@@ -41,24 +55,27 @@ Restart=on-failure
 RestartSec=5
 LimitNOFILE=65536
 
+# Passes the real human user down to the background daemon context for SSH management
+Environment="CLAVIGER_SSH_USER=%s"
+
 [Install]
 WantedBy=multi-user.target
-`, workDir, execPath)
+`, workDir, execPath, realUser)
 
 	servicePath := "/etc/systemd/system/claviger.service"
 
-	// 4. Write the file to the systemd directory
+	// 5. Write the file to the systemd directory
 	err = os.WriteFile(servicePath, []byte(serviceContent), 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write systemd service file: %v", err)
 	}
 
-	// 5. Reload systemd so it sees the new file
+	// 6. Reload systemd so it sees the new file
 	if err := exec.Command("systemctl", "daemon-reload").Run(); err != nil {
 		return fmt.Errorf("failed to reload systemctl: %v", err)
 	}
 
-	// 6. Enable the service so it starts on boot
+	// 7. Enable the service so it starts on boot
 	if err := exec.Command("systemctl", "enable", "claviger.service").Run(); err != nil {
 		return fmt.Errorf("failed to enable claviger service: %v", err)
 	}

@@ -62,11 +62,12 @@ Claviger transforms standard Linux instances into a private PaaS through its **"
 Execute the following on your target Linux server to begin the Zero-Trust enrollment:
 
 ```bash
-# Build the daemon
-go build -o claviger-server .
+# Install the claviger-server
+curl -sSL https://raw.githubusercontent.com/Dncky35/claviger/main/claviger-server/installer.sh | sudo bash
 
 # Start the interactive setup wizard (Requires Root)
-sudo ./claviger-server setup
+sudo claviger-server setup
+
 ```
 
 **The Setup Flow:**
@@ -80,7 +81,6 @@ Once configured, Claviger installs itself as a `systemd` unit:
 
 ```bash
 sudo systemctl start claviger
-sudo systemctl enable claviger
 ```
 
 ### 3. Client Enrollment
