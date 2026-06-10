@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e # Exit immediately if any command fails
 
-# Replace this with your actual GitHub repository URL
 DEST_PATH="/usr/local/bin/claviger-server"
 
 echo "🚀 Starting Claviger Server Installation..."
