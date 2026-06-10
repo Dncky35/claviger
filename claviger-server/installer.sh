@@ -2,7 +2,6 @@
 set -e # Exit immediately if any command fails
 
 # Replace this with your actual GitHub repository URL
-GITHUB_REPO="https://github.com/dncky35/claviger"
 DEST_PATH="/usr/local/bin/claviger-server"
 
 echo "🚀 Starting Claviger Server Installation..."
@@ -28,7 +27,7 @@ else
     exit 1
 fi
 
-DOWNLOAD_URL="$GITHUB_REPO/releases/latest/download/$FILE_NAME"
+DOWNLOAD_URL="https://github.com/Dncky35/claviger/releases/download/Claviger/$FILE_NAME"
 
 # 3. Download the Binary
 echo "⬇️ Fetching the latest Claviger release..."
