@@ -37,7 +37,7 @@
                     Sync & Lockdown 80/443
                 </button>
 
-                <button onclick="triggerRevertLockdown()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-slate-700 transition-colors">
+                <button id="btn-unlock-ports" onclick="triggerRevertLockdown()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-slate-700 transition-colors">
                     Unlock Ports
                 </button>
             </div>
@@ -495,9 +495,12 @@
             if (!confirm("This will configure UFW to drop all internet traffic on ports 80 and 443 unless it originates from Cloudflare. Continue?")) return;
 
             const btn = document.getElementById('btn-sync-cloudflare');
+            const btn_2 = document.getElementById('btn-unlock-ports');
             const originalText = btn.innerHTML;
             
             btn.innerHTML = 'Syncing... ⏳';
+            btn_2.disabled = true;
+            btn_2.classList.add('opacity-50', 'cursor-not-allowed');
             btn.disabled = true;
             btn.classList.add('opacity-50', 'cursor-not-allowed');
 
@@ -519,11 +522,23 @@
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn_2.disabled = false;
+                btn_2.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
         async function triggerRevertLockdown() {
             if (!confirm("This will REOPEN ports 80/443 to the entire internet. Are you sure?")) return;
+
+            const btn = document.getElementById('btn-sync-cloudflare');
+            const btn_2 = document.getElementById('btn-unlock-ports');
+            const originalText = btn_2.innerHTML;
+
+            btn_2.innerHTML = 'Disabling... ⏳';
+            btn_2.disabled = true;
+            btn_2.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
 
             try {
                 const res = await fetch('/api/security/cloudflare/revert', { method: 'POST' });
@@ -536,6 +551,13 @@
             } catch (e) {
                 alert("Network error.");
             }
+            finally{
+                btn_2.innerHTML = originalText;
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn_2.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         }
 
         async function syncProxyUIForSecurity() {
@@ -544,10 +566,12 @@
                 if (!res.ok) throw new Error("Failed to load proxy settings");
                 const data = await res.json();
 
+                console.log("Proxy Data:", JSON.stringify(data, null, 2));
+
                 const proxySection = document.getElementById('cloudflare-container');
                 if (!proxySection) return;
 
-                if (data.use_reverse_proxy && data.reverse_proxy_provider === 'cloudflare') {
+                if (data.use_reverse_proxy && data.proxy_provider === 'cloudflare') {
                     proxySection.classList.remove('hidden');
                 } else {
                     proxySection.classList.add('hidden');
