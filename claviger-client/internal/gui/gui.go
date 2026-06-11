@@ -10,6 +10,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
@@ -30,6 +31,9 @@ type ClavigerGUI struct {
 	RouteCheck   *widget.Check
 	ConnectBtn   *widget.Button
 	RemoveBtn    *widget.Button
+
+	StatusBinding     binding.String // Tracks "Connected/Disconnected"
+	SyncStatusBinding binding.String // Tracks "Stable/Syncing"
 }
 
 func Run(vault *config.ClientVault, wakeUpChan chan bool) {
@@ -37,7 +41,7 @@ func Run(vault *config.ClientVault, wakeUpChan chan bool) {
 	EnsureAdmin()
 
 	a := app.NewWithID("com.cloudrocean.claviger-client")
-	w := a.NewWindow("Claviger Zero Trust")
+	w := a.NewWindow("Claviger Client")
 
 	// ========================================================
 	// Everything below here only runs if the user IS an Admin!

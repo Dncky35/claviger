@@ -18,6 +18,7 @@ type ServerProfile struct {
 	Status         string `json:"status"`
 	DNS            string `json:"dns"`
 	BaseSubnet     string `json:"base_subnet"`
+	ConfigRevision string `json:"config_revision"`
 }
 
 // ClientVault holds the state of the desktop app

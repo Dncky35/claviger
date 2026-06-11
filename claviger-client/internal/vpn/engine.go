@@ -2,7 +2,9 @@ package vpn
 
 import (
 	"claviger-client/internal/config"
+	"claviger-client/internal/controller"
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -41,6 +43,9 @@ type Engine struct {
 	// Watchdog Management
 	watchdogCtx    context.Context
 	watchdogCancel context.CancelFunc
+
+	// Lifecycle Management
+	syncCancel context.CancelFunc // 🎯 Added to kill the sync loop
 
 	// Routing Management
 	activeServerIP string // 👈 NEW: Tracks the server IP for clean disconnections
@@ -363,9 +368,39 @@ func (e *Engine) cleanupGlobalRoutes() {
 // TUNNEL LIFECYCLE CONTROLS
 // ==========================================
 
+func (e *Engine) HotSwapEndpoint(serverPubKeyBase64, newEndpoint string) error {
+	e.stateMutex.RLock()
+	defer e.stateMutex.RUnlock()
+
+	if e.wgDevice == nil {
+		return fmt.Errorf("tunnel is not currently running")
+	}
+
+	// 1. Convert the Base64 key from your Vault into Hex format for the UAPI
+	pubKeyBytes, err := base64.StdEncoding.DecodeString(serverPubKeyBase64)
+	if err != nil {
+		return fmt.Errorf("invalid base64 public key: %v", err)
+	}
+	hexKey := hex.EncodeToString(pubKeyBytes)
+
+	// 2. Format the configuration string using WireGuard's UAPI syntax
+	// By only providing the public_key and the new endpoint, it updates the existing peer!
+	uapiConfig := fmt.Sprintf("public_key=%s\nendpoint=%s\n", hexKey, newEndpoint)
+
+	// 3. Inject directly into the running embedded engine
+	err = e.wgDevice.IpcSet(uapiConfig)
+	if err != nil {
+		return fmt.Errorf("failed to inject new endpoint: %v", err)
+	}
+
+	// Optionally update your active tracking variable
+	e.activeServerIP = newEndpoint
+	return nil
+}
+
 // Connect creates a virtual interface and configures WireGuard entirely in memory
 // 🎯 UPDATED: Now accepts a specific ServerProfile and routing preference!
-func (e *Engine) Connect(profile *config.ServerProfile, useGlobalRouting bool) error {
+func (e *Engine) Connect(vault *config.ClientVault, profile *config.ServerProfile, useGlobalRouting bool) error {
 	if e.GetState() != StateDisconnected {
 		return fmt.Errorf("VPN is already connected or attempting to connect")
 	}
@@ -451,6 +486,11 @@ persistent_keepalive_interval=25
 	e.setState(StateVerifying)
 	e.startWatchdog()
 
+	syncCtx, syncCancel := context.WithCancel(context.Background())
+	e.syncCancel = syncCancel
+
+	controller.StartSyncManager(syncCtx, vault, e)
+
 	return nil
 }
 
@@ -461,6 +501,11 @@ func (e *Engine) Disconnect() error {
 	}
 
 	log.Println("🛑 Shutting down Embedded VPN tunnel...")
+
+	if e.syncCancel != nil {
+		e.syncCancel()
+		e.syncCancel = nil
+	}
 
 	// 1. Kill the Watchdog goroutine FIRST so it stops trying to reconnect
 	if e.watchdogCancel != nil {

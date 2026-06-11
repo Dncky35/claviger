@@ -18,7 +18,7 @@ func (g *ClavigerGUI) setupEvents() {
 
 		switch newState {
 		case vpn.StateDisconnected:
-			g.ConnectBtn.SetText("Connect Tunnel")
+			g.ConnectBtn.SetText("Connect")
 			g.ConnectBtn.Enable()
 			g.RouteCheck.Enable()
 			g.RemoveBtn.Enable()
@@ -26,16 +26,15 @@ func (g *ClavigerGUI) setupEvents() {
 			g.AddServerBtn.Enable()
 
 		case vpn.StateConnecting, vpn.StateVerifying:
-			// 🎯 FIX 2: Do NOT disable the button. Change it to an Abort switch!
-			g.ConnectBtn.SetText("Abort Connection")
-			g.ConnectBtn.Enable() // KEEP ENABLED!
+			g.ConnectBtn.SetText("Cancel")
+			g.ConnectBtn.Enable()
 			g.RouteCheck.Disable()
 			g.RemoveBtn.Disable()
 			g.ServerSelect.Disable()
 			g.AddServerBtn.Disable()
 
 		case vpn.StateSecured:
-			g.ConnectBtn.SetText("Disconnect Tunnel")
+			g.ConnectBtn.SetText("Disconnect")
 			g.ConnectBtn.Enable()
 			g.RouteCheck.Disable()
 			g.RemoveBtn.Disable()
@@ -43,9 +42,8 @@ func (g *ClavigerGUI) setupEvents() {
 			g.AddServerBtn.Disable()
 
 		case vpn.StateReconnecting:
-			// 🎯 FIX 2: Allow aborting during ghost connections
-			g.ConnectBtn.SetText("Ghost Connection (Abort?)")
-			g.ConnectBtn.Enable() // KEEP ENABLED!
+			g.ConnectBtn.SetText("Cancel")
+			g.ConnectBtn.Enable()
 			g.RemoveBtn.Disable()
 			g.ServerSelect.Disable()
 			g.AddServerBtn.Disable()
@@ -66,19 +64,25 @@ func (g *ClavigerGUI) setupEvents() {
 		g.ShowEnrollmentScreen()
 	}
 
-	// Because we kept the button enabled during connecting states,
-	// clicking it will now instantly fire g.Engine.Disconnect() !
 	g.ConnectBtn.OnTapped = func() {
 		state := g.Engine.GetState()
+
 		if state == vpn.StateDisconnected {
+			// 🎯 CONNECT LOGIC
+			// We fetch the profile fresh from the vault to ensure we have latest data
+			profile := g.ActiveProfile
+
 			go func() {
-				err := g.Engine.Connect(g.ActiveProfile, g.Vault.UseGlobalRouting)
+				// 🎯 PASSED g.Vault (The fix you requested!)
+				err := g.Engine.Connect(g.Vault, profile, g.Vault.UseGlobalRouting)
 				if err != nil {
 					log.Printf("Connect error: %v", err)
+					// State will be set to Disconnected by the engine automatically on error
 				}
 			}()
 		} else {
-			// This now safely aborts Connecting, Verifying, AND Secured states!
+			// 🎯 DISCONNECT LOGIC
+			// This safely cleans up the Tunnel, the Sync Manager, and the Watchdog!
 			go g.Engine.Disconnect()
 		}
 	}
@@ -86,31 +90,25 @@ func (g *ClavigerGUI) setupEvents() {
 	g.RemoveBtn.OnTapped = func() {
 		dialog.ShowConfirm("Delete Server", "Are you sure you want to permanently delete this server profile?", func(confirmed bool) {
 			if confirmed {
-				// 1. Delete the current server from the vault
 				delete(g.Vault.Profiles, g.Vault.ActiveProfileID)
 
-				// 🎯 FIX 1: Search the vault to see if any active servers are left!
 				var nextProfileID string
 				for id, p := range g.Vault.Profiles {
 					if p.Status == "active" {
 						nextProfileID = id
-						break // Found one! Stop looking.
+						break
 					}
 				}
 
 				if nextProfileID != "" {
-					// We have a backup server! Switch to it and stay on the Dashboard.
 					g.Vault.ActiveProfileID = nextProfileID
 					g.ActiveProfile = g.Vault.Profiles[nextProfileID]
 					config.Save(g.Vault)
-
 					dialog.ShowInformation("Deleted", "Server removed. Switched to next available server.", g.Window)
-					g.ShowDashboardScreen() // Reload UI with new server
+					g.ShowDashboardScreen()
 				} else {
-					// The vault is completely empty. Fallback to Enrollment.
 					g.Vault.ActiveProfileID = ""
 					config.Save(g.Vault)
-
 					dialog.ShowInformation("Deleted", "Last server removed.", g.Window)
 					g.ShowEnrollmentScreen()
 				}

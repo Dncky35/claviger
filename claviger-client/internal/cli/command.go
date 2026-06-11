@@ -200,7 +200,7 @@ func HandleConnect(vault *config.ClientVault, args []string) {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
 	// Pass the saved vault routing preference
-	err := engine.Connect(activeProfile, vault.UseGlobalRouting)
+	err := engine.Connect(vault, activeProfile, vault.UseGlobalRouting)
 	if err != nil {
 		log.Fatalf("❌ Failed to connect: %v", err)
 	}
