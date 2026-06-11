@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -133,4 +134,20 @@ func ClearConfig(db *sql.DB) {
 	db.Exec("DELETE FROM config")
 	db.Exec("DELETE FROM clients")
 	db.Exec("DELETE FROM invitations")
+}
+
+// DeviceExists checks if a client is registered and currently authorized on the network.
+func DeviceExists(db *sql.DB, deviceID string) (bool, error) {
+	var exists bool
+
+	// We check for both the device_id and ensure the status is 'active'.
+	// This ensures that any suspended or deleted devices are immediately blocked.
+	query := "SELECT EXISTS(SELECT 1 FROM clients WHERE device_id = ? AND status = 'active')"
+
+	err := db.QueryRow(query, deviceID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("database error checking device existence: %v", err)
+	}
+
+	return exists, nil
 }

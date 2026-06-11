@@ -178,6 +178,10 @@ func RunStart() {
 		w.Write([]byte("pong"))
 	})
 
+	mux.HandleFunc("/api/sync/state", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleSyncState(db)(w, r)
+	})
+
 	mux.Handle("/static/", http.FileServer(http.FS(web.TemplatesFS)))
 
 	// --- PROTECTED ROUTES (Requires allow_hub = 1) ---

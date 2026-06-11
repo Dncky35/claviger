@@ -1,7 +1,10 @@
 package api
 
 import (
+	"claviger-server/storage"
+	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 )
@@ -31,5 +34,66 @@ func HandleStatus() http.HandlerFunc {
 		}
 
 		json.NewEncoder(w).Encode(status)
+	}
+}
+
+func HandleSyncState(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 1. Validate the Request Sender
+		// Extract an identifier from the client (e.g., a device key or auth token)
+		deviceKey := r.Header.Get("X-Device-Key")
+		if deviceKey == "" {
+			http.Error(w, "Unauthorized: Missing device identifier", http.StatusUnauthorized)
+			return
+		}
+
+		// Verify the sender exists in the database.
+		exists, err := storage.DeviceExists(db, deviceKey)
+		if err != nil {
+			log.Printf("Database error during device validation: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		if !exists {
+			http.Error(w, "Forbidden: Device not registered or revoked", http.StatusForbidden)
+			return
+		}
+
+		// 2. Fetch Configurations
+		endpoint := storage.GetConfig(db, "vpn_endpoint")
+		dns := storage.GetConfig(db, "dns_setting")
+		revision := storage.GetConfig(db, "config_revision")
+
+		// 3. Validate Required Data
+		if endpoint == "" {
+			// Abort the flow and inform the client that the server configuration is incomplete
+			log.Println("Sync state failed: vpn_endpoint is missing in database")
+			http.Error(w, "Service Unavailable: VPN endpoint not configured", http.StatusServiceUnavailable)
+			return
+		}
+
+		if revision == "" {
+			// Provide a fallback or error out depending on how strict you want to be
+			revision = "1"
+		}
+
+		mtu := "1420" // Default WireGuard MTU
+
+		// 4. Construct the State Manifest
+		state := map[string]string{
+			"endpoint": endpoint,
+			"dns":      dns,
+			"mtu":      mtu,
+			"revision": revision,
+		}
+
+		// 5. Send Response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		if err := json.NewEncoder(w).Encode(state); err != nil {
+			log.Printf("Error encoding sync state JSON: %v", err)
+			// Note: We don't write an http.Error here because WriteHeader(200) was already sent
+		}
 	}
 }

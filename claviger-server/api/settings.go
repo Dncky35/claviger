@@ -49,7 +49,6 @@ func HandleSaveEndpoint(database *sql.DB) http.HandlerFunc {
 		}
 
 		// --- THE SOFT VERIFICATION ENGINE ---
-		// --- THE SOFT VERIFICATION ENGINE ---
 		if !req.Force {
 			// THE FIX: Fetch from local DB instead of pinging the internet!
 			// This makes the UI respond in 1 millisecond instead of 10 seconds.
