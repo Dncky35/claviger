@@ -1,0 +1,39 @@
+name: claviger-client
+arch: amd64
+platform: linux
+version: 1.0.0
+section: net
+priority: optional
+maintainer: "Cloudrocean <support@cloudrocean.com>"
+description: "Claviger Zero Trust Gateway (Hybrid Desktop/CLI Edition)"
+vendor: "Cloudrocean"
+homepage: "https://claviger.cloudrocean.com"
+license: "AGPL-3.0"
+
+# CGO / Fyne Dependencies required for the GUI
+depends:
+  - libc6
+  - libgl1-mesa-glx | libgl1
+  - x11-utils
+
+contents:
+  # 1. The Main Binary
+  - src: ../release/claviger-linux-amd64
+    dst: /usr/bin/claviger-client
+    file_info:
+      mode: 0755
+  
+  # 2. Systemd Service
+  - src: ../init/claviger-client.service
+    dst: /lib/systemd/system/claviger-client.service
+  
+  # 3. Desktop Application Entry
+  - src: ../assets/claviger-client.desktop
+    dst: /usr/share/applications/claviger-client.desktop
+  
+  # 4. App Icon
+  - src: ../assets/icon.png
+    dst: /usr/share/pixmaps/icon.png
+
+scripts:
+  postinstall: ../scripts/postinstall.sh

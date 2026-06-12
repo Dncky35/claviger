@@ -1,0 +1,28 @@
+name: claviger-client
+arch: arm64
+platform: linux
+version: 1.0.0
+section: net
+priority: optional
+maintainer: "Cloudrocean <support@cloudrocean.com>"
+description: "Claviger Zero Trust Gateway (Headless Server Edition)"
+vendor: "Cloudrocean"
+homepage: "https://claviger.cloudrocean.com"
+license: "AGPL-3.0"
+
+# Pure Go Binary - ZERO graphical dependencies!
+depends: []
+
+contents:
+  # 1. The Main Binary (Using the headless arm64 build)
+  - src: ../release/claviger-linux-arm64-cli
+    dst: /usr/bin/claviger-client
+    file_info:
+      mode: 0755
+  
+  # 2. Systemd Service (Headless still needs the background daemon)
+  - src: ../init/claviger-client.service
+    dst: /lib/systemd/system/claviger-client.service
+
+scripts:
+  postinstall: ../scripts/postinstall.sh

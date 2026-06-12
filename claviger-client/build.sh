@@ -23,5 +23,20 @@ echo "🔨 Building Linux ARM64 (Headless Only)..."
 # Zero C-Dependencies needed for pure CLI! Compiles purely in Go!
 env -u CC CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags=headless -ldflags="-s -w" -o release/claviger-linux-arm64-cli .
 
-echo ""
-echo "✅ All builds complete! Check the 'release/' folder."
+echo "📦 Packaging Linux Distributions with nFPM..."
+
+# Ensure nfpm is installed on your build machine:
+# go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+cd packaging
+
+# Build Debian (.deb) packages
+nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_1.0.0_amd64.deb
+nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_1.0.0_arm64.deb
+
+# Build RHEL/CentOS (.rpm) packages
+nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_1.0.0_amd64.rpm
+nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_1.0.0_arm64.rpm
+
+cd ..
+echo "✅ Packaging complete! .deb and .rpm files are in the release/ folder."

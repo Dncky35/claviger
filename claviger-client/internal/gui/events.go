@@ -3,7 +3,10 @@
 package gui
 
 import (
+	"fmt"
 	"log"
+	"net"
+	"time"
 
 	"claviger-client/internal/config"
 	"claviger-client/internal/controller"
@@ -87,22 +90,43 @@ func (g *ClavigerGUI) setupEvents() {
 		state := g.Engine.GetState()
 
 		if state == vpn.StateDisconnected {
-			// 🎯 CONNECT LOGIC
-			// We fetch the profile fresh from the vault to ensure we have latest data
 			profile := g.ActiveProfile
+			routing := "split"
+			if g.Vault.UseGlobalRouting {
+				routing = "global"
+			}
 
-			go func() {
-				// 🎯 PASSED g.Vault (The fix you requested!)
-				err := g.Engine.Connect(g.Vault, profile, g.Vault.UseGlobalRouting)
-				if err != nil {
-					log.Printf("Connect error: %v", err)
-					// State will be set to Disconnected by the engine automatically on error
-				}
-			}()
+			// 🎯 ATTEMPT TO DELEGATE TO THE ROOT DAEMON
+			conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
+			if err == nil {
+				// Success! The background daemon is running. Send the Connect command.
+				log.Println("📡 Whispering CONNECT command to root daemon...")
+				payload := fmt.Sprintf("CONNECT|%s|%s", profile.ID, routing)
+				conn.Write([]byte(payload))
+				conn.Close()
+
+				// Update GUI State visually
+				// g.Engine.SetState(vpn.StateConnecting)
+			} else {
+				// 🎯 FALLBACK (Usually for Windows standalone mode)
+				log.Println("⚠️ Daemon not found. Attempting direct connection (requires admin)...")
+				go func() {
+					err := g.Engine.Connect(g.Vault, profile, g.Vault.UseGlobalRouting)
+					if err != nil {
+						log.Printf("Connect error: %v", err)
+					}
+				}()
+			}
 		} else {
 			// 🎯 DISCONNECT LOGIC
-			// This safely cleans up the Tunnel, the Sync Manager, and the Watchdog!
-			go g.Engine.Disconnect()
+			conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
+			if err == nil {
+				log.Println("📡 Whispering DISCONNECT to root daemon...")
+				conn.Write([]byte("DISCON"))
+				conn.Close()
+			} else {
+				go g.Engine.Disconnect()
+			}
 		}
 	}
 

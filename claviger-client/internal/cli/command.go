@@ -3,11 +3,13 @@ package cli
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"claviger-client/internal/auth"
 	"claviger-client/internal/config"
@@ -18,18 +20,22 @@ import (
 
 func PrintHelp() {
 	fmt.Print(`
-🛡️  Claviger Zero Trust Engine (Headless CLI)
+🛡️  Claviger Zero Trust Engine
 
 Usage:
-  claviger generate         - Generate a new Passport token to join a network
-  claviger approve <token>  - Apply a Visa token provided by your Administrator
-  claviger list             - Show all enrolled server profiles
-  claviger remove <id>      - Delete a server profile from this device
+  claviger-client generate         - Generate a new Passport token to join a network
+  claviger-client approve <token>  - Apply a Visa token provided by your Administrator
+  claviger-client list             - Show all enrolled server profiles
+  claviger-client remove <id>      - Delete a server profile from this device
   
-  claviger connect [id] [flags] - Connect to a server
+  claviger-client connect [id] [flags] - Connect to a server
       Flags:
       --global   Route ALL internet traffic through the VPN
       --split    Route ONLY internal traffic through the VPN (Default)
+
+  claviger-client disconnect       - Gracefully shut down the active VPN connection
+  claviger-client status           - Check if the VPN engine is currently running
+  claviger-client daemon           - Start the background VPN engine (Used by systemd)
 `)
 }
 
@@ -158,7 +164,7 @@ func HandleRemove(vault *config.ClientVault, profileID string) {
 }
 
 // 🎯 NEW: Accepts arguments to parse Target ID and Routing Flags!
-func HandleConnect(vault *config.ClientVault, args []string) {
+func HandleConnect(vault *config.ClientVault, args []string, disconnectChan chan bool) {
 	targetID := ""
 
 	// Scan the arguments for routing flags or a specific server ID
@@ -200,7 +206,6 @@ func HandleConnect(vault *config.ClientVault, args []string) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
-	// Pass the saved vault routing preference
 	err := engine.Connect(vault, activeProfile, vault.UseGlobalRouting)
 	if err != nil {
 		log.Fatalf("❌ Failed to connect: %v", err)
@@ -208,11 +213,53 @@ func HandleConnect(vault *config.ClientVault, args []string) {
 
 	log.Println("✅ Tunnel Secured! Traffic is flowing. Press Ctrl+C to disconnect safely.")
 
-	<-sigChan
+	// 🎯 Upgrade: Block until EITHER an OS Signal OR a TCP Disconnect command arrives!
+	select {
+	case <-sigChan:
+		log.Println("⚠️ OS Shutdown Signal received!")
+	case <-disconnectChan:
+		log.Println("⚠️ Remote CLI Disconnect command received!")
+	}
 
 	fmt.Println()
-	log.Println("⚠️ OS Shutdown Signal received! Executing clean disconnect...")
+	log.Println("Executing clean disconnect...")
 	engine.Disconnect()
 	log.Println("👋 Claviger Engine shut down gracefully. Network restored.")
 	os.Exit(0)
+}
+
+func HandleDisconnect(vault *config.ClientVault) {
+	fmt.Println("🛑 Sending disconnect signal to Claviger Engine...")
+
+	// Dial the background process
+	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
+	if err != nil {
+		fmt.Println("❌ Claviger is not currently running.")
+		return
+	}
+	defer conn.Close()
+
+	// Whisper the disconnect command
+	conn.Write([]byte("DISCON"))
+
+	// Read the response
+	buf := make([]byte, 128)
+	n, _ := conn.Read(buf)
+	fmt.Printf("✅ %s\n", string(buf[:n]))
+}
+
+func HandleStatus(vault *config.ClientVault) {
+	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
+	if err != nil {
+		fmt.Println("⚪ Status: OFFLINE (Engine is not running)")
+		return
+	}
+	defer conn.Close()
+
+	// Whisper the status request
+	conn.Write([]byte("STATUS"))
+
+	buf := make([]byte, 128)
+	n, _ := conn.Read(buf)
+	fmt.Printf("🔵 Status: %s\n", string(buf[:n]))
 }

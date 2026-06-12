@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Claviger Client
+Comment=Zero Trust Network Access Client
+Exec=/usr/bin/claviger-client
+# Ensure you have a claviger.png in your assets folder!
+Icon=/usr/share/pixmaps/icon.png
+Terminal=false
+Categories=Network;Security;
+StartupNotify=true
