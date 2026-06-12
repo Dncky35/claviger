@@ -13,14 +13,27 @@ import (
 	"claviger-client/internal/vpn"
 )
 
+// 1. Declare these at the PACKAGE level so every function can see them
+var (
+	vault  *config.ClientVault
+	engine = vpn.NewEngine() // This is your persistent singleton engine
+)
+
 func main() {
 	logFile, err := os.OpenFile("claviger-client-debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+
 	if err == nil {
 		log.SetOutput(logFile)
 		defer logFile.Close()
 	}
 	log.Println("=====================================")
 	log.Println("🚀 Claviger Started. isGUI check executing...")
+
+	var vaultErr error
+	vault, vaultErr = config.Load()
+	if vaultErr != nil {
+		log.Fatalf("❌ Failed to load vault: %v", vaultErr)
+	}
 
 	isGUI := len(os.Args) == 1
 	wakeUpChan := make(chan bool)
@@ -85,29 +98,29 @@ func main() {
 
 				// 🎯 THE NEW CONNECT HANDLER FOR LINUX
 				case "CONNECT":
-					conn.Close()
 					if len(parts) >= 3 {
 						targetID := parts[1]
 						routeMode := parts[2]
 						useGlobal := (routeMode == "global")
 
-						vault, vaultErr := config.Load()
-						if vaultErr != nil {
-							log.Fatalf("❌ Failed to load vault: %v", vaultErr)
-						}
-
 						if profile, exists := vault.Profiles[targetID]; exists {
 							log.Printf("Root Daemon received CONNECT command for profile: %s", targetID)
 
-							// Ensure we are using the globally available vault/engine instances
-							// (You might need to make sure your daemon has initialized 'engine := vpn.NewEngine()')
+							// 1. ACKNOWLEDGE FIRST
+							conn.Write([]byte("OK"))
+							conn.Close() // Now it is safe to close!
+
+							// 2. RUN ENGINE
 							go func() {
-								engine := vpn.NewEngine()
+								// IMPORTANT: Use your existing engine instance (see below)
 								err := engine.Connect(vault, profile, useGlobal)
 								if err != nil {
 									log.Printf("Daemon Connect Error: %v", err)
 								}
 							}()
+						} else {
+							conn.Write([]byte("ERROR: Profile not found"))
+							conn.Close()
 						}
 					}
 
@@ -116,12 +129,6 @@ func main() {
 				}
 			}
 		}()
-	}
-
-	// 3. Load the Secure Vault
-	vault, vaultErr := config.Load()
-	if vaultErr != nil {
-		log.Fatalf("❌ Failed to load vault: %v", vaultErr)
 	}
 
 	// 4. HYBRID LAUNCHER
