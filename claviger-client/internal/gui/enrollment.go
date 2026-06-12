@@ -4,9 +4,12 @@ package gui
 
 import (
 	"fmt"
+	"log"
+	"net"
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"claviger-client/internal/auth"
 	"claviger-client/internal/config"
@@ -98,6 +101,40 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 			return
 		}
 
+		// 🎯 1. ATTEMPT TO DELEGATE TO ROOT DAEMON (Linux/Mac)
+		conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
+		if err == nil {
+			log.Println("📡 Whispering APPROVE command to root daemon...")
+			payload := fmt.Sprintf("APPROVE|%s", tokenString)
+			conn.Write([]byte(payload))
+
+			// Wait for the Daemon to finish saving
+			ack := make([]byte, 2)
+			conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+			conn.Read(ack)
+			conn.Close()
+
+			if string(ack) == "OK" {
+				// The Daemon saved it! Now the GUI just reloads the file from disk.
+				updatedVault, loadErr := config.Load()
+				if loadErr != nil {
+					dialog.ShowError(fmt.Errorf("Failed to sync with Daemon: %v", loadErr), g.Window)
+					return
+				}
+				g.Vault = updatedVault
+				g.ActiveProfile = g.Vault.Profiles[g.Vault.ActiveProfileID] // Update current memory
+
+				dialog.ShowInformation("Success", "Device enrolled successfully via secure Daemon!", g.Window)
+				g.ShowDashboardScreen()
+				return
+			} else {
+				dialog.ShowError(fmt.Errorf("Daemon rejected the token or failed to save"), g.Window)
+				return
+			}
+		}
+
+		// 🎯 2. FALLBACK FOR WINDOWS (Direct Save)
+		log.Println("⚠️ Daemon not found. Attempting direct save (Windows Mode)...")
 		approval, err := auth.DecodeApprovalToken(tokenString)
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("invalid Visa token: %v", err), g.Window)
@@ -115,11 +152,14 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 
 		serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
 		profile.Name = fmt.Sprintf("Claviger Hub (%s)", serverIP)
-		config.Save(g.Vault)
 
-		dialog.ShowInformation("Success", "Device enrolled successfully!", g.Window)
-		g.ActiveProfile = profile
-		g.ShowDashboardScreen()
+		if saveErr := config.Save(g.Vault); saveErr != nil {
+			dialog.ShowError(fmt.Errorf("Failed to save profile: %v", saveErr), g.Window)
+		} else {
+			dialog.ShowInformation("Success", "Device enrolled successfully!", g.Window)
+			g.ActiveProfile = profile
+			g.ShowDashboardScreen()
+		}
 	})
 
 	// Layout Builder

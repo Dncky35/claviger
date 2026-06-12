@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // 🎯 NEW: ServerProfile represents a single VPN server connection
@@ -30,7 +31,6 @@ type ClientVault struct {
 	ActiveProfileID  string                    `json:"active_profile_id"`  // The currently selected server
 
 	// --- LEGACY FIELDS (For Auto-Migration Only) ---
-	// omitempty ensures these disappear from the JSON file once they are empty
 	LegacyPrivateKey string `json:"private_key,omitempty"`
 	LegacyPublicKey  string `json:"public_key,omitempty"`
 	LegacyAssignedIP string `json:"assigned_ip,omitempty"`
@@ -41,16 +41,29 @@ type ClientVault struct {
 	LegacySubnet     string `json:"base_subnet,omitempty"`
 }
 
-// getVaultPath automatically finds the correct secure folder for Win/Mac/Linux
+// 🎯 UPGRADED: getVaultPath automatically finds the correct SYSTEM-WIDE secure folder
 func getVaultPath() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
+	var appDir string
+
+	switch runtime.GOOS {
+	case "windows":
+		// Windows System-Wide Path: C:\ProgramData\Claviger
+		programData := os.Getenv("PROGRAMDATA")
+		if programData == "" {
+			programData = `C:\ProgramData`
+		}
+		appDir = filepath.Join(programData, "Claviger")
+	case "darwin":
+		// macOS System-Wide Path
+		appDir = "/Library/Application Support/Claviger"
+	default:
+		// Linux System-Wide Path
+		appDir = "/etc/claviger"
 	}
 
-	appDir := filepath.Join(configDir, "Claviger")
-	// Ensure the directory exists
-	if err := os.MkdirAll(appDir, 0700); err != nil {
+	// Ensure the directory exists.
+	// 0755 allows Root to write, and Standard Users to read.
+	if err := os.MkdirAll(appDir, 0755); err != nil {
 		return "", err
 	}
 
@@ -86,13 +99,13 @@ func Load() (*ClientVault, error) {
 		vault.Profiles = make(map[string]*ServerProfile)
 	}
 
-	// 🛡️ AUTO-MIGRATION: If we find legacy flat data, convert it to a Profile!
+	// 🛡️ AUTO-MIGRATION
 	if vault.LegacyPrivateKey != "" {
 		migratedID := "default-profile"
 
 		vault.Profiles[migratedID] = &ServerProfile{
 			ID:             migratedID,
-			Name:           "Default Server", // We give it a generic name
+			Name:           "Default Server",
 			PrivateKey:     vault.LegacyPrivateKey,
 			PublicKey:      vault.LegacyPublicKey,
 			AssignedIP:     vault.LegacyAssignedIP,
@@ -104,7 +117,6 @@ func Load() (*ClientVault, error) {
 		}
 		vault.ActiveProfileID = migratedID
 
-		// Wipe the legacy fields so they delete themselves on the next save
 		vault.LegacyPrivateKey = ""
 		vault.LegacyPublicKey = ""
 		vault.LegacyAssignedIP = ""
@@ -114,7 +126,6 @@ func Load() (*ClientVault, error) {
 		vault.LegacyDNS = ""
 		vault.LegacySubnet = ""
 
-		// Save the newly migrated structure immediately
 		_ = Save(&vault)
 	}
 
@@ -133,6 +144,8 @@ func Save(vault *ClientVault) error {
 		return err
 	}
 
-	// 0600 means ONLY the current user can read/write this file (Security!)
-	return os.WriteFile(path, data, 0600)
+	// 🎯 CRITICAL FIX: 0644 permissions.
+	// This means the Root Daemon can save data, and your Standard User GUI
+	// can read the file to populate the interface visually!
+	return os.WriteFile(path, data, 0644)
 }

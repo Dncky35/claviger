@@ -96,14 +96,28 @@ func (g *ClavigerGUI) setupEvents() {
 				routing = "global"
 			}
 
+			go func() {
+				err := g.Engine.Connect(g.Vault, profile, g.Vault.UseGlobalRouting)
+				if err != nil {
+					log.Printf("Connect error: %v", err)
+				}
+			}()
+
 			// 🎯 ATTEMPT TO DELEGATE TO THE ROOT DAEMON
 			conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
 			if err == nil {
-				// Success! The background daemon is running. Send the Connect command.
 				log.Println("📡 Whispering CONNECT command to root daemon...")
 				payload := fmt.Sprintf("CONNECT|%s|%s", profile.ID, routing)
 				conn.Write([]byte(payload))
-				conn.Close()
+
+				// 🛑 CRITICAL FIX: Wait for the Daemon to acknowledge!
+				// This forces the connection to stay open until the daemon processes it.
+				ack := make([]byte, 2)
+				conn.SetReadDeadline(time.Now().Add(2 * time.Second)) // Don't hang forever
+				conn.Read(ack)
+				log.Printf("Daemon response: %s", string(ack))
+
+				conn.Close() // Now it is safe to close!
 
 				// Update GUI State visually
 				// g.Engine.SetState(vpn.StateConnecting)

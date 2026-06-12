@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"claviger-client/internal/auth"
 	"claviger-client/internal/cli"
 	"claviger-client/internal/config"
 	"claviger-client/internal/gui"
@@ -25,7 +26,10 @@ func main() {
 	if err == nil {
 		log.SetOutput(logFile)
 		defer logFile.Close()
+	} else {
+		log.SetOutput(os.Stdout)
 	}
+
 	log.Println("=====================================")
 	log.Println("🚀 Claviger Started. isGUI check executing...")
 
@@ -49,7 +53,7 @@ func main() {
 	if err != nil {
 		log.Printf("⚠️ Port 42899 taken or blocked: %v", err)
 		if isGUI {
-			conn, dialErr := net.Dial("tcp", "127.0.0.1:42899")
+			conn, dialErr := net.Dial("tcp", "127.0.0.1:42900")
 			if dialErr == nil {
 				conn.Write([]byte("WAKEUP"))
 				conn.Close()
@@ -66,7 +70,7 @@ func main() {
 	} else {
 		defer listener.Close()
 
-		// 2. We are Instance A! Start listening for IPC whispers (GUI Wakeup or Terminal Shutdown).
+		// 2. We are Instance A! Start listening for IPC whispers.
 		go func() {
 			for {
 				conn, err := listener.Accept()
@@ -74,59 +78,112 @@ func main() {
 					continue
 				}
 
-				buf := make([]byte, 128)
-				n, _ := conn.Read(buf)
-				commandReceived := string(buf[:n])
+				// 🛑 CRITICAL FIX: Handle the connection in a background goroutine!
+				go func(c net.Conn) {
+					defer c.Close() // Ensures connection always closes when done
 
-				// Parse commands that have payloads (like CONNECT|profile_123|global)
-				parts := strings.Split(commandReceived, "|")
-				baseCommand := parts[0]
-
-				switch baseCommand {
-				case "WAKEUP":
-					wakeUpChan <- true
-					conn.Close()
-
-				case "DISCON":
-					conn.Write([]byte("Engine disconnecting..."))
-					conn.Close()
-					disconnectChan <- true
-
-				case "STATUS":
-					conn.Write([]byte("ONLINE"))
-					conn.Close()
-
-				// 🎯 THE NEW CONNECT HANDLER FOR LINUX
-				case "CONNECT":
-					if len(parts) >= 3 {
-						targetID := parts[1]
-						routeMode := parts[2]
-						useGlobal := (routeMode == "global")
-
-						if profile, exists := vault.Profiles[targetID]; exists {
-							log.Printf("Root Daemon received CONNECT command for profile: %s", targetID)
-
-							// 1. ACKNOWLEDGE FIRST
-							conn.Write([]byte("OK"))
-							conn.Close() // Now it is safe to close!
-
-							// 2. RUN ENGINE
-							go func() {
-								// IMPORTANT: Use your existing engine instance (see below)
-								err := engine.Connect(vault, profile, useGlobal)
-								if err != nil {
-									log.Printf("Daemon Connect Error: %v", err)
-								}
-							}()
-						} else {
-							conn.Write([]byte("ERROR: Profile not found"))
-							conn.Close()
-						}
+					buf := make([]byte, 256)
+					n, err := c.Read(buf)
+					if err != nil || n == 0 {
+						return // Drop empty or broken connections gracefully
 					}
 
-				default:
-					conn.Close()
-				}
+					commandReceived := string(buf[:n])
+					parts := strings.Split(commandReceived, "|")
+					baseCommand := parts[0]
+
+					switch baseCommand {
+					case "WAKEUP":
+						wakeUpChan <- true
+
+						// Inside main.go -> TCP Listener goroutine -> switch baseCommand:
+
+					case "APPROVE":
+						log.Println("DEBUG: Daemon entered APPROVE case") // 👈 IS THIS LOGGING?
+						if len(parts) >= 2 {
+							tokenString := parts[1]
+							log.Printf("Root Daemon received APPROVE command.")
+
+							// Check if vault is Nil
+							if vault == nil {
+								log.Println("ERROR: Daemon vault is nil!")
+								c.Write([]byte("ER"))
+								return
+							}
+
+							// 1. Decode the token
+							approval, err := auth.DecodeApprovalToken(tokenString)
+							if err != nil {
+								log.Printf("Daemon failed to decode token: %v", err)
+								c.Write([]byte("ER"))
+								return // exit this case
+							}
+
+							// 2. Update the Daemon's copy of the Vault
+							if vault.ActiveProfileID != "" {
+								if profile, exists := vault.Profiles[vault.ActiveProfileID]; exists {
+									profile.AssignedIP = approval.AssignedIP
+									profile.ServerKey = approval.ServerPubKey
+									profile.ServerEndpoint = approval.ServerEndpoint
+									profile.DNS = approval.DNS
+									profile.BaseSubnet = approval.BaseSubnet
+									profile.Status = "active"
+									profile.HubPort = approval.HubPort
+
+									serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
+									profile.Name = fmt.Sprintf("Claviger Hub (%s)", serverIP)
+
+									// 3. Save as ROOT to /etc/claviger/vault.json
+									if err := config.Save(vault); err == nil {
+										log.Println("✅ Root Daemon successfully saved updated Vault.")
+										c.Write([]byte("OK")) // Tell the GUI it worked!
+									} else {
+										log.Printf("❌ Root Daemon failed to save: %v", err)
+										c.Write([]byte("ER"))
+									}
+								} else {
+									c.Write([]byte("ER"))
+								}
+							} else {
+								c.Write([]byte("ER"))
+							}
+						}
+
+					case "DISCON":
+						c.Write([]byte("OK"))
+						disconnectChan <- true
+
+					case "STATUS":
+						c.Write([]byte("ONLINE"))
+
+					// 🎯 THE NEW CONNECT HANDLER FOR LINUX
+					case "CONNECT":
+						if len(parts) >= 3 {
+							targetID := parts[1]
+							routeMode := parts[2]
+							useGlobal := (routeMode == "global")
+
+							log.Printf("Target Id: %s, Route Mode: %s", targetID, routeMode)
+
+							if profile, exists := vault.Profiles[targetID]; exists {
+								log.Printf("Root Daemon received CONNECT command for profile: %s", targetID)
+
+								// 1. ACKNOWLEDGE FIRST so the GUI can continue
+								c.Write([]byte("OK"))
+
+								// 2. RUN ENGINE
+								go func() {
+									err := engine.Connect(vault, profile, useGlobal)
+									if err != nil {
+										log.Printf("Daemon Connect Error: %v", err)
+									}
+								}()
+							} else {
+								c.Write([]byte("ER")) // Error: Profile not found
+							}
+						}
+					}
+				}(conn) // Pass the connection into the goroutine
 			}
 		}()
 	}

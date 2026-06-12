@@ -18,30 +18,29 @@ func InstallSystemdService() error {
 
 	log.Println("⚙️  Configuring systemd auto-start service...")
 
-	// 1. Get the absolute path to the executable (e.g., /usr/local/bin/claviger-server)
+	// 1. Get the absolute path to the executable
 	execPath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("could not find executable path: %v", err)
 	}
 
-	// 2. Define the strict Linux data directory (DO NOT use the bin folder!)
+	// 2. Define the strict Linux data directory
 	workDir := "/etc/claviger"
-	os.MkdirAll(workDir, 0755) // Create it safely
+	os.MkdirAll(workDir, 0755)
 
 	// 3. Resolve the actual human user behind the sudo command
 	realUser := os.Getenv("SUDO_USER")
 	if realUser == "" || realUser == "root" {
-		// Fallback: Check who owns the current session if sudo wasn't used
 		u, err := user.Current()
 		if err == nil {
 			realUser = u.Username
 		} else {
-			realUser = "root" // Absolute fallback state
+			realUser = "root"
 		}
 	}
 	log.Printf("👤 Detected management user for SSH operations: %s", realUser)
 
-	// 4. Define the systemd service file content and inject the variables
+	// 4. Define the systemd service file content
 	serviceContent := fmt.Sprintf(`[Unit]
 Description=Claviger Edge VPN Daemon
 After=network.target network-online.target
@@ -62,7 +61,7 @@ Environment="CLAVIGER_SSH_USER=%s"
 WantedBy=multi-user.target
 `, workDir, execPath, realUser)
 
-	servicePath := "/etc/systemd/system/claviger.service"
+	servicePath := "/etc/systemd/system/claviger-server.service"
 
 	// 5. Write the file to the systemd directory
 	err = os.WriteFile(servicePath, []byte(serviceContent), 0644)
@@ -76,11 +75,11 @@ WantedBy=multi-user.target
 	}
 
 	// 7. Enable the service so it starts on boot
-	if err := exec.Command("systemctl", "enable", "claviger.service").Run(); err != nil {
-		return fmt.Errorf("failed to enable claviger service: %v", err)
+	if err := exec.Command("systemctl", "enable", "claviger-server.service").Run(); err != nil {
+		return fmt.Errorf("failed to enable claviger-server service: %v", err)
 	}
 
-	log.Println("✅ Auto-start service configured successfully.")
+	log.Println("✅ Auto-start service (claviger-server) configured successfully.")
 	return nil
 }
 
@@ -90,7 +89,7 @@ func RemoveSystemdService() error {
 		return nil
 	}
 
-	servicePath := "/etc/systemd/system/claviger.service"
+	servicePath := "/etc/systemd/system/claviger-server.service"
 
 	// If the file doesn't exist, there is nothing to clean up
 	if _, err := os.Stat(servicePath); os.IsNotExist(err) {
@@ -100,10 +99,10 @@ func RemoveSystemdService() error {
 	fmt.Println("🛑 Stopping and removing systemd background service...")
 
 	// 1. Stop the currently running service
-	exec.Command("systemctl", "stop", "claviger.service").Run()
+	exec.Command("systemctl", "stop", "claviger-server.service").Run()
 
 	// 2. Disable it from starting on boot
-	exec.Command("systemctl", "disable", "claviger.service").Run()
+	exec.Command("systemctl", "disable", "claviger-server.service").Run()
 
 	// 3. Delete the actual service file
 	if err := os.Remove(servicePath); err != nil {
