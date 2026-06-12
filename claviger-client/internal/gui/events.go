@@ -6,52 +6,71 @@ import (
 	"log"
 
 	"claviger-client/internal/config"
+	"claviger-client/internal/controller"
 	"claviger-client/internal/vpn"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
 )
+
+func (g *ClavigerGUI) SafeUpdate(fn func()) {
+	fyne.Do(fn)
+}
 
 func (g *ClavigerGUI) setupEvents() {
 
 	updateUI := func(newState string) {
-		g.StatusLabel.SetText("Status: " + newState)
-
-		switch newState {
-		case vpn.StateDisconnected:
-			g.ConnectBtn.SetText("Connect")
-			g.ConnectBtn.Enable()
-			g.RouteCheck.Enable()
-			g.RemoveBtn.Enable()
-			g.ServerSelect.Enable()
-			g.AddServerBtn.Enable()
-
-		case vpn.StateConnecting, vpn.StateVerifying:
-			g.ConnectBtn.SetText("Cancel")
-			g.ConnectBtn.Enable()
-			g.RouteCheck.Disable()
-			g.RemoveBtn.Disable()
-			g.ServerSelect.Disable()
-			g.AddServerBtn.Disable()
-
-		case vpn.StateSecured:
-			g.ConnectBtn.SetText("Disconnect")
-			g.ConnectBtn.Enable()
-			g.RouteCheck.Disable()
-			g.RemoveBtn.Disable()
-			g.ServerSelect.Disable()
-			g.AddServerBtn.Disable()
-
-		case vpn.StateReconnecting:
-			g.ConnectBtn.SetText("Cancel")
-			g.ConnectBtn.Enable()
-			g.RemoveBtn.Disable()
-			g.ServerSelect.Disable()
-			g.AddServerBtn.Disable()
+		// Update the main status label safely
+		if g.StatusBinding != nil {
+			g.StatusBinding.Set("Status: " + newState)
 		}
+
+		g.SafeUpdate(func() {
+			switch newState {
+			case vpn.StateDisconnected:
+				g.ConnectBtn.SetText("Connect")
+				g.ConnectBtn.Enable()
+				g.RouteCheck.Enable()
+				g.RemoveBtn.Enable()
+				g.ServerSelect.Enable()
+				g.AddServerBtn.Enable()
+
+				// 🎯 Reset sync status when disconnected
+				g.SyncStatusBinding.Set(controller.SyncStable)
+
+			case vpn.StateConnecting, vpn.StateVerifying:
+				g.ConnectBtn.SetText("Cancel")
+				g.ConnectBtn.Enable()
+				g.RouteCheck.Disable()
+				g.RemoveBtn.Disable()
+				g.ServerSelect.Disable()
+				g.AddServerBtn.Disable()
+
+				// Sync hasn't started yet during connecting
+
+			case vpn.StateSecured:
+				g.ConnectBtn.SetText("Disconnect")
+				g.ConnectBtn.Enable()
+				g.RouteCheck.Disable()
+				g.RemoveBtn.Disable()
+				g.ServerSelect.Disable()
+				g.AddServerBtn.Disable()
+
+				// 🎯 LIVE SYNC UPDATE: Fetch the exact status from the Engine!
+				currentSyncStatus := g.Engine.GetSyncStatus()
+				g.SyncStatusBinding.Set(currentSyncStatus)
+
+			case vpn.StateReconnecting:
+				g.ConnectBtn.SetText("Cancel")
+				g.ConnectBtn.Enable()
+				g.RemoveBtn.Disable()
+				g.ServerSelect.Disable()
+				g.AddServerBtn.Disable()
+			}
+		})
 	}
 
 	g.Engine.SetStateCallback(updateUI)
-
 	g.ServerSelect.OnChanged = func(selected string) {
 		if id, exists := g.NameToID[selected]; exists {
 			g.Vault.ActiveProfileID = id

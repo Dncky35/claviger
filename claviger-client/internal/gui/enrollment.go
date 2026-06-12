@@ -111,6 +111,7 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 		profile.DNS = approval.DNS
 		profile.BaseSubnet = approval.BaseSubnet
 		profile.Status = "active"
+		profile.HubPort = approval.HubPort
 
 		serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
 		profile.Name = fmt.Sprintf("Claviger Hub (%s)", serverIP)

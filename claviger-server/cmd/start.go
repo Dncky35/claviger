@@ -178,7 +178,7 @@ func RunStart() {
 		w.Write([]byte("pong"))
 	})
 
-	mux.HandleFunc("/api/sync/state", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/status/sync-state", func(w http.ResponseWriter, r *http.Request) {
 		api.HandleSyncState(db)(w, r)
 	})
 

@@ -230,6 +230,11 @@ func EnrollStandardUser(db *sql.DB, req *ConnectionRequest, roleID string, serve
 		dnsSetting = "1.1.1.1, 1.0.0.1" // AdGuard missing, use Cloudflare
 	}
 
+	hubPort := storage.GetConfig(db, "hub_port")
+	if hubPort == "" {
+		hubPort = "18080" // Safe fallback just in case
+	}
+
 	// 6. Generate the Approval Token
 	approval := &ConnectionApproval{
 		Role:           roleID,
@@ -238,6 +243,7 @@ func EnrollStandardUser(db *sql.DB, req *ConnectionRequest, roleID string, serve
 		ServerEndpoint: fmt.Sprintf("%s:%s", customEndpoint, wgPort),
 		DNS:            dnsSetting, // 🎯 Now dynamically uses the Hub IP
 		BaseSubnet:     baseSubnet, // 🎯 Now dynamically calculated
+		HubPort:        hubPort,
 	}
 
 	return approval, nil

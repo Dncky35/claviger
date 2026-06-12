@@ -24,6 +24,7 @@ type ConnectionApproval struct {
 	ServerEndpoint string `json:"server_endpoint"`
 	DNS            string `json:"dns"`         // 🎯 NEW: From server (e.g., "10.8.0.1")
 	BaseSubnet     string `json:"base_subnet"` // 🎯 NEW: From server (e.g., "10.8.0.0/24")
+	HubPort        string `json:"hub_port"`    // 🎯 NEW: From server
 }
 
 // GenerateRequestToken packs the client's identity into a secure Base64 string

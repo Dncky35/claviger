@@ -24,11 +24,11 @@ import (
 
 // The 5 Exact States of our Zero-Trust Tunnel
 const (
-	StateDisconnected = "disconnected" // ⚪ Off
-	StateConnecting   = "connecting"   // 🟡 Building tunnel
-	StateVerifying    = "verifying"    // 🔵 Waiting for first handshake
-	StateSecured      = "secured"      // 🟢 Traffic is flowing securely
-	StateReconnecting = "reconnecting" // 🟠 Ghost connection (Server unresponsive)
+	StateDisconnected = "Disconnected" // ⚪ Off
+	StateConnecting   = "Connecting"   // 🟡 Building tunnel
+	StateVerifying    = "Verifying"    // 🔵 Waiting for first handshake
+	StateSecured      = "Secured"      // 🟢 Traffic is flowing securely
+	StateReconnecting = "Reconnecting" // 🟠 Ghost connection (Server unresponsive)
 )
 
 // Engine manages the embedded WireGuard network interface
@@ -45,6 +45,8 @@ type Engine struct {
 	watchdogCancel context.CancelFunc
 
 	// Lifecycle Management
+	syncStatus string // e.g., "Stable", "Syncing...", "Fallback"
+	syncMutex  sync.RWMutex
 	syncCancel context.CancelFunc // 🎯 Added to kill the sync loop
 
 	// Routing Management
@@ -62,14 +64,14 @@ func NewEngine() *Engine {
 // STATE MANAGEMENT THREAD SAFETY
 // ==========================================
 
-// SetStateCallback allows the main Wails app to listen for background state changes
+// SetStateCallback allows the main UI app to listen for background state changes
 func (e *Engine) SetStateCallback(cb func(string)) {
 	e.stateMutex.Lock()
 	defer e.stateMutex.Unlock()
 	e.stateCallback = cb
 }
 
-// setState safely updates the engine's status and triggers the Wails Event
+// setState safely updates the engine's status and triggers the UI Event
 func (e *Engine) setState(newState string) {
 	e.stateMutex.Lock()
 
@@ -88,6 +90,40 @@ func (e *Engine) setState(newState string) {
 	if changed && cb != nil {
 		cb(newState)
 	}
+}
+
+// SetSyncStatus safely updates the sync state and forces a UI refresh
+func (e *Engine) SetSyncStatus(status string) {
+	// 1. Safely update the internal sync status
+	e.syncMutex.Lock()
+	e.syncStatus = status
+	e.syncMutex.Unlock()
+
+	// 2. Safely grab the UI callback and current VPN state
+	e.stateMutex.RLock()
+	cb := e.stateCallback
+	currentState := e.currentState // This will be "Secured"
+	e.stateMutex.RUnlock()
+
+	// 3. FORCE THE UI REFRESH
+	if cb != nil {
+		// By calling the callback directly here, we bypass the VPN state deduplication.
+		// This forces the UI to re-run your `case vpn.StateSecured:` block
+		// and fetch the fresh Sync status!
+		cb(currentState)
+	}
+}
+
+// GetSyncStatus safely reads the current sync status for the UI
+func (e *Engine) GetSyncStatus() string {
+	e.syncMutex.RLock()
+	defer e.syncMutex.RUnlock()
+
+	// If it's empty (e.g., just booted), default to Stable
+	if e.syncStatus == "" {
+		return controller.SyncStable
+	}
+	return e.syncStatus
 }
 
 // GetState safely reads the current status for the UI
@@ -368,7 +404,35 @@ func (e *Engine) cleanupGlobalRoutes() {
 // TUNNEL LIFECYCLE CONTROLS
 // ==========================================
 
-func (e *Engine) HotSwapEndpoint(serverPubKeyBase64, newEndpoint string) error {
+// hotSwapOSDNS changes the DNS servers on the live TUN interface
+func (e *Engine) hotSwapOSDNS(interfaceName, newDNS string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		// Windows uses netsh to change DNS dynamically
+		cmd = exec.Command("netsh", "interface", "ipv4", "set", "dnsservers",
+			fmt.Sprintf("name=\"%s\"", interfaceName),
+			"source=static",
+			fmt.Sprintf("address=\"%s\"", newDNS))
+
+	case "linux":
+		// Linux relies on resolvectl (systemd-resolved) for dynamic TUN DNS
+		cmd = exec.Command("resolvectl", "dns", interfaceName, newDNS)
+
+	case "darwin":
+		// macOS uses networksetup
+		cmd = exec.Command("networksetup", "-setdnsservers", interfaceName, newDNS)
+	}
+
+	if cmd != nil {
+		return cmd.Run()
+	}
+
+	return fmt.Errorf("unsupported operating system for DNS hot-swap")
+}
+
+func (e *Engine) HotSwapEndpoint(serverPubKeyBase64, newEndpoint, newDNS, interfaceName string) error {
 	e.stateMutex.RLock()
 	defer e.stateMutex.RUnlock()
 
@@ -376,25 +440,36 @@ func (e *Engine) HotSwapEndpoint(serverPubKeyBase64, newEndpoint string) error {
 		return fmt.Errorf("tunnel is not currently running")
 	}
 
-	// 1. Convert the Base64 key from your Vault into Hex format for the UAPI
+	// ==========================================
+	// 1. UPDATE WIREGUARD (Layer 3 Routing)
+	// ==========================================
 	pubKeyBytes, err := base64.StdEncoding.DecodeString(serverPubKeyBase64)
 	if err != nil {
 		return fmt.Errorf("invalid base64 public key: %v", err)
 	}
 	hexKey := hex.EncodeToString(pubKeyBytes)
 
-	// 2. Format the configuration string using WireGuard's UAPI syntax
-	// By only providing the public_key and the new endpoint, it updates the existing peer!
 	uapiConfig := fmt.Sprintf("public_key=%s\nendpoint=%s\n", hexKey, newEndpoint)
 
-	// 3. Inject directly into the running embedded engine
 	err = e.wgDevice.IpcSet(uapiConfig)
 	if err != nil {
 		return fmt.Errorf("failed to inject new endpoint: %v", err)
 	}
 
-	// Optionally update your active tracking variable
 	e.activeServerIP = newEndpoint
+
+	// ==========================================
+	// 2. UPDATE OPERATING SYSTEM (DNS Layer)
+	// ==========================================
+	if newDNS != "" {
+		log.Printf("🔄 Hot-swapping OS DNS to %s on interface %s", newDNS, interfaceName)
+		err = e.hotSwapOSDNS(interfaceName, newDNS)
+		if err != nil {
+			log.Printf("⚠️ Warning: Endpoint updated, but DNS hot-swap failed: %v", err)
+			// We don't return an error here because the tunnel itself still works!
+		}
+	}
+
 	return nil
 }
 
@@ -489,6 +564,7 @@ persistent_keepalive_interval=25
 	syncCtx, syncCancel := context.WithCancel(context.Background())
 	e.syncCancel = syncCancel
 
+	log.Println("Sync Start has been initiated.")
 	controller.StartSyncManager(syncCtx, vault, e)
 
 	return nil

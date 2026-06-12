@@ -70,6 +70,7 @@ type ConnectionApproval struct {
 	ServerEndpoint string `json:"server_endpoint"`
 	DNS            string `json:"dns"`         // 🎯 NEW: e.g., "10.8.0.1" or "1.1.1.1"
 	BaseSubnet     string `json:"base_subnet"` // 🎯 NEW: e.g., "10.8.0.0/24" or "0.0.0.0/0"
+	HubPort        string `json:"hub_port"`    // 🎯 NEW: e.g., "10880"
 }
 
 // DecodeConnectionRequest takes the Base64 string from the user and turns it into a Go struct.
