@@ -29,6 +29,7 @@ type ClientVault struct {
 	UseGlobalRouting bool                      `json:"use_global_routing"` // User preference
 	Profiles         map[string]*ServerProfile `json:"profiles"`           // Map of ID -> Profile
 	ActiveProfileID  string                    `json:"active_profile_id"`  // The currently selected server
+	AutoConnect      bool                      `json:"auto_connect"`       // User preference
 
 	// --- LEGACY FIELDS (For Auto-Migration Only) ---
 	LegacyPrivateKey string `json:"private_key,omitempty"`

@@ -150,11 +150,20 @@ func main() {
 						}
 
 					case "DISCON":
-						c.Write([]byte("OK"))
 						disconnectChan <- true
+						c.Write([]byte("OK"))
 
 					case "STATUS":
-						c.Write([]byte("ONLINE"))
+						// Get the real-time state from your VPN engine
+						// (Assuming your engine has a GetState() method returning "Connected", "Disconnected", etc.)
+						currentState := engine.GetState()
+
+						// Fallback if your engine state string is empty
+						if currentState == "" {
+							currentState = "DEAMON ONLINE" // At least we know the daemon is running
+						}
+
+						c.Write([]byte(currentState))
 
 					// 🎯 THE NEW CONNECT HANDLER FOR LINUX
 					case "CONNECT":
@@ -219,14 +228,39 @@ func main() {
 		cli.HandleDisconnect(vault)
 	case "status":
 		cli.HandleStatus(vault)
+	// 🎯 NEW: Standalone Autostart Toggle
+	case "autostart":
+		if len(os.Args) < 3 {
+			log.Fatalf("❌ Usage: claviger-client autostart <enable|disable>")
+		}
+		cli.HandleAutostart(vault, os.Args[2])
 	case "daemon":
-		log.Println("Starting Claviger Background Daemon...")
-		// Here is where you call the function that starts your VPN,
-		// configures UFW, and stays open forever.
-		// Example: engine.StartVPNController(vault)
 
-		// To prevent the program from exiting immediately, you block it:
-		select {} // This keeps the Go routine alive forever
+		log.Println("Starting Claviger Background Daemon...")
+
+		// 🎯 AUTO-CONNECT LOGIC
+		if vault.AutoConnect && vault.ActiveProfileID != "" {
+			if profile, exists := vault.Profiles[vault.ActiveProfileID]; exists {
+				log.Printf("🔄 Auto-Connect enabled. Booting tunnel for %s...", profile.Name)
+
+				// Run the engine in the background
+				go func() {
+					err := engine.Connect(vault, profile, vault.UseGlobalRouting)
+					if err != nil {
+						log.Printf("❌ Auto-Connect failed: %v", err)
+					} else {
+						log.Println("✅ Auto-Connect successful!")
+					}
+				}()
+			}
+		}
+
+		// Keep the daemon alive and listening for future GUI commands
+		select {}
+
+	case "uninstall":
+		cli.HandleUninstall()
+
 	default:
 		fmt.Printf("❌ Unknown command: %s\n", command)
 		cli.PrintHelp()

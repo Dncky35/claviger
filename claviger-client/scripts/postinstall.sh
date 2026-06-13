@@ -1,11 +1,11 @@
 #!/bin/sh
 set -e
 
-echo "[+] Reloading systemd daemon..."
-systemctl daemon-reload
-
-echo "[+] Enabling and starting Claviger Gateway service..."
-systemctl enable claviger-client.service
-systemctl start claviger-client.service
-
-echo "[+] Claviger installed successfully!"
+if [ "$1" = "configure" ]; then
+    echo "✅ Configuring Claviger..."
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload || true
+        systemctl enable claviger-client.service || true
+        systemctl restart claviger-client.service || true
+    fi
+fi

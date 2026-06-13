@@ -26,3 +26,5 @@ contents:
 
 scripts:
   postinstall: ../scripts/postinstall.sh
+  preremove: ../scripts/prerm.sh
+  postremove: ../scripts/postrm.sh

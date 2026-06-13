@@ -151,7 +151,7 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 		profile.HubPort = approval.HubPort
 
 		serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
-		profile.Name = fmt.Sprintf("Claviger Hub (%s)", serverIP)
+		profile.Name = fmt.Sprintf("%s", serverIP)
 
 		if saveErr := config.Save(g.Vault); saveErr != nil {
 			dialog.ShowError(fmt.Errorf("Failed to save profile: %v", saveErr), g.Window)
