@@ -82,15 +82,49 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 		// ---------------------------------------------------------
 		for id, manifest := range apps.Catalog {
 			status := "not_installed"
-			if liveState, exists := containerMap[id]; exists {
-				status = liveState
+
+			// 🎯 THE FIX: Handle multi-container apps like RustDesk
+			if id == "rustdesk" {
+				// Safely check for standard name or the Docker-API-slashed name
+				stateHbbs := containerMap["rustdesk-hbbs"]
+				if stateHbbs == "" {
+					stateHbbs = containerMap["/rustdesk-hbbs"]
+				}
+
+				stateHbbr := containerMap["rustdesk-hbbr"]
+				if stateHbbr == "" {
+					stateHbbr = containerMap["/rustdesk-hbbr"]
+				}
+
+				if stateHbbs != "" || stateHbbr != "" {
+					if stateHbbs == "running" && stateHbbr == "running" {
+						status = "running"
+					} else if stateHbbs == "running" || stateHbbr == "running" {
+						status = "degraded"
+					} else if stateHbbs != "" {
+						status = stateHbbs
+					} else {
+						status = stateHbbr
+					}
+				}
+			} else {
+				// Standard single-container check (vaultwarden, gitea, etc.)
+				if liveState, exists := containerMap[id]; exists {
+					status = liveState
+				}
 			}
 
 			setupComplete := true
 			actionPort := 0
 			actionText := "Open Dashboard ↗"
 
-			// 🎯 THE FIX: FETCH PORT FROM DATABASE OR ASSIGN STATIC
+			// 🎯 RUSTDESK EXCEPTION: It does not have a web UI to open
+			if id == "rustdesk" {
+				actionText = "Service Active (TCP/UDP)"
+				// Optional: You could make clicking this open a modal with their ID server IP.
+			}
+
+			// 🎯 FETCH PORT FROM DATABASE OR ASSIGN STATIC
 			if manifest.NeedsDynamicPort {
 				portStr := storage.GetConfig(db, fmt.Sprintf("app_%s_port", id))
 				if portStr != "" {

@@ -163,7 +163,6 @@ networks:
     external: true
 `,
 	},
-
 	"rustdesk": {
 		Name:             "RustDesk Server",
 		Category:         "optional",
