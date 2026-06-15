@@ -82,7 +82,7 @@ sudo claviger-server setup
 Once configured, Claviger installs itself as a `systemd` unit:
 
 ```bash
-sudo systemctl start claviger
+sudo systemctl start claviger-server
 ```
 
 ### 3. Client Enrollment
