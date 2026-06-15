@@ -72,7 +72,6 @@ networks:
 		NeedsDynamicPort: true,
 		SetupPort:        3030,
 		ComposeYAML: `
-version: '3.3'
 services:
   adguardhome:
     image: adguard/adguardhome

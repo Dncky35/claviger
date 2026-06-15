@@ -19,6 +19,30 @@
     </div>
 
     <div id="security-insights-container" class="mb-6 space-y-4"></div>
+
+    <div id="standart-gateway-container" class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col gap-4 relative overflow-hidden">
+        <div class="flex flex-col md:flex-row items-start justify-between gap-6">
+            <div class="z-10">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center text-orange-500 text-xl">☁️</div>
+                    <h3 class="text-lg font-bold text-slate-100">Standart Direct DNS</h3>
+                    <span class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">Manual Sync</span>
+                </div>
+                <p class="text-muted-foreground text-sm max-w-2xl">
+                    Enable/Disable traffic on ports 80 and 443.
+                </p>
+            </div>
+            <div id="cloudflare-controls" class="z-10 flex items-center shrink-0 gap-2">
+                <button id="btn-enable-dns" onclick="triggerEnablePorts()" class="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-orange-500/20">
+                    Enable Ports 80/443
+                </button>
+
+                <button id="btn-disable-dns" onclick="triggerDisablePorts()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-slate-700 transition-colors">
+                    Disable Ports
+                </button>
+            </div>
+        </div>
+    </div>
     
     <div id="cloudflare-container" class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col gap-4 relative overflow-hidden">
         <div class="flex flex-col md:flex-row items-start justify-between gap-6">
@@ -167,6 +191,29 @@
 </dialog>
 
 <script>
+
+        window.toggleCategory = function(categoryId) {
+            // Find all rule rows that belong to this category
+            const rows = document.querySelectorAll(`.${categoryId}-row`);
+            const icon = document.getElementById(`icon-${categoryId}`);
+            let isHidden = false;
+            
+            // Toggle the 'hidden' class on each row
+            rows.forEach(row => {
+                row.classList.toggle('hidden');
+                if (row.classList.contains('hidden')) {
+                    isHidden = true;
+                }
+            });
+
+            // Rotate the chevron icon based on state
+            if (isHidden) {
+                icon.classList.add('-rotate-90'); // Point right (collapsed)
+            } else {
+                icon.classList.remove('-rotate-90'); // Point down (open)
+            }
+        };
+
         async function executeSecurityAction(payload) {
             try {
                 const res = await fetch('/api/security/action', {
@@ -297,22 +344,79 @@
                             return;
                         }
 
-                        tbody.innerHTML = '';
-                        data.rules.forEach(rule => {
-                            const tr = document.createElement('tr');
-                            tr.className = 'hover:bg-background/50 transition-colors';
-                            let actionColor = rule.action.includes('ALLOW') ? 'text-success' : 'text-destructive';
+                        const categories = {
+                            "SSH (Port 22)": [],
+                            "Web / Cloudflare (Ports 80, 443)": [],
+                            "WireGuard VPN": [],
+                            "Custom / Other Rules": []
+                        };
 
-                            tr.innerHTML = `
-                                <td class="p-5 font-mono text-primary">${rule.to}</td>
-                                <td class="p-5 font-bold ${actionColor}">${rule.action}</td>
-                                <td class="p-5 text-muted-foreground">${rule.from}</td>
-                                <td class="p-5 text-right">
-                                    <button onclick="deleteRule('${rule.to}', '${rule.action}')" class="text-muted-foreground hover:text-white hover:bg-destructive hover:border-destructive transition-colors text-[10px] font-bold uppercase tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border">Delete</button>
+                        // Sort rules
+                        data.rules.forEach(rule => {
+                            const toPort = rule.to.toString();
+                            if (toPort.includes('22')) categories["SSH (Port 22)"].push(rule);
+                            else if (toPort.includes('80') || toPort.includes('443')) categories["Web / Cloudflare (Ports 80, 443)"].push(rule);
+                            else if (toPort.includes('51820')) categories["WireGuard VPN"].push(rule);
+                            else categories["Custom / Other Rules"].push(rule);
+                        });
+
+                        tbody.innerHTML = '';
+                        
+                        for (const [categoryName, rules] of Object.entries(categories)) {
+                            if (rules.length === 0) continue;
+
+                            // Create a URL-safe ID for the category (e.g., "ssh-port-22")
+                            const categoryId = categoryName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+                            
+                            // Auto-collapse Cloudflare rules by default to save space
+                            const isCollapsedByDefault = categoryName.includes('Cloudflare');
+                            const iconRotation = isCollapsedByDefault ? '-rotate-90' : '';
+
+                            // 1. Render the Category Header (Now clickable)
+                            const headerTr = document.createElement('tr');
+                            headerTr.className = 'bg-background/80 border-y border-border/50 cursor-pointer hover:bg-white/5 transition-colors group';
+                            headerTr.setAttribute('onclick', `toggleCategory('${categoryId}')`);
+                            headerTr.innerHTML = `
+                                <td colspan="4" class="p-3 pl-5 text-xs font-bold text-muted-foreground uppercase tracking-wider select-none">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            ${categoryName} 
+                                            <span class="ml-2 bg-surface border border-border text-primary px-2 py-0.5 rounded-full text-[10px]">
+                                                ${rules.length} Rules
+                                            </span>
+                                        </div>
+                                        <svg id="icon-${categoryId}" class="w-4 h-4 text-muted-foreground group-hover:text-white transition-transform duration-200 ${iconRotation}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
                                 </td>
                             `;
-                            tbody.appendChild(tr);
-                        });
+                            tbody.appendChild(headerTr);
+
+                            // 2. Render the rules under this category
+                            rules.forEach(rule => {
+                                const tr = document.createElement('tr');
+                                // Add the categoryId class and conditionally add 'hidden'
+                                const rowVisibility = isCollapsedByDefault ? 'hidden' : '';
+                                tr.className = `${categoryId}-row hover:bg-background/50 transition-colors group ${rowVisibility}`;
+                                
+                                let actionColor = rule.action.includes('ALLOW') ? 'text-success' : 'text-destructive';
+
+                                tr.innerHTML = `
+                                    <td class="p-4 pl-8 font-mono text-primary text-sm border-l-2 border-transparent group-hover:border-primary/50">${rule.to}</td>
+                                    <td class="p-4 font-bold ${actionColor} text-sm">${rule.action}</td>
+                                    <td class="p-4 text-muted-foreground text-sm font-mono">${rule.from}</td>
+                                    <td class="p-4 text-right">
+                                        <button onclick="event.stopPropagation(); deleteRule('${rule.to}', '${rule.action}')" 
+                                            class="opacity-50 hover:opacity-100 text-muted-foreground hover:text-white hover:bg-destructive hover:border-destructive transition-all text-[10px] font-bold uppercase tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border">
+                                            Delete
+                                        </button>
+                                    </td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        }
+
                         countDiv.innerText = `Showing ${data.rules.length} active rules`;
                     }
                 }
@@ -491,6 +595,78 @@
             }
         }
 
+        async function triggerEnablePorts(){
+            const btnEnable = document.getElementById('btn-enable-dns');
+            const btnDisable = document.getElementById('btn-disable-dns');
+            
+            btnEnable.disabled = true;
+            btnEnable.classList.add('opacity-50', 'cursor-not-allowed');
+            btnDisable.disabled = true;
+            btnDisable.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const originalText =  btnEnable.innerHTML;
+            btnEnable.innerHTML = 'Enabling... ⏳';
+            
+            try {
+                const res = await fetch('/api/security/standard/enable', { method: 'POST' });
+                const data = await res.json(); // Safely parse the response (even if it's an error)
+
+                if (res.ok) {
+                    alert("✅ Success: " + data.message);
+                    fetchSecurityData(); // Refresh the UFW table so they see the new CF IPs!
+                } else {
+                    // This will catch your "Cloudflare lockdown is only applicable..." error!
+                    alert("❌ Failed: " + (data.message || await res.text()));
+                }
+            } catch (err) {
+                console.error("Lockdown error:", err);
+                alert("❌ A network error occurred.");
+            } finally {
+                btnEnable.innerHTML = originalText;
+                btnEnable.disabled = false;
+                btnEnable.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnDisable.disabled = false;
+                btnDisable.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+        }
+
+        async function triggerDisablePorts(){
+            const btnEnable = document.getElementById('btn-enable-dns');
+            const btnDisable = document.getElementById('btn-disable-dns');
+
+            btnEnable.disabled = true;
+            btnEnable.classList.add('opacity-50', 'cursor-not-allowed');
+            btnDisable.disabled = true;
+            btnDisable.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const originalText =  btnDisable.innerHTML;
+            btnDisable.innerHTML = 'Disabling... ⏳';
+
+            try {
+                const res = await fetch('/api/security/standard/disable', { method: 'POST' });
+                const data = await res.json(); // Safely parse the response (even if it's an error)
+
+                if (res.ok) {
+                    alert("✅ Success: " + data.message);
+                    fetchSecurityData(); // Refresh the UFW table so they see the new CF IPs!
+                } else {
+                    // This will catch your "Cloudflare lockdown is only applicable..." error!
+                    alert("❌ Failed: " + (data.message || await res.text()));
+                }
+            } catch (err) {
+                console.error("Lockdown error:", err);
+                alert("❌ A network error occurred.");
+            } finally {
+                btnEnable.disabled = false;
+                btnEnable.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnDisable.innerHTML = originalText;
+                btnDisable.disabled = false;
+                btnDisable.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+        }
+
         async function triggerCloudflareLockdown() {
             if (!confirm("This will configure UFW to drop all internet traffic on ports 80 and 443 unless it originates from Cloudflare. Continue?")) return;
 
@@ -566,15 +742,20 @@
                 if (!res.ok) throw new Error("Failed to load proxy settings");
                 const data = await res.json();
 
-                console.log("Proxy Data:", JSON.stringify(data, null, 2));
+                const cloudFlareProxy = document.getElementById('cloudflare-container');
+                const standardProxy = document.getElementById('standart-gateway-container');
 
-                const proxySection = document.getElementById('cloudflare-container');
-                if (!proxySection) return;
-
-                if (data.use_reverse_proxy && data.proxy_provider === 'cloudflare') {
-                    proxySection.classList.remove('hidden');
-                } else {
-                    proxySection.classList.add('hidden');
+                if (data.use_reverse_proxy){
+                    if (data.proxy_provider === 'cloudflare') {
+                        cloudFlareProxy.classList.remove('hidden');
+                        standardProxy.classList.add('hidden');
+                    } else if (data.proxy_provider === 'standard') {
+                        standardProxy.classList.remove('hidden');
+                        cloudFlareProxy.classList.add('hidden');
+                    }
+                } else{
+                    cloudFlareProxy.classList.add('hidden');
+                    standardProxy.classList.add('hidden');
                 }
             } catch (err) {
                 console.error("Error syncing proxy UI:", err);

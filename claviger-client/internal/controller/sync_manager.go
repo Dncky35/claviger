@@ -68,7 +68,7 @@ func StartSyncManager(ctx context.Context, vault *config.ClientVault, vpn VPNCon
 
 			apiPort := profile.HubPort
 			if apiPort == "" {
-				apiPort = "10880"
+				apiPort = "18080"
 			}
 
 			apiBaseURL := fmt.Sprintf("http://%s:%s", hubIP, apiPort)
@@ -110,7 +110,7 @@ func StartSyncManager(ctx context.Context, vault *config.ClientVault, vpn VPNCon
 					interfaceName = "utun"
 				}
 
-				err = vpn.HotSwapEndpoint(profile.ServerKey, state.Endpoint, state.DNS, interfaceName)
+				err = vpn.HotSwapEndpoint(profile.ServerKey, state.Server_Endpoint, state.DNS, interfaceName)
 				if err != nil {
 					log.Printf("❌ [SyncManager] Failed to apply new config to interface: %v", err)
 					return
@@ -139,7 +139,7 @@ func StartSyncManager(ctx context.Context, vault *config.ClientVault, vpn VPNCon
 				}
 
 				log.Println("✅ [SyncManager] Health Check Passed! Committing new state to Vault.")
-				profile.ServerEndpoint = state.Endpoint
+				profile.ServerEndpoint = state.Server_Endpoint
 				profile.DNS = state.DNS
 				profile.ConfigRevision = state.Revision
 

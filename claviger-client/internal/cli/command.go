@@ -27,16 +27,15 @@ func PrintHelp() {
 Usage:
   claviger-client generate         - Generate a new Passport token to join a network
   claviger-client approve <token>  - Apply a Visa token provided by your Administrator
+  claviger-client autoconnect      - Set enable/disable auto-connect feature
+  claviger-client global           - Set enable/disable global routing feature
   claviger-client list             - Show all enrolled server profiles
-  claviger-client remove <id>      - Delete a server profile from this device
   
-  claviger-client connect [id] [flags] - Connect to a server
-      Flags:
-      --global   Route ALL internet traffic through the VPN
-      --split    Route ONLY internal traffic through the VPN (Default)
+  claviger-client remove <id>      - Delete a server profile from this device 
+  claviger-client connect [id] 
 
   claviger-client disconnect       - Gracefully shut down the active VPN connection
-  claviger-client status           - Check if the VPN engine is currently running
+  claviger-client status           - Provide current status and config of the client 
   claviger-client daemon           - Start the background VPN engine (Used by systemd)
 `)
 }
@@ -142,6 +141,24 @@ func HandleAutostart(vault *config.ClientVault, action string) {
 	}
 }
 
+func HandleGlobalRouting(vault *config.ClientVault, action string) {
+	switch action {
+	case "enable":
+		vault.UseGlobalRouting = true
+		fmt.Println("🌐 Global Routing ENABLED.")
+
+	case "disable":
+		vault.UseGlobalRouting = false
+		fmt.Println("🌗 Global Routing DISABLED.")
+	default:
+		log.Fatalf("❌ Invalid action: '%s'. Usage: claviger-client global <enable|disable>", action)
+	}
+
+	if err := config.Save(vault); err != nil {
+		log.Fatalf("❌ Failed to save preference (Did you forget 'sudo'?): %v", err)
+	}
+}
+
 func HandleList(vault *config.ClientVault) {
 	fmt.Println("\n🌐 ENROLLED CLAVIGER SERVERS:")
 	fmt.Println("---------------------------------------------------")
@@ -196,20 +213,20 @@ func HandleConnect(vault *config.ClientVault, args []string, disconnectChan chan
 	}
 
 	// 1. Scan the arguments for routing flags, autostart, or a specific server ID
-	for _, arg := range args {
-		switch arg {
-		case "--global":
-			vault.UseGlobalRouting = true
-			routingMode = "global"
-			fmt.Println("🌐 Mode: GLOBAL ROUTING (All traffic routed through VPN)")
-		case "--split":
-			vault.UseGlobalRouting = false
-			routingMode = "split"
-			fmt.Println("🌗 Mode: SPLIT TUNNEL (Only internal traffic routed through VPN)")
-		default:
-			targetID = arg // If it's not a flag, assume it's a Server ID
-		}
-	}
+	// for _, arg := range args {
+	// 	switch arg {
+	// 	case "--global":
+	// 		vault.UseGlobalRouting = true
+	// 		routingMode = "global"
+	// 		fmt.Println("🌐 Mode: GLOBAL ROUTING (All traffic routed through VPN)")
+	// 	case "--split":
+	// 		vault.UseGlobalRouting = false
+	// 		routingMode = "split"
+	// 		fmt.Println("🌗 Mode: SPLIT TUNNEL (Only internal traffic routed through VPN)")
+	// 	default:
+	// 		targetID = arg // If it's not a flag, assume it's a Server ID
+	// 	}
+	// }
 
 	// 2. Resolve Target ID
 	if targetID == "" {

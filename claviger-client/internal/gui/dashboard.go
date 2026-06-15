@@ -76,10 +76,10 @@ func (g *ClavigerGUI) ShowDashboardScreen() {
 
 	// Final Layout
 	content := container.NewPadded(container.NewVBox(
-		serverCard,
-		layout.NewSpacer(),
-		layout.NewSpacer(),
 		statusCard,
+		layout.NewSpacer(),
+		layout.NewSpacer(),
+		serverCard,
 		widget.NewSeparator(),
 		g.RemoveBtn,
 		g.AddServerBtn,

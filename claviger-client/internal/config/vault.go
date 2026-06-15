@@ -20,7 +20,7 @@ type ServerProfile struct {
 	DNS            string `json:"dns"`
 	BaseSubnet     string `json:"base_subnet"`
 	ConfigRevision string `json:"config_revision"`
-	HubPort        string `json:"hub_port"` // 🎯 NEW: e.g., "10880"
+	HubPort        string `json:"hub_port"` // 🎯 NEW: e.g., "18080"
 }
 
 // ClientVault holds the state of the desktop app

@@ -50,12 +50,33 @@ func GenerateNginxRealIPConfig(ips []string, filePath string) error {
 		builder.WriteString(fmt.Sprintf("set_real_ip_from %s;\n", ip))
 	}
 
-	builder.WriteString("\nreal_ip_header CF-Connecting-IP;\n")
+	// cause an installing error on npm
+	// builder.WriteString("\nreal_ip_header CF-Connecting-IP;\n")
 
 	// Create the directory if it doesn't exist
 	os.MkdirAll("/opt/claviger/proxy", 0755)
 
 	return os.WriteFile(filePath, []byte(builder.String()), 0644)
+}
+
+func EnableStandardRules() error {
+
+	exec.Command("ufw", "allow", "80/tcp").Run()
+	exec.Command("ufw", "allow", "443/tcp").Run()
+
+	return exec.Command("ufw", "reload").Run()
+}
+
+func DisableStandardRules() error {
+
+	exec.Command("ufw", "delete", "allow", "80/tcp").Run()
+	exec.Command("ufw", "delete", "allow", "443/tcp").Run()
+
+	// Alternatively, if they added them without /tcp:
+	exec.Command("ufw", "delete", "allow", "80").Run()
+	exec.Command("ufw", "delete", "allow", "443").Run()
+
+	return exec.Command("ufw", "reload").Run()
 }
 
 // LockdownUFW purges generic 80/443 rules and ONLY allows Cloudflare IPs
@@ -100,5 +121,25 @@ func RevertLockdown(activeIPs []string) error {
 	// os.WriteFile("/opt/claviger/proxy/cloudflare_ips.conf", []byte(""), 0644)
 
 	// 5. Final reload to clean the state
+	return exec.Command("ufw", "reload").Run()
+}
+
+func DisableHosting(activeIPs []string) error {
+	for _, ip := range activeIPs {
+		// Skip empty strings just in case
+		if strings.TrimSpace(ip) == "" {
+			continue
+		}
+		exec.Command("ufw", "delete", "allow", "proto", "tcp", "from", ip, "to", "any", "port", "80,443").Run()
+	}
+
+	// 1. Delete the dangerous generic open rules if they exist
+	exec.Command("ufw", "delete", "allow", "80/tcp").Run()
+	exec.Command("ufw", "delete", "allow", "443/tcp").Run()
+
+	// Alternatively, if they added them without /tcp:
+	exec.Command("ufw", "delete", "allow", "80").Run()
+	exec.Command("ufw", "delete", "allow", "443").Run()
+
 	return exec.Command("ufw", "reload").Run()
 }

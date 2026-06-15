@@ -195,6 +195,8 @@ func RunStart() {
 
 	mux.HandleFunc("/api/security/cloudflare/lockdown", api.HubAccessMiddleware(db, api.HandleCloudflareLockdown))
 	mux.HandleFunc("/api/security/cloudflare/revert", api.HubAccessMiddleware(db, api.HandleCloudflareRevert))
+	mux.HandleFunc("/api/security/standard/enable", api.HubAccessMiddleware(db, api.HandleEnableStandardRules))
+	mux.HandleFunc("/api/security/standard/disable", api.HubAccessMiddleware(db, api.HandleDisableStandardRules))
 
 	mux.HandleFunc("/api/security/fail2ban/status", api.HubAccessMiddleware(db, api.HandleFail2BanStatus))
 	mux.HandleFunc("/api/security/fail2ban/unban", api.HubAccessMiddleware(db, api.HandleFail2BanUnban))

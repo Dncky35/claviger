@@ -381,6 +381,30 @@ func HandleCloudflareLockdown(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func HandleEnableStandardRules(w http.ResponseWriter, r *http.Request) {
+	if err := security.EnableStandardRules(); err != nil {
+		http.Error(w, "Failed to enabling rules", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Firewall enabled for http/https connections."})
+}
+
+func HandleDisableStandardRules(w http.ResponseWriter, r *http.Request) {
+	if err := security.DisableStandardRules(); err != nil {
+		http.Error(w, "Failed to disabling rules", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Firewall disabled for http/https connections."})
+}
+
 func HandleCloudflareRevert(w http.ResponseWriter, r *http.Request) {
 	db := storage.InitDB()
 	defer db.Close()

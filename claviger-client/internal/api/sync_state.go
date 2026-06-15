@@ -14,10 +14,10 @@ import (
 
 // ServerState represents the JSON map returned by the server
 type ServerState struct {
-	Endpoint string `json:"endpoint"`
-	DNS      string `json:"dns"`
-	MTU      string `json:"mtu"`
-	Revision string `json:"revision"`
+	Server_Endpoint string `json:"server_endpoint"`
+	DNS             string `json:"dns"`
+	MTU             string `json:"mtu"`
+	Revision        string `json:"revision"`
 }
 
 // SyncClient holds the state for the background poller

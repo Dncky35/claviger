@@ -229,11 +229,17 @@ func main() {
 	case "status":
 		cli.HandleStatus(vault)
 	// 🎯 NEW: Standalone Autostart Toggle
-	case "autostart":
+	case "autoconnect":
 		if len(os.Args) < 3 {
-			log.Fatalf("❌ Usage: claviger-client autostart <enable|disable>")
+			log.Fatalf("❌ Usage: claviger-client autoconnect <enable|disable>")
 		}
 		cli.HandleAutostart(vault, os.Args[2])
+	case "global":
+		if len(os.Args) < 3 {
+			log.Fatalf("❌ Usage: claviger-client global <enable|disable>")
+		}
+		cli.HandleGlobalRouting(vault, os.Args[2])
+
 	case "daemon":
 
 		log.Println("Starting Claviger Background Daemon...")

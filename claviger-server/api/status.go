@@ -4,6 +4,7 @@ import (
 	"claviger-server/storage"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -61,7 +62,19 @@ func HandleSyncState(db *sql.DB) http.HandlerFunc {
 
 		// 2. Fetch Configurations
 		endpoint := storage.GetConfig(db, "vpn_endpoint")
-		dns := storage.GetConfig(db, "dns_setting")
+		wgPort := storage.GetConfig(db, "wg_port")
+
+		// 🎯 ADAPTIVE HUB IP
+		hubIP := storage.GetConfig(db, "hub_ip")
+		if hubIP == "" {
+			hubIP = "10.8.0.1"
+		}
+
+		dns := hubIP // AdGuard runs directly on the Hub IP!
+		if storage.GetConfig(db, "app_adguard_port") == "" {
+			dns = "1.1.1.1, 1.0.0.1" // AdGuard missing, use Cloudflare
+		}
+
 		revision := storage.GetConfig(db, "config_revision")
 
 		// 3. Validate Required Data
@@ -81,10 +94,10 @@ func HandleSyncState(db *sql.DB) http.HandlerFunc {
 
 		// 4. Construct the State Manifest
 		state := map[string]string{
-			"endpoint": endpoint,
-			"dns":      dns,
-			"mtu":      mtu,
-			"revision": revision,
+			"server_endpoint": fmt.Sprintf("%s:%s", endpoint, wgPort),
+			"dns":             dns,
+			"mtu":             mtu,
+			"revision":        revision,
 		}
 
 		// 5. Send Response

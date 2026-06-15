@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strings"
 
 	"claviger-server/internal/firewall"
 	"claviger-server/internal/security"
@@ -124,7 +125,26 @@ func HandleUpdateProxyConfig(w http.ResponseWriter, r *http.Request) {
 	// 🎯 THE NEW LOGIC: Manage Nginx Real-IP Config based on selection
 	confPath := "/opt/claviger/proxy/cloudflare_ips.conf"
 
-	if useProxyStr == "true" && req.ProxyProvider == "cloudflare" {
+	if useProxyStr == "false" {
+		// Close all ports of 80/443
+
+		// 1. Read the exact IPs that were applied from the database
+		ipString := storage.GetConfig(db, "cloudflare_active_ips")
+		var activeIPs []string
+		if ipString != "" {
+			activeIPs = strings.Split(ipString, ",")
+		}
+
+		// 2. Revert the firewall using ONLY those IPs
+		if err := security.DisableHosting(activeIPs); err != nil {
+			http.Error(w, "Failed to revert lockdown", http.StatusInternalServerError)
+			return
+		}
+
+		// 3. Clear the database record now that they are removed
+		storage.SetConfig(db, "cloudflare_active_ips", "")
+
+	} else if useProxyStr == "true" && req.ProxyProvider == "cloudflare" {
 		// Fetch the IPs and write the Nginx Real-IP config
 		ips, err := security.FetchCloudflareIPs()
 		if err != nil {

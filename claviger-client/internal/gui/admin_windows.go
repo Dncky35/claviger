@@ -21,7 +21,7 @@ func EnsureAdmin() {
 
 		// Whether they click "Yes" (re-launches as admin) or "No" (aborts),
 		// this original standard-user process must die quietly.
-		if err == nil || err != nil {
+		if err == nil {
 			os.Exit(0)
 		}
 	}
