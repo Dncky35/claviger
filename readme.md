@@ -63,7 +63,7 @@ Execute the following on your target Linux server to begin the Zero-Trust enroll
 
 ```bash
 # Install the claviger-server
-curl -sSL https://raw.githubusercontent.com/Dncky35/claviger/main/claviger-server/installer.sh | sudo bash
+curl -sSL https://cloudrocean.com/installers/claviger-server | sudo bash
 
 ```
 
