@@ -441,7 +441,7 @@ func (e *Engine) HotSwapEndpoint(serverPubKeyBase64, newEndpoint, newDNS, interf
 	}
 
 	// ==========================================
-	// 1. UPDATE WIREGUARD (Layer 3 Routing)
+	// 1. DECODE THE KEY
 	// ==========================================
 	pubKeyBytes, err := base64.StdEncoding.DecodeString(serverPubKeyBase64)
 	if err != nil {
@@ -449,17 +449,30 @@ func (e *Engine) HotSwapEndpoint(serverPubKeyBase64, newEndpoint, newDNS, interf
 	}
 	hexKey := hex.EncodeToString(pubKeyBytes)
 
-	uapiConfig := fmt.Sprintf("public_key=%s\nendpoint=%s\n", hexKey, newEndpoint)
+	// ==========================================
+	// 2. 🎯 RESOLVE HOSTNAME TO RAW IP
+	// ==========================================
+	// WireGuard UAPI strictly requires IP addresses, not domain names!
+	resolvedAddr, err := net.ResolveUDPAddr("udp", newEndpoint)
+	if err != nil {
+		return fmt.Errorf("failed to resolve endpoint hostname '%s': %v", newEndpoint, err)
+	}
+
+	// ==========================================
+	// 3. INJECT WIREGUARD (Layer 3 Routing)
+	// ==========================================
+	// We pass the resolved IP string (e.g. "198.51.100.5:51820") instead of the domain
+	uapiConfig := fmt.Sprintf("public_key=%s\nendpoint=%s\n", hexKey, resolvedAddr.String())
 
 	err = e.wgDevice.IpcSet(uapiConfig)
 	if err != nil {
 		return fmt.Errorf("failed to inject new endpoint: %v", err)
 	}
 
-	e.activeServerIP = newEndpoint
+	e.activeServerIP = newEndpoint // You can safely store the domain here for tracking
 
 	// ==========================================
-	// 2. UPDATE OPERATING SYSTEM (DNS Layer)
+	// 4. UPDATE OPERATING SYSTEM (DNS Layer)
 	// ==========================================
 	if newDNS != "" {
 		log.Printf("🔄 Hot-swapping OS DNS to %s on interface %s", newDNS, interfaceName)

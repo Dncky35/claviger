@@ -75,8 +75,6 @@ func HandleSyncState(db *sql.DB) http.HandlerFunc {
 			dns = "1.1.1.1, 1.0.0.1" // AdGuard missing, use Cloudflare
 		}
 
-		revision := storage.GetConfig(db, "config_revision")
-
 		// 3. Validate Required Data
 		if endpoint == "" {
 			// Abort the flow and inform the client that the server configuration is incomplete
@@ -85,12 +83,13 @@ func HandleSyncState(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		mtu := "1420" // Default WireGuard MTU
+
+		revision := storage.GetConfig(db, "config_revision")
 		if revision == "" {
 			// Provide a fallback or error out depending on how strict you want to be
-			revision = "1"
+			revision = "0"
 		}
-
-		mtu := "1420" // Default WireGuard MTU
 
 		// 4. Construct the State Manifest
 		state := map[string]string{

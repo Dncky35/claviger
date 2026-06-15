@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"claviger-server/network"
@@ -81,7 +82,16 @@ func HandleSaveEndpoint(database *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+		// Save the new revision to the database
+		newRevStr, revErr := storage.IncrementConfigRevision(database)
+		if revErr != nil {
+			log.Printf("⚠️ [API] Endpoint saved, but failed to increment config_revision: %v", revErr)
+			// We don't fail the whole request here, but we log the error heavily
+		} else {
+			log.Printf("🔄 [API] Configuration Revision incremented: %s", newRevStr)
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+		}
 	}
 }

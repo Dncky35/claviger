@@ -118,6 +118,26 @@ func HandleAppInstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// =========================================================
+	// 🎯 4. INCREMENT REVISION ON SUCCESS
+	// =========================================================
+	// We increment the revision because installing apps (like AdGuard)
+	// changes the routing/DNS topology that connected clients need to know about!
+	newRevStr, revErr := storage.IncrementConfigRevision(db)
+	if revErr != nil {
+		// We don't fail the install, but we log the error
+		fmt.Printf("⚠️ [App Install] %s installed, but failed to increment revision: %v\n", req.AppID, revErr)
+	} else {
+		fmt.Printf("🔄 [App Install] %s installed successfully. Revision bumped to %s\n", req.AppID, newRevStr)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	// We optionally pass back the new revision to the UI
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":       "success",
+		"new_revision": newRevStr,
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
@@ -172,6 +192,21 @@ func HandleAppUninstall(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": err.Error()})
 		return
+	}
+
+	// =========================================================
+	// 🎯 4. INCREMENT REVISION ON SUCCESS
+	// =========================================================
+
+	db := storage.InitDB()
+	defer db.Close()
+
+	newRevStr, revErr := storage.IncrementConfigRevision(db)
+	if revErr != nil {
+		// We don't fail the install, but we log the error
+		fmt.Printf("⚠️ [App Install] %s installed, but failed to increment revision: %v\n", req.AppID, revErr)
+	} else {
+		fmt.Printf("🔄 [App Install] %s installed successfully. Revision bumped to %s\n", req.AppID, newRevStr)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

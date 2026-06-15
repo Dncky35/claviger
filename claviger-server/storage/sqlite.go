@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	_ "modernc.org/sqlite" // Pure Go SQLite driver
 )
@@ -111,6 +112,28 @@ func InitDB() *sql.DB {
 	}
 
 	return db
+}
+
+func IncrementConfigRevision(db *sql.DB) (string, error) {
+	currentRevStr := GetConfig(db, "config_revision")
+	currentRev := 0
+
+	if currentRevStr != "" {
+		parsedRev, parseErr := strconv.Atoi(currentRevStr)
+		if parseErr == nil {
+			currentRev = parsedRev
+		}
+	}
+
+	newRev := currentRev + 1
+	newRevStr := strconv.Itoa(newRev)
+
+	err := SetConfig(db, "config_revision", newRevStr)
+	if err != nil {
+		return currentRevStr, err // Return the old revision if it fails
+	}
+
+	return newRevStr, nil
 }
 
 func GetConfig(db *sql.DB, key string) string {
