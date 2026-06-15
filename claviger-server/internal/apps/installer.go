@@ -128,6 +128,92 @@ networks:
     external: true
 `,
 	},
+	"gitea": {
+		Name:             "Gitea",
+		Category:         "optional",
+		Description:      "Painless self-hosted Git repository and CI/CD.",
+		Icon:             "🍵",
+		HasCustomSetup:   false,
+		NeedsDynamicPort: true,
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.3'
+services:
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+    ports:
+      - "{{.DynamicPort}}:3000/tcp"  # Web UI handled by Claviger Proxy
+      - "2222:22/tcp"                # SSH port (avoids conflict with host OS port 22)
+    volumes:
+      - ./gitea-data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=gitea"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
+
+	"rustdesk": {
+		Name:             "RustDesk Server",
+		Category:         "optional",
+		Description:      "Self-hosted remote desktop infrastructure (ID & Relay).",
+		Icon:             "🖥️",
+		HasCustomSetup:   false,
+		NeedsDynamicPort: false, // Uses standard fixed ports (TCP/UDP) instead of the Web Proxy
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.3'
+services:
+  hbbs:
+    image: rustdesk/rustdesk-server:latest
+    container_name: rustdesk-hbbs
+    restart: unless-stopped
+    command: hbbs -r hbbr
+    ports:
+      - "21115:21115/tcp"
+      - "21116:21116/tcp"
+      - "21116:21116/udp"
+      - "21118:21118/tcp"
+    volumes:
+      - ./rustdesk-data:/root
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=rustdesk-hbbs"
+    depends_on:
+      - hbbr
+
+  hbbr:
+    image: rustdesk/rustdesk-server:latest
+    container_name: rustdesk-hbbr
+    restart: unless-stopped
+    command: hbbr
+    ports:
+      - "21117:21117/tcp"
+      - "21119:21119/tcp"
+    volumes:
+      - ./rustdesk-data:/root
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=rustdesk-hbbr"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
 }
 
 // Install runs docker-compose for a specific app
