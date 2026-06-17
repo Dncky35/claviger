@@ -295,7 +295,7 @@ func HandleDisconnect(vault *config.ClientVault) {
 	// Dial the background process
 	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
 	if err != nil {
-		fmt.Println("❌ Claviger is not currently running.")
+		fmt.Println("⚪ Claviger is not currently running. Nothing to disconnect.")
 		return
 	}
 	defer conn.Close()
@@ -306,8 +306,17 @@ func HandleDisconnect(vault *config.ClientVault) {
 	// Read the response
 	buf := make([]byte, 128)
 	n, _ := conn.Read(buf)
-	fmt.Printf("✅ %s\n", string(buf[:n]))
+	response := strings.TrimSpace(string(buf[:n]))
 
+	if response == "OK" {
+		fmt.Println("✅ Signal acknowledged by daemon.")
+		time.Sleep(400 * time.Millisecond) // Tiny pause for a premium UX feel
+		fmt.Println("🧹 Tearing down secure tunnels & resetting DNS...")
+		time.Sleep(600 * time.Millisecond)
+		fmt.Println("👋 Claviger disconnected gracefully. Normal network restored.")
+	} else {
+		fmt.Printf("⚠️ Disconnect sent, but daemon replied with: %s\n", response)
+	}
 }
 
 func HandleStatus(vault *config.ClientVault) {
@@ -354,17 +363,20 @@ func HandleStatus(vault *config.ClientVault) {
 		buf := make([]byte, 128)
 		n, _ := conn.Read(buf)
 
-		// 1. Clean the network text (Removes hidden \n or spaces)
+		// 1. Clean the network text
 		daemonState := strings.TrimSpace(string(buf[:n]))
+
+		// 🎯 THE FIX: Convert to uppercase so "Secured" matches "SECURED"
+		upperState := strings.ToUpper(daemonState)
 
 		// 2. Format the visual output based on engine state
 		stateStr := "⚪ " + daemonState
-		switch daemonState {
-		case "Connected", "ONLINE", "SECURED": // Add "SECURED" here!
+		switch upperState {
+		case "CONNECTED", "ONLINE", "SECURED":
 			stateStr = "🟢 CONNECTED & SECURED"
-		case "Connecting":
+		case "CONNECTING":
 			stateStr = "🟡 CONNECTING..."
-		case "Disconnected":
+		case "DISCONNECTED":
 			stateStr = "⚪ DISCONNECTED"
 		}
 

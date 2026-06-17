@@ -183,6 +183,12 @@ func main() {
 							routeMode := parts[2]
 							useGlobal := (routeMode == "global")
 
+							// 🎯 THE FIX: Force the daemon to refresh its memory from the hard drive!
+							freshVault, err := config.Load()
+							if err == nil {
+								vault = freshVault
+							}
+
 							log.Printf("Target Id: %s, Route Mode: %s", targetID, routeMode)
 
 							if profile, exists := vault.Profiles[targetID]; exists {

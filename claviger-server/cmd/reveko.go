@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"claviger-server/storage"
 	"database/sql"
 	"fmt"
 	"log"
@@ -8,15 +9,12 @@ import (
 )
 
 func RunRevokeClient(clientID string) {
-	db, err := sql.Open("sqlite3", "./claviger.db") // Adjust path to your DB
-	if err != nil {
-		log.Fatalf("❌ Failed to connect to database: %v", err)
-	}
+	db := storage.InitDB()
 	defer db.Close()
 
 	// 1. Fetch the Public Key and IP before deletion (Zero Trust Requirement)
 	var pubKey, ipAddress string
-	err = db.QueryRow("SELECT public_key, ip_address FROM clients WHERE id = ?", clientID).Scan(&pubKey, &ipAddress)
+	err := db.QueryRow("SELECT public_key, ip_address FROM clients WHERE id = ?", clientID).Scan(&pubKey, &ipAddress)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Fatalf("❌ Client ID '%s' not found.", clientID)
