@@ -15,7 +15,7 @@ depends: []
 
 contents:
   # 1. The Main Binary (Using the headless arm64 build)
-  - src: ../release/claviger-linux-arm64-cli
+  - src: ../release/claviger-client-arm64
     dst: /usr/bin/claviger-client
     file_info:
       mode: 0755

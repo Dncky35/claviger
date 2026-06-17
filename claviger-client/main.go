@@ -24,13 +24,24 @@ var (
 )
 
 func main() {
-	logFile, err := os.OpenFile("claviger-client-debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	// 1. Check how the user launched the app FIRST
+	isGUI := len(os.Args) == 1
+	isDaemon := len(os.Args) > 1 && os.Args[1] == "daemon"
 
-	if err == nil {
-		log.SetOutput(logFile)
-		defer logFile.Close()
+	// 2. Route the logs based on the mode
+	if isGUI || isDaemon {
+		// Background tasks write to a log file silently
+		logFile, err := os.OpenFile("/var/log/claviger-client-debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err == nil {
+			log.SetOutput(logFile)
+			defer logFile.Close()
+		} else {
+			log.SetOutput(os.Stdout)
+		}
 	} else {
+		// CLI commands MUST print to the terminal so the user can see them!
 		log.SetOutput(os.Stdout)
+		log.SetFlags(0) // Optional: Removes the ugly date/time prefix for cleaner CLI output
 	}
 
 	log.Println("=====================================")
@@ -42,7 +53,7 @@ func main() {
 		log.Fatalf("❌ Failed to load vault: %v", vaultErr)
 	}
 
-	isGUI := len(os.Args) == 1
+	// isGUI := len(os.Args) == 1
 	wakeUpChan := make(chan bool)
 
 	// 🎯 1. CREATE THE FIRE ALARM (CONTEXT)
