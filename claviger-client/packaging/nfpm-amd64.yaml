@@ -1,5 +1,5 @@
 name: claviger-client
-arch: arm64
+arch: amd64
 platform: linux
 version: 1.0.0
 section: net
@@ -14,8 +14,8 @@ license: "AGPL-3.0"
 depends: []
 
 contents:
-  # 1. The Main Binary (Using the headless arm64 build)
-  - src: ../release/claviger-client-amd64
+  # 1. The Main Binary (Using the headless amd64 build)
+  - src: ../build/claviger-client-amd64
     dst: /usr/bin/claviger-client
     file_info:
       mode: 0755
