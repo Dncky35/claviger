@@ -212,22 +212,6 @@ func HandleConnect(vault *config.ClientVault, args []string, disconnectChan chan
 		routingMode = "global"
 	}
 
-	// 1. Scan the arguments for routing flags, autostart, or a specific server ID
-	// for _, arg := range args {
-	// 	switch arg {
-	// 	case "--global":
-	// 		vault.UseGlobalRouting = true
-	// 		routingMode = "global"
-	// 		fmt.Println("🌐 Mode: GLOBAL ROUTING (All traffic routed through VPN)")
-	// 	case "--split":
-	// 		vault.UseGlobalRouting = false
-	// 		routingMode = "split"
-	// 		fmt.Println("🌗 Mode: SPLIT TUNNEL (Only internal traffic routed through VPN)")
-	// 	default:
-	// 		targetID = arg // If it's not a flag, assume it's a Server ID
-	// 	}
-	// }
-
 	// 2. Resolve Target ID
 	if targetID == "" {
 		targetID = vault.ActiveProfileID

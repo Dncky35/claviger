@@ -41,7 +41,7 @@ func main() {
 
 	isGUI := len(os.Args) == 1
 	wakeUpChan := make(chan bool)
-	disconnectChan := make(chan bool) // 👈 Used to gracefully kill the VPN from terminal
+	disconnectChan := make(chan bool, 1) // 👈 Used to gracefully kill the VPN from terminal
 
 	listenPort := "127.0.0.1:42899" // Default for CLI/Daemon
 	if isGUI {
@@ -150,9 +150,14 @@ func main() {
 						}
 
 					case "DISCON":
-						disconnectChan <- true
+						// Non-blocking send
+						select {
+						case disconnectChan <- true:
+							log.Println("Disconnect signal queued.")
+						default:
+							log.Println("Disconnect already in progress.")
+						}
 						c.Write([]byte("OK"))
-
 					case "STATUS":
 						// Get the real-time state from your VPN engine
 						// (Assuming your engine has a GetState() method returning "Connected", "Disconnected", etc.)
