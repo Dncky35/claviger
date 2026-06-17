@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -205,7 +206,7 @@ func HandleRemove(vault *config.ClientVault, profileID string) {
 }
 
 // 🎯 NEW: Accepts arguments to parse Target ID and Routing Flags, then delegates to Daemon!
-func HandleConnect(vault *config.ClientVault, args []string, disconnectChan chan bool) {
+func HandleConnect(vault *config.ClientVault, args []string, ctx context.Context) {
 	targetID := ""
 	routingMode := "split"
 	if vault.UseGlobalRouting {
@@ -273,11 +274,11 @@ func HandleConnect(vault *config.ClientVault, args []string, disconnectChan chan
 
 	log.Println("✅ Tunnel Secured! Traffic is flowing. Press Ctrl+C to disconnect safely.")
 
-	// Block until EITHER an OS Signal OR a TCP Disconnect command arrives
+	// Block until EITHER an OS Signal OR the Context is canceled via TCP
 	select {
 	case <-sigChan:
 		log.Println("⚠️ OS Shutdown Signal received!")
-	case <-disconnectChan:
+	case <-ctx.Done():
 		log.Println("⚠️ Remote CLI Disconnect command received!")
 	}
 
@@ -352,12 +353,14 @@ func HandleStatus(vault *config.ClientVault) {
 		conn.Write([]byte("STATUS"))
 		buf := make([]byte, 128)
 		n, _ := conn.Read(buf)
-		daemonState := string(buf[:n])
 
-		// Format the visual output based on engine state
+		// 1. Clean the network text (Removes hidden \n or spaces)
+		daemonState := strings.TrimSpace(string(buf[:n]))
+
+		// 2. Format the visual output based on engine state
 		stateStr := "⚪ " + daemonState
 		switch daemonState {
-		case "Connected", "ONLINE":
+		case "Connected", "ONLINE", "SECURED": // Add "SECURED" here!
 			stateStr = "🟢 CONNECTED & SECURED"
 		case "Connecting":
 			stateStr = "🟡 CONNECTING..."

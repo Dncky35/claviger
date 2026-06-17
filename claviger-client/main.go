@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"claviger-client/internal/auth"
 	"claviger-client/internal/cli"
@@ -41,17 +44,29 @@ func main() {
 
 	isGUI := len(os.Args) == 1
 	wakeUpChan := make(chan bool)
-	disconnectChan := make(chan bool, 1) // 👈 Used to gracefully kill the VPN from terminal
+
+	// 🎯 1. CREATE THE FIRE ALARM (CONTEXT)
+	// We replace disconnectChan with a Context. This is our master lifecycle switch.
+	ctx, cancelFunc := context.WithCancel(context.Background())
+
+	// Catch OS signals (like shutting down Linux or systemctl stop) and pull the fire alarm!
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	go func() {
+		<-sigChan
+		log.Println("⚠️ OS Shutdown Signal received! Pulling the Fire Alarm...")
+		cancelFunc() // Instantly stops the daemon safely
+	}()
 
 	listenPort := "127.0.0.1:42899" // Default for CLI/Daemon
 	if isGUI {
 		listenPort = "127.0.0.1:42900" // GUI gets its own lock port!
 	}
 
-	// 1. SMART SINGLE INSTANCE LOCK & COMMAND SERVER
+	// 2. SMART SINGLE INSTANCE LOCK & COMMAND SERVER
 	listener, err := net.Listen("tcp", listenPort)
 	if err != nil {
-		log.Printf("⚠️ Port 42899 taken or blocked: %v", err)
+		log.Printf("⚠️ Port %s taken or blocked: %v", listenPort, err)
 		if isGUI {
 			conn, dialErr := net.Dial("tcp", "127.0.0.1:42900")
 			if dialErr == nil {
@@ -60,17 +75,12 @@ func main() {
 				log.Println("Woke up existing instance. Exiting.")
 				os.Exit(0) // Valid wakeup!
 			}
-			// 🎯 THE FIX: If Dial fails, it means the port is blocked by Windows,
-			// NOT by another Claviger app. We should continue loading!
 			log.Printf("Could not wake up app (Dial failed: %v). Continuing anyway.", dialErr)
-		} else {
-			// For CLI commands, failing to listen just means the background process is already running.
-			// The commands below (like 'status' or 'disconnect') will dial in and work perfectly!
 		}
 	} else {
 		defer listener.Close()
 
-		// 2. We are Instance A! Start listening for IPC whispers.
+		// We are Instance A! Start listening for IPC whispers.
 		go func() {
 			for {
 				conn, err := listener.Accept()
@@ -78,7 +88,7 @@ func main() {
 					continue
 				}
 
-				// 🛑 CRITICAL FIX: Handle the connection in a background goroutine!
+				// Handle the connection in a background goroutine!
 				go func(c net.Conn) {
 					defer c.Close() // Ensures connection always closes when done
 
@@ -96,30 +106,25 @@ func main() {
 					case "WAKEUP":
 						wakeUpChan <- true
 
-						// Inside main.go -> TCP Listener goroutine -> switch baseCommand:
-
 					case "APPROVE":
-						log.Println("DEBUG: Daemon entered APPROVE case") // 👈 IS THIS LOGGING?
+						log.Println("DEBUG: Daemon entered APPROVE case")
 						if len(parts) >= 2 {
 							tokenString := parts[1]
 							log.Printf("Root Daemon received APPROVE command.")
 
-							// Check if vault is Nil
 							if vault == nil {
 								log.Println("ERROR: Daemon vault is nil!")
 								c.Write([]byte("ER"))
 								return
 							}
 
-							// 1. Decode the token
 							approval, err := auth.DecodeApprovalToken(tokenString)
 							if err != nil {
 								log.Printf("Daemon failed to decode token: %v", err)
 								c.Write([]byte("ER"))
-								return // exit this case
+								return
 							}
 
-							// 2. Update the Daemon's copy of the Vault
 							if vault.ActiveProfileID != "" {
 								if profile, exists := vault.Profiles[vault.ActiveProfileID]; exists {
 									profile.AssignedIP = approval.AssignedIP
@@ -133,10 +138,9 @@ func main() {
 									serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
 									profile.Name = fmt.Sprintf("Claviger Hub (%s)", serverIP)
 
-									// 3. Save as ROOT to /etc/claviger/vault.json
 									if err := config.Save(vault); err == nil {
 										log.Println("✅ Root Daemon successfully saved updated Vault.")
-										c.Write([]byte("OK")) // Tell the GUI it worked!
+										c.Write([]byte("OK"))
 									} else {
 										log.Printf("❌ Root Daemon failed to save: %v", err)
 										c.Write([]byte("ER"))
@@ -149,28 +153,19 @@ func main() {
 							}
 						}
 
+					// 🎯 2. PULL THE ALARM ON DISCONNECT
 					case "DISCON":
-						// Non-blocking send
-						select {
-						case disconnectChan <- true:
-							log.Println("Disconnect signal queued.")
-						default:
-							log.Println("Disconnect already in progress.")
-						}
+						log.Println("🛑 Remote Disconnect command received via TCP.")
+						cancelFunc() // Pulls the Fire Alarm instantly!
 						c.Write([]byte("OK"))
+
 					case "STATUS":
-						// Get the real-time state from your VPN engine
-						// (Assuming your engine has a GetState() method returning "Connected", "Disconnected", etc.)
 						currentState := engine.GetState()
-
-						// Fallback if your engine state string is empty
 						if currentState == "" {
-							currentState = "DEAMON ONLINE" // At least we know the daemon is running
+							currentState = "ONLINE" // At least we know the daemon is running
 						}
-
 						c.Write([]byte(currentState))
 
-					// 🎯 THE NEW CONNECT HANDLER FOR LINUX
 					case "CONNECT":
 						if len(parts) >= 3 {
 							targetID := parts[1]
@@ -182,10 +177,8 @@ func main() {
 							if profile, exists := vault.Profiles[targetID]; exists {
 								log.Printf("Root Daemon received CONNECT command for profile: %s", targetID)
 
-								// 1. ACKNOWLEDGE FIRST so the GUI can continue
 								c.Write([]byte("OK"))
 
-								// 2. RUN ENGINE
 								go func() {
 									err := engine.Connect(vault, profile, useGlobal)
 									if err != nil {
@@ -193,7 +186,7 @@ func main() {
 									}
 								}()
 							} else {
-								c.Write([]byte("ER")) // Error: Profile not found
+								c.Write([]byte("ER"))
 							}
 						}
 					}
@@ -204,7 +197,6 @@ func main() {
 
 	// 4. HYBRID LAUNCHER
 	if isGUI {
-		// Pass the channel into the GUI so it can react
 		gui.Run(vault, wakeUpChan)
 		return
 	}
@@ -227,13 +219,12 @@ func main() {
 		}
 		cli.HandleRemove(vault, os.Args[2])
 	case "connect":
-		// 🎯 Pass the disconnectChan so it listens for the remote shutdown signal!
-		cli.HandleConnect(vault, os.Args[2:], disconnectChan)
+		// 🎯 3. Pass the Context (ctx) instead of the old channel
+		cli.HandleConnect(vault, os.Args[2:], ctx)
 	case "disconnect":
 		cli.HandleDisconnect(vault)
 	case "status":
 		cli.HandleStatus(vault)
-	// 🎯 NEW: Standalone Autostart Toggle
 	case "autoconnect":
 		if len(os.Args) < 3 {
 			log.Fatalf("❌ Usage: claviger-client autoconnect <enable|disable>")
@@ -246,15 +237,13 @@ func main() {
 		cli.HandleGlobalRouting(vault, os.Args[2])
 
 	case "daemon":
-
 		log.Println("Starting Claviger Background Daemon...")
 
-		// 🎯 AUTO-CONNECT LOGIC
+		// AUTO-CONNECT LOGIC
 		if vault.AutoConnect && vault.ActiveProfileID != "" {
 			if profile, exists := vault.Profiles[vault.ActiveProfileID]; exists {
 				log.Printf("🔄 Auto-Connect enabled. Booting tunnel for %s...", profile.Name)
 
-				// Run the engine in the background
 				go func() {
 					err := engine.Connect(vault, profile, vault.UseGlobalRouting)
 					if err != nil {
@@ -266,8 +255,16 @@ func main() {
 			}
 		}
 
-		// Keep the daemon alive and listening for future GUI commands
-		select {}
+		// 🎯 4. FREEZE AND WAIT FOR THE ALARM
+		// This replaces your old "select {}" which blocked forever and deadlocked.
+		// The daemon sits right here happily handling traffic until `cancelFunc()` is called.
+		<-ctx.Done()
+
+		// 🎯 5. EXECUTE THE CLEANUP
+		log.Println("🔔 Fire Alarm triggered (Context Canceled)! Executing clean disconnect...")
+		engine.Disconnect()
+		log.Println("👋 Claviger Daemon shut down gracefully. Network restored.")
+		os.Exit(0)
 
 	case "uninstall":
 		cli.HandleUninstall()
