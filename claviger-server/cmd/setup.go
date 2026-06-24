@@ -402,7 +402,7 @@ SaveConfig = false
 	// 	log.Printf("⚠️ Warning: Could not automatically configure UFW (is UFW installed and active?): %v\n", err)
 	// }
 
-	firewall.SetupFirewall(wgPort)
+	firewall.SetupFirewall(wgPort, false)
 
 	// --- THE TERMINAL REVEAL ---
 	fmt.Println("\n" + strings.Repeat("=", 65))

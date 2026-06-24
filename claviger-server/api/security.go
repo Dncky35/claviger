@@ -258,8 +258,13 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 			wgPort = "51820"
 		}
 
-		if err := firewall.SetupFirewall(wgPort); err != nil {
-			log.Printf("❌ Failed to set up firewall: %v", err)
+		// 1. Check the Zero Trust state from the DB
+		sshLockdownStr := storage.GetConfig(db, "ssh_lockdown_enabled")
+		isSSHLockedDown := sshLockdownStr == "true"
+
+		// 2. Pass it into the SetupFirewall function
+		if err := firewall.SetupFirewall(wgPort, isSSHLockedDown); err != nil {
+			log.Printf("⚠️ Firewall setup warning: %v\n", err)
 			http.Error(w, fmt.Sprintf("Failed to set up firewall: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -296,14 +301,36 @@ func HandleSecurityAction(w http.ResponseWriter, r *http.Request) {
 
 	case "add":
 		log.Printf("➕ Adding custom firewall rule for port: %s", req.Port)
+
+		// Check if they just deleted the public SSH rule
+		if req.Port == "22" || req.Port == "22/tcp" {
+			log.Println("🔒 User added public SSH rule. Disabling Zero Trust SSH Lockdown mode.")
+			db := storage.InitDB()
+			defer db.Close()
+			// Save this state so the daemon knows not to restore it!
+			storage.SetConfig(db, "ssh_lockdown_enabled", "false")
+		}
+
 		err = runUfwCmd("allow", req.Port)
 
 	case "delete":
+
 		log.Printf("❌ Removing custom firewall rule for port: %s", req.Port)
 		actionLower := "allow"
+
 		if strings.ToLower(req.RuleAction) == "deny" {
 			actionLower = "deny"
 		}
+
+		// Check if they just deleted the public SSH rule
+		if req.Port == "22" || req.Port == "22/tcp" {
+			log.Println("🔒 User deleted public SSH rule. Enabling Zero Trust SSH Lockdown mode.")
+			db := storage.InitDB()
+			defer db.Close()
+			// Save this state so the daemon knows not to restore it!
+			storage.SetConfig(db, "ssh_lockdown_enabled", "true")
+		}
+
 		err = runUfwCmd("delete", actionLower, req.Port)
 
 	default:

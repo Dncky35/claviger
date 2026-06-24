@@ -70,7 +70,7 @@ func disablePersistentForwarding() error {
 // =========================================================
 
 // SetupFirewall configures the baseline UFW rules and persistent kernel routing.
-func SetupFirewall(port string) error {
+func SetupFirewall(port string, sshLockdown bool) error {
 	fmt.Println("🛡️  Configuring baseline firewall & kernel routing...")
 
 	if _, err := exec.LookPath("ufw"); err != nil {
@@ -83,19 +83,30 @@ func SetupFirewall(port string) error {
 		return fmt.Errorf("failed to set persistent IP forwarding: %v", err)
 	}
 
+	// Baseline rules that ALWAYS apply
 	cmds := [][]string{
 		// 1. The Front Door: Allow encrypted WireGuard traffic from the public internet
 		{"ufw", "allow", port + "/udp"},
 
 		// 2. The Private LAN (The Big Umbrella):
 		// Allow VPN clients to reach Docker containers, the Hub, and SSH (Port 22).
-		// (Standard users will hit the Go Middleware and be rejected by your Hub app!)
 		{"ufw", "allow", "in", "on", "wg0", "to", "any"},
+	}
+
+	// 3. Conditional SSH Rule based on DB State
+	if sshLockdown {
+		fmt.Println("   [🔒] SSH Lockdown is ACTIVE. Bypassing public Port 22 rule.")
+		cmds = append(cmds, []string{"ufw", "delete", "allow", "22/tcp"})
+		cmds = append(cmds, []string{"ufw", "delete", "allow", "22"})
+	} else {
+		fmt.Println("   [🔓] SSH Lockdown is OFF. Ensuring public Port 22 access...")
+		cmds = append(cmds, []string{"ufw", "allow", "22/tcp"})
 	}
 
 	for _, args := range cmds {
 		exec.Command(args[0], args[1:]...).Run()
 	}
+
 	exec.Command("ufw", "reload").Run()
 	fmt.Println("   [✓] Baseline Firewall configured.")
 	return nil

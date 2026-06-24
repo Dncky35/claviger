@@ -117,7 +117,12 @@ func RunStart() {
 	// 	log.Printf("⚠️ Firewall check warning: %v\n", err)
 	// }
 
-	if err := firewall.SetupFirewall(wgPort); err != nil {
+	// 1. Check the Zero Trust state from the DB
+	sshLockdownStr := storage.GetConfig(db, "ssh_lockdown_enabled")
+	isSSHLockedDown := sshLockdownStr == "true"
+
+	// 2. Pass it into the SetupFirewall function
+	if err := firewall.SetupFirewall(wgPort, isSSHLockedDown); err != nil {
 		log.Printf("⚠️ Firewall setup warning: %v\n", err)
 	}
 
