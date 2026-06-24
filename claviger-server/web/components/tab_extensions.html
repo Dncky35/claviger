@@ -31,6 +31,8 @@
                 // 1. Determine Button States
                 const isInstalled = app.status !== 'not_installed';
                 const isRunning = app.status === 'running';
+
+                console.log(`App name: ${app.name}, status: ${app.status}, isInstalled: ${isInstalled}, isRunning: ${isRunning}, action text: ${app.action_text}`)
                 
                 // Badge Logic (Added 'degraded' support for multi-container apps like RustDesk)
                 let badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">Not Installed</span>`;
@@ -49,11 +51,12 @@
                 let dashBtnClass = isInstalled ? '' : 'hidden'; // Always show if installed
 
                 // Smart Dashboard Button (Clickable web app vs. Static native service)
-                let isClickable = app.action_port > 0;
-                let dashOnClick = isClickable ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : 'disabled';
-                let dashColors = isClickable 
-                    ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700 cursor-pointer' 
-                    : 'bg-slate-900/50 text-slate-400 border-slate-800 cursor-default opacity-80';
+                let isDefault = app.action_port > 0;
+                let defaultAction = app.name === "RustDesk Server" ? 
+                `onclick="window.open('https://claviger.cloudrocean.com/documentation/e54a5823-8d66-4999-9d91-70ec7db319a6', '_blank')"` : 'disabled';
+                // console.log(`Action port: ${app.action_port}`)
+                let dashOnClick = isDefault ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
+                let dashColors = 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700 cursor-pointer' 
 
                 // 2. Build the Card
                 const card = `

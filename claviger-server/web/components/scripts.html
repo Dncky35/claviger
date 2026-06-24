@@ -101,7 +101,8 @@
                         dashBtn.setAttribute('onclick', `window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')`);
                         dashBtn.innerText = app.action_text;
                     } else {
-                        dashBtn.classList.add('hidden'); // Hide if app has no UI (e.g., Fail2Ban)
+                        if (app.id === "fail2ban")
+                            dashBtn.classList.add('hidden'); // Hide if app has no UI (e.g., Fail2Ban)
                     }
 
                     if (app.status === 'running') {

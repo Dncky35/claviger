@@ -57,8 +57,7 @@ services:
 
 networks:
   cloudrocean-net:
-    name: cloudrocean-net
-    driver: bridge
+    external: true
 `,
 	},
 

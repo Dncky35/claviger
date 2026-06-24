@@ -120,7 +120,7 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 
 			// 🎯 RUSTDESK EXCEPTION: It does not have a web UI to open
 			if id == "rustdesk" {
-				actionText = "Service Active (TCP/UDP)"
+				actionText = "How to Use ↗"
 				// Optional: You could make clicking this open a modal with their ID server IP.
 			}
 
