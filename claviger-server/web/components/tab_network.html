@@ -266,6 +266,12 @@
         async function checkGatewayStatus() {
             try {
                 const res = await fetch('/api/gateway/status');
+
+                if (!res.ok) {
+                    console.error(`HTTP Error: ${response.status} - Endpoint might be missing.`);
+                    return; // Stop execution, don't try to parse the text as JSON
+                }
+
                 const data = await res.json();
                 const reqBox = document.getElementById('npm-requirements');
                 

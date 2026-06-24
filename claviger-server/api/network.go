@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -148,10 +149,12 @@ func HandleUpdateProxyConfig(w http.ResponseWriter, r *http.Request) {
 		// Fetch the IPs and write the Nginx Real-IP config
 		ips, err := security.FetchCloudflareIPs()
 		if err != nil {
+			log.Printf("❌ ERROR: FetchCloudflareIPs failed: %v\n", err)
 			http.Error(w, "Failed to fetch Cloudflare IPs from network", http.StatusBadGateway)
 			return
 		}
 		if err := security.GenerateNginxRealIPConfig(ips, confPath); err != nil {
+			log.Printf("❌ ERROR: GenerateNginxRealIPConfig failed: %v\n", err)
 			http.Error(w, "Failed to generate Nginx config", http.StatusInternalServerError)
 			return
 		}

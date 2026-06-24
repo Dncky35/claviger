@@ -336,7 +336,7 @@
                     // 3. Render Table
                     const tbody = document.getElementById('security-rules-list');
                     const countDiv = document.getElementById('security-rules-count');
-                    
+
                     if (tbody && countDiv) {
                         if (!data.rules || data.rules.length === 0) {
                             tbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="4">No active firewall rules found.</td></tr>';
@@ -360,17 +360,33 @@
                             else categories["Custom / Other Rules"].push(rule);
                         });
 
+                        // 🎯 THE FIX: Save current toggle states BEFORE clearing the table
+                        const categoryState = {};
+                        if (tbody.children.length > 0) {
+                            const icons = tbody.querySelectorAll('svg[id^="icon-"]');
+                            icons.forEach(icon => {
+                                const catId = icon.id.replace('icon-', '');
+                                // If the icon is rotated, it means the category is collapsed
+                                categoryState[catId] = icon.classList.contains('-rotate-90');
+                            });
+                        }
+
                         tbody.innerHTML = '';
                         
                         for (const [categoryName, rules] of Object.entries(categories)) {
                             if (rules.length === 0) continue;
 
-                            // Create a URL-safe ID for the category (e.g., "ssh-port-22")
+                            // Create a URL-safe ID for the category
                             const categoryId = categoryName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
                             
-                            // Auto-collapse Cloudflare rules by default to save space
-                            const isCollapsedByDefault = categoryName.includes('Cloudflare');
-                            const iconRotation = isCollapsedByDefault ? '-rotate-90' : '';
+                            // 🎯 THE FIX: Check history. If no history, fallback to your default Cloudflare rule
+                            let isCollapsed = categoryName.includes('Cloudflare'); // Default behavior
+                            if (categoryState[categoryId] !== undefined) {
+                                isCollapsed = categoryState[categoryId]; // Override with user's current view
+                            }
+
+                            const iconRotation = isCollapsed ? '-rotate-90' : '';
+                            const rowVisibility = isCollapsed ? 'hidden' : '';
 
                             // 1. Render the Category Header (Now clickable)
                             const headerTr = document.createElement('tr');
@@ -396,8 +412,8 @@
                             // 2. Render the rules under this category
                             rules.forEach(rule => {
                                 const tr = document.createElement('tr');
-                                // Add the categoryId class and conditionally add 'hidden'
-                                const rowVisibility = isCollapsedByDefault ? 'hidden' : '';
+                                
+                                // 🎯 THE FIX: Apply the row visibility state dynamically
                                 tr.className = `${categoryId}-row hover:bg-background/50 transition-colors group ${rowVisibility}`;
                                 
                                 let actionColor = rule.action.includes('ALLOW') ? 'text-success' : 'text-destructive';
@@ -419,6 +435,7 @@
 
                         countDiv.innerText = `Showing ${data.rules.length} active rules`;
                     }
+                    
                 }
             } catch (err) { console.error("Error fetching security:", err); }
         }
