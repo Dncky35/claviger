@@ -205,94 +205,96 @@ func HandleRemove(vault *config.ClientVault, profileID string) {
 	fmt.Println("✅ Server deleted successfully.")
 }
 
-// 🎯 NEW: Accepts arguments to parse Target ID and Routing Flags, then delegates to Daemon!
 func HandleConnect(vault *config.ClientVault, args []string, ctx context.Context) {
+	// 1. Parse Arguments (If provided, override ActiveProfileID)
 	targetID := ""
-	routingMode := "split"
-	if vault.UseGlobalRouting {
-		routingMode = "global"
-	}
-
-	// 2. Resolve Target ID
-	if targetID == "" {
+	if len(args) > 0 {
+		targetID = args[0]
+	} else {
 		targetID = vault.ActiveProfileID
 	}
 
+	// 2. Resolve Routing Mode
+	routeMode := "split"
+	if vault.UseGlobalRouting {
+		routeMode = "global"
+	}
+
+	// 3. Validation
 	if targetID == "" || len(vault.Profiles) == 0 {
 		log.Fatalf("❌ No active server profile found. Please run 'claviger generate'.")
 	}
 
-	if _, exists := vault.Profiles[targetID]; !exists {
+	activeProfile, exists := vault.Profiles[targetID]
+	if !exists {
 		log.Fatalf("❌ Server profile '%s' not found. Run 'claviger list'.", targetID)
 	}
 
-	activeProfile := vault.Profiles[targetID]
 	if activeProfile.Status != "active" {
 		log.Fatalf("❌ Selected server is pending approval. Run 'claviger approve' first.")
 	}
 
-	// 3. Save state preferences
+	// 4. Update Preferences
 	vault.ActiveProfileID = targetID
 	if err := config.Save(vault); err != nil {
 		log.Printf("⚠️ Could not save preferences: %v", err)
 	}
 
-	// 🎯 4. ATTEMPT TO DELEGATE TO ROOT DAEMON (Linux/Mac)
+	// 5. ATTEMPT TO DELEGATE TO ROOT DAEMON (Linux/Mac)
 	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
 	if err == nil {
+		defer conn.Close()
 		log.Println("📡 Whispering CONNECT command to root daemon...")
-		payload := fmt.Sprintf("CONNECT|%s|%s", targetID, routingMode)
+		payload := fmt.Sprintf("CONNECT|%s|%s", targetID, routeMode)
 		conn.Write([]byte(payload))
 
-		// Wait for acknowledgment
-		ack := make([]byte, 2)
+		// Read response with buffer
+		buf := make([]byte, 16)
 		conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-		conn.Read(ack)
-		conn.Close()
+		n, _ := conn.Read(buf)
 
-		if string(ack) == "OK" {
+		response := strings.TrimSpace(string(buf[:n]))
+
+		if response == "OK" {
 			log.Println("✅ Tunnel Secured! The background daemon is managing the connection.")
-			// We exit immediately here! The terminal doesn't need to stay open
-			// because the background daemon is keeping the VPN alive.
 			return
-		} else {
-			log.Fatalf("❌ Daemon rejected the connection request.")
 		}
+		log.Fatalf("❌ Daemon rejected the connection request: %s", response)
 	}
 
-	// 🎯 5. FALLBACK (Windows / Standalone Admin Mode)
-	log.Println("⚠️ Daemon not found. Running engine directly in current terminal...")
+	// 6. FALLBACK (Windows / Standalone Admin Mode)
+	log.Println("⚠️ Daemon not found or busy. Running engine directly...")
 	engine := vpn.NewEngine()
 
+	// Setup signal handling
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	connectErr := engine.Connect(vault, activeProfile, vault.UseGlobalRouting)
-	if connectErr != nil {
-		log.Fatalf("❌ Failed to connect: %v", connectErr)
+	// Run connection
+	if err := engine.Connect(vault, activeProfile, vault.UseGlobalRouting); err != nil {
+		log.Fatalf("❌ Failed to connect: %v", err)
 	}
 
 	log.Println("✅ Tunnel Secured! Traffic is flowing. Press Ctrl+C to disconnect safely.")
 
-	// Block until EITHER an OS Signal OR the Context is canceled via TCP
+	// Wait for shutdown trigger
 	select {
 	case <-sigChan:
-		log.Println("⚠️ OS Shutdown Signal received!")
+		log.Println("⚠️ Interrupt received.")
 	case <-ctx.Done():
 		log.Println("⚠️ Remote CLI Disconnect command received!")
 	}
 
-	fmt.Println()
 	log.Println("Executing clean disconnect...")
 	engine.Disconnect()
-	log.Println("👋 Claviger Engine shut down gracefully. Network restored.")
+	log.Println("👋 Claviger Engine shut down gracefully.")
 	os.Exit(0)
 }
 
 func HandleDisconnect(vault *config.ClientVault) {
 	fmt.Println("🛑 Sending disconnect signal to Claviger Engine...")
 
-	// Dial the background process
+	// 1. Dial the background process with a timeout
 	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
 	if err != nil {
 		fmt.Println("⚪ Claviger is not currently running. Nothing to disconnect.")
@@ -300,22 +302,37 @@ func HandleDisconnect(vault *config.ClientVault) {
 	}
 	defer conn.Close()
 
-	// Whisper the disconnect command
-	conn.Write([]byte("DISCON"))
+	// 2. Set a Read Deadline so the CLI doesn't hang if the daemon stalls
+	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 
-	// Read the response
+	// 3. Whisper the disconnect command
+	if _, err := conn.Write([]byte("DISCON")); err != nil {
+		fmt.Println("❌ Failed to send command to daemon.")
+		return
+	}
+
+	// 4. Read the response
 	buf := make([]byte, 128)
-	n, _ := conn.Read(buf)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Printf("❌ Connection lost while waiting for daemon: %v\n", err)
+		return
+	}
+
 	response := strings.TrimSpace(string(buf[:n]))
 
+	// 5. Handle the result
 	if response == "OK" {
 		fmt.Println("✅ Signal acknowledged by daemon.")
-		time.Sleep(400 * time.Millisecond) // Tiny pause for a premium UX feel
+
+		// UX: Professional teardown sequence
+		time.Sleep(400 * time.Millisecond)
 		fmt.Println("🧹 Tearing down secure tunnels & resetting DNS...")
+
 		time.Sleep(600 * time.Millisecond)
 		fmt.Println("👋 Claviger disconnected gracefully. Normal network restored.")
 	} else {
-		fmt.Printf("⚠️ Disconnect sent, but daemon replied with: %s\n", response)
+		fmt.Printf("⚠️ Daemon replied with error: %s\n", response)
 	}
 }
 

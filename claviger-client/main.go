@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
-	"claviger-client/internal/auth"
+	"claviger-client/internal/api" // Ensure this matches your project's module path
 	"claviger-client/internal/cli"
 	"claviger-client/internal/config"
 	"claviger-client/internal/gui"
@@ -53,11 +51,9 @@ func main() {
 		log.Fatalf("❌ Failed to load vault: %v", vaultErr)
 	}
 
-	// isGUI := len(os.Args) == 1
 	wakeUpChan := make(chan bool)
 
 	// 🎯 1. CREATE THE FIRE ALARM (CONTEXT)
-	// We replace disconnectChan with a Context. This is our master lifecycle switch.
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	// Catch OS signals (like shutting down Linux or systemctl stop) and pull the fire alarm!
@@ -75,142 +71,16 @@ func main() {
 	}
 
 	// 2. SMART SINGLE INSTANCE LOCK & COMMAND SERVER
-	listener, err := net.Listen("tcp", listenPort)
-	if err != nil {
-		log.Printf("⚠️ Port %s taken or blocked: %v", listenPort, err)
-		if isGUI {
-			conn, dialErr := net.Dial("tcp", "127.0.0.1:42900")
-			if dialErr == nil {
-				conn.Write([]byte("WAKEUP"))
-				conn.Close()
-				log.Println("Woke up existing instance. Exiting.")
-				os.Exit(0) // Valid wakeup!
-			}
-			log.Printf("Could not wake up app (Dial failed: %v). Continuing anyway.", dialErr)
-		}
-	} else {
-		defer listener.Close()
-
-		// We are Instance A! Start listening for IPC whispers.
-		go func() {
-			for {
-				conn, err := listener.Accept()
-				if err != nil {
-					continue
-				}
-
-				// Handle the connection in a background goroutine!
-				go func(c net.Conn) {
-					defer c.Close() // Ensures connection always closes when done
-
-					buf := make([]byte, 256)
-					n, err := c.Read(buf)
-					if err != nil || n == 0 {
-						return // Drop empty or broken connections gracefully
-					}
-
-					commandReceived := string(buf[:n])
-					parts := strings.Split(commandReceived, "|")
-					baseCommand := parts[0]
-
-					switch baseCommand {
-					case "WAKEUP":
-						wakeUpChan <- true
-
-					case "APPROVE":
-						log.Println("DEBUG: Daemon entered APPROVE case")
-						if len(parts) >= 2 {
-							tokenString := parts[1]
-							log.Printf("Root Daemon received APPROVE command.")
-
-							if vault == nil {
-								log.Println("ERROR: Daemon vault is nil!")
-								c.Write([]byte("ER"))
-								return
-							}
-
-							approval, err := auth.DecodeApprovalToken(tokenString)
-							if err != nil {
-								log.Printf("Daemon failed to decode token: %v", err)
-								c.Write([]byte("ER"))
-								return
-							}
-
-							if vault.ActiveProfileID != "" {
-								if profile, exists := vault.Profiles[vault.ActiveProfileID]; exists {
-									profile.AssignedIP = approval.AssignedIP
-									profile.ServerKey = approval.ServerPubKey
-									profile.ServerEndpoint = approval.ServerEndpoint
-									profile.DNS = approval.DNS
-									profile.BaseSubnet = approval.BaseSubnet
-									profile.Status = "active"
-									profile.HubPort = approval.HubPort
-
-									serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
-									profile.Name = fmt.Sprintf("Claviger Hub (%s)", serverIP)
-
-									if err := config.Save(vault); err == nil {
-										log.Println("✅ Root Daemon successfully saved updated Vault.")
-										c.Write([]byte("OK"))
-									} else {
-										log.Printf("❌ Root Daemon failed to save: %v", err)
-										c.Write([]byte("ER"))
-									}
-								} else {
-									c.Write([]byte("ER"))
-								}
-							} else {
-								c.Write([]byte("ER"))
-							}
-						}
-
-					// 🎯 2. PULL THE ALARM ON DISCONNECT
-					case "DISCON":
-						log.Println("🛑 Remote Disconnect command received via TCP.")
-						cancelFunc() // Pulls the Fire Alarm instantly!
-						c.Write([]byte("OK"))
-
-					case "STATUS":
-						currentState := engine.GetState()
-						if currentState == "" {
-							currentState = "ONLINE" // At least we know the daemon is running
-						}
-						c.Write([]byte(currentState))
-
-					case "CONNECT":
-						if len(parts) >= 3 {
-							targetID := parts[1]
-							routeMode := parts[2]
-							useGlobal := (routeMode == "global")
-
-							// 🎯 THE FIX: Force the daemon to refresh its memory from the hard drive!
-							freshVault, err := config.Load()
-							if err == nil {
-								vault = freshVault
-							}
-
-							log.Printf("Target Id: %s, Route Mode: %s", targetID, routeMode)
-
-							if profile, exists := vault.Profiles[targetID]; exists {
-								log.Printf("Root Daemon received CONNECT command for profile: %s", targetID)
-
-								c.Write([]byte("OK"))
-
-								go func() {
-									err := engine.Connect(vault, profile, useGlobal)
-									if err != nil {
-										log.Printf("Daemon Connect Error: %v", err)
-									}
-								}()
-							} else {
-								c.Write([]byte("ER"))
-							}
-						}
-					}
-				}(conn) // Pass the connection into the goroutine
-			}
-		}()
-	}
+	// Offloaded entirely to the API package
+	api.StartListener(api.ListenerConfig{
+		Ctx:        ctx,
+		ListenPort: listenPort,
+		IsGUI:      isGUI,
+		WakeUpChan: wakeUpChan,
+		CancelFunc: cancelFunc,
+		Vault:      vault,
+		Engine:     engine,
+	})
 
 	// 4. HYBRID LAUNCHER
 	if isGUI {
@@ -273,8 +143,6 @@ func main() {
 		}
 
 		// 🎯 4. FREEZE AND WAIT FOR THE ALARM
-		// This replaces your old "select {}" which blocked forever and deadlocked.
-		// The daemon sits right here happily handling traffic until `cancelFunc()` is called.
 		<-ctx.Done()
 
 		// 🎯 5. EXECUTE THE CLEANUP
