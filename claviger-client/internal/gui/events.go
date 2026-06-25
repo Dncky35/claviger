@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"claviger-client/internal/config"
@@ -96,33 +97,40 @@ func (g *ClavigerGUI) setupEvents() {
 				routing = "global"
 			}
 
-			go func() {
-				err := g.Engine.Connect(g.Vault, profile, g.Vault.UseGlobalRouting)
-				if err != nil {
-					log.Printf("Connect error: %v", err)
-				}
-			}()
-
-			// 🎯 ATTEMPT TO DELEGATE TO THE ROOT DAEMON
+			// 🎯 1. ATTEMPT TO DELEGATE TO THE ROOT DAEMON (Linux/Mac)
 			conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
 			if err == nil {
+				defer conn.Close()
 				log.Println("📡 Whispering CONNECT command to root daemon...")
+
 				payload := fmt.Sprintf("CONNECT|%s|%s", profile.ID, routing)
-				conn.Write([]byte(payload))
+				if _, writeErr := conn.Write([]byte(payload)); writeErr != nil {
+					log.Printf("❌ Failed to send command to daemon: %v", writeErr)
+					return
+				}
 
-				// 🛑 CRITICAL FIX: Wait for the Daemon to acknowledge!
-				// This forces the connection to stay open until the daemon processes it.
-				ack := make([]byte, 2)
-				conn.SetReadDeadline(time.Now().Add(2 * time.Second)) // Don't hang forever
-				conn.Read(ack)
-				log.Printf("Daemon response: %s", string(ack))
+				// 🛑 CRITICAL FIX: Robust Ack Read (Same as CLI)
+				buf := make([]byte, 16)
+				conn.SetReadDeadline(time.Now().Add(3 * time.Second)) // 3-second circuit breaker
+				n, readErr := conn.Read(buf)
+				if readErr != nil {
+					log.Printf("❌ Connection lost while waiting for daemon: %v", readErr)
+					return
+				}
 
-				conn.Close() // Now it is safe to close!
+				response := strings.TrimSpace(string(buf[:n]))
 
-				// Update GUI State visually
-				// g.Engine.SetState(vpn.StateConnecting)
+				if response == "OK" {
+					log.Println("✅ Connection delegated successfully to Daemon.")
+					// Note: Do not manually set g.Engine state here!
+					// Let your GUI's background status polling loop update the UI naturally.
+				} else {
+					log.Printf("⚠️ Daemon rejected connection: %s", response)
+				}
+
 			} else {
-				// 🎯 FALLBACK (Usually for Windows standalone mode)
+				// 🎯 2. FALLBACK (Windows standalone mode)
+				// Only run this if the TCP dial FAILED!
 				log.Println("⚠️ Daemon not found. Attempting direct connection (requires admin)...")
 				go func() {
 					err := g.Engine.Connect(g.Vault, profile, g.Vault.UseGlobalRouting)
@@ -132,13 +140,30 @@ func (g *ClavigerGUI) setupEvents() {
 				}()
 			}
 		} else {
-			// 🎯 DISCONNECT LOGIC
+			// Handle DISCONNECT
+			// 🎯 1. ATTEMPT TO DELEGATE TO THE ROOT DAEMON
 			conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
 			if err == nil {
+				defer conn.Close()
 				log.Println("📡 Whispering DISCONNECT to root daemon...")
-				conn.Write([]byte("DISCON"))
-				conn.Close()
+
+				if _, writeErr := conn.Write([]byte("DISCON")); writeErr == nil {
+					// 🛑 CRITICAL FIX: Must wait for Ack here too, otherwise GUI might
+					// refresh its state before the Daemon has actually finished tearing down!
+					buf := make([]byte, 16)
+					conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+					n, _ := conn.Read(buf)
+
+					response := strings.TrimSpace(string(buf[:n]))
+					if response == "OK" {
+						log.Println("✅ Disconnect acknowledged by daemon.")
+					} else {
+						log.Printf("⚠️ Daemon replied with error: %s", response)
+					}
+				}
 			} else {
+				// 🎯 2. FALLBACK DISCONNECT
+				log.Println("⚠️ Daemon not found. Issuing direct local disconnect...")
 				go g.Engine.Disconnect()
 			}
 		}

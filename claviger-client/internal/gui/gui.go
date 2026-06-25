@@ -23,14 +23,15 @@ type ClavigerGUI struct {
 	ActiveProfile *config.ServerProfile
 
 	// UI Widgets
-	TitleLabel   *widget.Label
-	ServerSelect *widget.Select
-	NameToID     map[string]string
-	AddServerBtn *widget.Button
-	StatusLabel  *widget.Label
-	RouteCheck   *widget.Check
-	ConnectBtn   *widget.Button
-	RemoveBtn    *widget.Button
+	TitleLabel     *widget.Label
+	ServerSelect   *widget.Select
+	NameToID       map[string]string
+	AddServerBtn   *widget.Button
+	StatusLabel    *widget.Label
+	RouteCheck     *widget.Check
+	AutoStartCheck *widget.Check
+	ConnectBtn     *widget.Button
+	RemoveBtn      *widget.Button
 
 	StatusBinding     binding.String // Tracks "Connected/Disconnected"
 	SyncStatusBinding binding.String // Tracks "Stable/Syncing"
@@ -87,6 +88,11 @@ func Run(vault *config.ClientVault, wakeUpChan chan bool) {
 
 	w.Resize(fyne.NewSize(450, 400))
 	w.CenterOnScreen()
+
+	if vault.AutoConnect && vault.ActiveProfileID != "" {
+		go gui.ConnectBtn.OnTapped()
+	}
+
 	w.ShowAndRun()
 
 	log.Println("⚠️ App terminating. Executing clean disconnect...")
