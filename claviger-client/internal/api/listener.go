@@ -16,6 +16,7 @@ import (
 type VPNEngine interface {
 	GetState() string
 	Connect(vault *config.ClientVault, profile *config.ServerProfile, useGlobal bool) error
+	Disconnect() error
 }
 
 // ListenerConfig holds the dependencies needed by the TCP listener
@@ -158,9 +159,18 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 		}
 
 		log.Println("🛑 Remote Disconnect command received via TCP.")
-		if cfg.CancelFunc != nil {
-			cfg.CancelFunc() // This cleanly pulls the fire alarm!
+		// if cfg.CancelFunc != nil {
+		// 	cfg.CancelFunc() // This cleanly pulls the fire alarm!
+		// }
+
+		if cfg.Engine != nil {
+			err := cfg.Engine.Disconnect()
+			if err != nil {
+				log.Printf("Daemon Disconnect Error: %v", err)
+				return
+			}
 		}
+
 		c.Write([]byte("OK"))
 
 	case "STATUS":

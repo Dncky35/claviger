@@ -31,12 +31,12 @@ echo "📦 Packaging Linux Distributions with nFPM..."
 cd packaging
 
 # Build Debian (.deb) packages
-nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_1.0.0_amd64.deb
-nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_1.0.0_arm64.deb
+nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_amd64.deb
+nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_arm64.deb
 
 # Build RHEL/CentOS (.rpm) packages
-nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_1.0.0_amd64.rpm
-nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_1.0.0_arm64.rpm
+nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_amd64.rpm
+nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_arm64.rpm
 
 cd ..
 echo "✅ Packaging complete! .deb and .rpm files are in the release/ folder."

@@ -8,10 +8,8 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"os/signal"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"claviger-client/internal/auth"
@@ -240,55 +238,33 @@ func HandleConnect(vault *config.ClientVault, args []string, ctx context.Context
 		log.Printf("⚠️ Could not save preferences: %v", err)
 	}
 
-	// 5. ATTEMPT TO DELEGATE TO ROOT DAEMON (Linux/Mac)
+	// 5. DELEGATE TO ROOT DAEMON (Strict Requirement Now)
 	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
-	if err == nil {
-		defer conn.Close()
-		log.Println("📡 Whispering CONNECT command to root daemon...")
-		payload := fmt.Sprintf("CONNECT|%s|%s", targetID, routeMode)
-		conn.Write([]byte(payload))
+	if err != nil {
+		// 🛑 NO FALLBACK! If the daemon isn't running, we fail immediately.
+		log.Fatalf("❌ Daemon is not running!\n" +
+			"You must start the background service first before connecting.\n" +
+			"Run: 'sudo systemctl start claviger' OR 'sudo claviger-client daemon'")
+	}
+	defer conn.Close()
 
-		// Read response with buffer
-		buf := make([]byte, 16)
-		conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-		n, _ := conn.Read(buf)
+	log.Println("📡 Whispering CONNECT command to root daemon...")
+	payload := fmt.Sprintf("CONNECT|%s|%s", targetID, routeMode)
+	conn.Write([]byte(payload))
 
-		response := strings.TrimSpace(string(buf[:n]))
+	// Read response with buffer
+	buf := make([]byte, 16)
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	n, _ := conn.Read(buf)
 
-		if response == "OK" {
-			log.Println("✅ Tunnel Secured! The background daemon is managing the connection.")
-			return
-		}
-		log.Fatalf("❌ Daemon rejected the connection request: %s", response)
+	response := strings.TrimSpace(string(buf[:n]))
+
+	if response == "OK" {
+		log.Println("✅ Tunnel Secured! The background daemon is managing the connection.")
+		return
 	}
 
-	// 6. FALLBACK (Windows / Standalone Admin Mode)
-	log.Println("⚠️ Daemon not found or busy. Running engine directly...")
-	engine := vpn.NewEngine()
-
-	// Setup signal handling
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	// Run connection
-	if err := engine.Connect(vault, activeProfile, vault.UseGlobalRouting); err != nil {
-		log.Fatalf("❌ Failed to connect: %v", err)
-	}
-
-	log.Println("✅ Tunnel Secured! Traffic is flowing. Press Ctrl+C to disconnect safely.")
-
-	// Wait for shutdown trigger
-	select {
-	case <-sigChan:
-		log.Println("⚠️ Interrupt received.")
-	case <-ctx.Done():
-		log.Println("⚠️ Remote CLI Disconnect command received!")
-	}
-
-	log.Println("Executing clean disconnect...")
-	engine.Disconnect()
-	log.Println("👋 Claviger Engine shut down gracefully.")
-	os.Exit(0)
+	log.Fatalf("❌ Daemon rejected the connection request: %s", response)
 }
 
 func HandleDisconnect(vault *config.ClientVault) {
@@ -356,7 +332,8 @@ func HandleStatus(vault *config.ClientVault) {
 
 	if vault.ActiveProfileID != "" {
 		if profile, ok := vault.Profiles[vault.ActiveProfileID]; ok {
-			fmt.Printf("🎯 Target Hub:   %s (%s)\n", profile.Name, profile.ServerEndpoint)
+			// fmt.Printf("🎯 Target Hub:   %s (%s)\n", profile.Name, profile.ServerEndpoint)
+			fmt.Printf("Target Server: %s\n", profile.ServerEndpoint)
 		} else {
 			fmt.Printf("🎯 Target Hub:   ⚠️ Unknown Profile (%s)\n", vault.ActiveProfileID)
 		}

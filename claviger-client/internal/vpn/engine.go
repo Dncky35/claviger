@@ -348,55 +348,74 @@ func assignOSTunnelIP(interfaceName, assignedIP, dnsSetting, baseSubnet string, 
 // cleanupGlobalRoutes acts as a fail-safe sweeper.
 // It deletes the VPS whitelist route and clears the DNS traps.
 func (e *Engine) cleanupGlobalRoutes() {
-	var cmds []*exec.Cmd
-
 	interfaceName := "claviger0"
 	if runtime.GOOS == "darwin" {
 		interfaceName = "utun"
 	}
 
+	// 🛠 Helper function to execute commands with logging and a strict timeout
+	runCmd := func(name string, args ...string) {
+		// 1. Give each command a maximum of 3 seconds to complete
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		cmd := exec.CommandContext(ctx, name, args...)
+		log.Printf("🧹 Sweeper Executing: %s %v", name, args)
+
+		// 2. Capture both standard output and standard error
+		output, err := cmd.CombinedOutput()
+
+		// 3. Handle Timeouts
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Printf("🚨 Sweeper Command TIMED OUT (hung): %s %v", name, args)
+			return
+		}
+
+		// 4. Handle Errors (We expect some if routes don't exist, so we don't crash)
+		if err != nil {
+			log.Printf("ℹ️ Sweeper Command skipped/failed (Expected if route missing): %v | Output: %s", err, string(output))
+		} else {
+			log.Printf("✅ Sweeper Command Succeeded: %s %v", name, args)
+		}
+	}
+
 	switch runtime.GOOS {
 	case "linux":
 		// 1. Revert DNS settings back to default
-		cmds = append(cmds, exec.Command("resolvectl", "revert", interfaceName))
+		runCmd("resolvectl", "revert", interfaceName)
 
 		// 2. Remove the Global Routes
-		cmds = append(cmds, exec.Command("ip", "route", "del", "0.0.0.0/1"))
-		cmds = append(cmds, exec.Command("ip", "route", "del", "128.0.0.0/1"))
+		runCmd("ip", "route", "del", "0.0.0.0/1")
+		runCmd("ip", "route", "del", "128.0.0.0/1")
 
 		// 3. Remove the Server Whitelist Route
 		if e.activeServerIP != "" {
-			cmds = append(cmds, exec.Command("ip", "route", "del", e.activeServerIP))
+			runCmd("ip", "route", "del", e.activeServerIP)
 		}
 
 	case "windows":
 		// 1. Reset DNS back to DHCP (Automatic) for the adapter
-		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "set", "dnsservers",
-			fmt.Sprintf("name=\"%s\"", interfaceName), "source=dhcp"))
+		runCmd("netsh", "interface", "ipv4", "set", "dnsservers",
+			fmt.Sprintf("name=\"%s\"", interfaceName), "source=dhcp")
 
 		// 2. Remove the Global Routes
-		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "delete", "route", "0.0.0.0/1", interfaceName))
-		cmds = append(cmds, exec.Command("netsh", "interface", "ipv4", "delete", "route", "128.0.0.0/1", interfaceName))
+		runCmd("netsh", "interface", "ipv4", "delete", "route", "0.0.0.0/1", interfaceName)
+		runCmd("netsh", "interface", "ipv4", "delete", "route", "128.0.0.0/1", interfaceName)
 
 		// 3. Remove the Server Whitelist Route from the physical gateway
 		if e.activeServerIP != "" {
-			cmds = append(cmds, exec.Command("route", "delete", e.activeServerIP, "mask", "255.255.255.255"))
+			runCmd("route", "delete", e.activeServerIP, "mask", "255.255.255.255")
 		}
 
 	case "darwin":
 		// 1. Remove the Global Routes
-		cmds = append(cmds, exec.Command("route", "-n", "delete", "-net", "0.0.0.0/1"))
-		cmds = append(cmds, exec.Command("route", "-n", "delete", "-net", "128.0.0.0/1"))
+		runCmd("route", "-n", "delete", "-net", "0.0.0.0/1")
+		runCmd("route", "-n", "delete", "-net", "128.0.0.0/1")
 
 		// 2. Remove the Server Whitelist Route
 		if e.activeServerIP != "" {
-			cmds = append(cmds, exec.Command("route", "-n", "delete", "-host", e.activeServerIP))
+			runCmd("route", "-n", "delete", "-host", e.activeServerIP)
 		}
-	}
-
-	// Execute commands silently (we ignore errors because if a route doesn't exist, that's fine!)
-	for _, cmd := range cmds {
-		_ = cmd.Run()
 	}
 }
 
