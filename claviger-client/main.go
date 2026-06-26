@@ -25,6 +25,7 @@ func main() {
 	// 1. Check how the user launched the app FIRST
 	isGUI := len(os.Args) == 1
 	isDaemon := len(os.Args) > 1 && os.Args[1] == "daemon"
+	isCLI := !isGUI && !isDaemon
 
 	// 2. Route the logs based on the mode
 	if isGUI || isDaemon {
@@ -43,7 +44,7 @@ func main() {
 	}
 
 	log.Println("=====================================")
-	log.Println("🚀 Claviger Started. isGUI check executing...")
+	log.Printf("🚀 Claviger Started. Mode check: GUI=%v, Daemon=%v, CLI=%v\n", isGUI, isDaemon, isCLI)
 
 	var vaultErr error
 	vault, vaultErr = config.Load()
@@ -56,7 +57,7 @@ func main() {
 	// 🎯 1. CREATE THE FIRE ALARM (CONTEXT)
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	// Catch OS signals (like shutting down Linux or systemctl stop) and pull the fire alarm!
+	// Catch OS signals (like shutting down Linux or systemctl stop)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	go func() {
@@ -65,14 +66,75 @@ func main() {
 		cancelFunc() // Instantly stops the daemon safely
 	}()
 
-	listenPort := "127.0.0.1:42899" // Default for CLI/Daemon
+	// ---------------------------------------------------------
+	// 🛑 SHORT-LIVED CLI ROUTE
+	// ---------------------------------------------------------
+	if isCLI {
+		log.Printf("Executing CLI command: %v", os.Args[1:])
+
+		command := os.Args[1]
+
+		// Failsafe: if the user somehow bypassed the isDaemon check
+		if command == "daemon" {
+			log.Fatalf("❌ The daemon must be run by systemd (or without extra arguments)")
+		}
+
+		switch command {
+		case "generate":
+			cli.HandleGenerate(vault)
+		case "approve":
+			if len(os.Args) < 3 {
+				log.Fatalf("❌ Usage: claviger approve <visa_token>")
+			}
+			cli.HandleApprove(vault, os.Args[2])
+		case "list":
+			cli.HandleList(vault)
+		case "remove":
+			if len(os.Args) < 3 {
+				log.Fatalf("❌ Usage: claviger remove <profile_id>")
+			}
+			cli.HandleRemove(vault, os.Args[2])
+		case "connect":
+			// Pass the Context (ctx)
+			cli.HandleConnect(vault, os.Args[2:], ctx)
+		case "disconnect":
+			cli.HandleDisconnect(vault)
+		case "status":
+			cli.HandleStatus(vault)
+		case "autoconnect":
+			if len(os.Args) < 3 {
+				log.Fatalf("❌ Usage: claviger-client autoconnect <enable|disable>")
+			}
+			cli.HandleAutostart(vault, os.Args[2])
+		case "global":
+			if len(os.Args) < 3 {
+				log.Fatalf("❌ Usage: claviger-client global <enable|disable>")
+			}
+			cli.HandleGlobalRouting(vault, os.Args[2])
+		case "uninstall":
+			cli.HandleUninstall()
+		default:
+			fmt.Printf("❌ Unknown command: %s\n", command)
+			cli.PrintHelp()
+		}
+
+		// 🎯 EXIT HERE: Short-lived CLI commands do NOT start a server!
+		return
+	}
+
+	// ---------------------------------------------------------
+	// 🟢 LONG-RUNNING DAEMON & GUI ROUTE
+	// ---------------------------------------------------------
+
+	listenPort := "127.0.0.1:42899" // Default for Daemon
 	if isGUI {
 		listenPort = "127.0.0.1:42900" // GUI gets its own lock port!
 	}
 
-	// 2. SMART SINGLE INSTANCE LOCK & COMMAND SERVER
-	// Offloaded entirely to the API package
-	api.StartListener(api.ListenerConfig{
+	log.Printf("Starting Background Listener on %s...", listenPort)
+
+	// 🎯 MUST BE A GOROUTINE: Otherwise it blocks the GUI from starting!
+	go api.StartListener(api.ListenerConfig{
 		Ctx:        ctx,
 		ListenPort: listenPort,
 		IsGUI:      isGUI,
@@ -82,48 +144,10 @@ func main() {
 		Engine:     engine,
 	})
 
-	// 4. HYBRID LAUNCHER
-	if isGUI {
-		gui.Run(vault, wakeUpChan)
-		return
-	}
-
-	// 5. Command Router
-	command := os.Args[1]
-	switch command {
-	case "generate":
-		cli.HandleGenerate(vault)
-	case "approve":
-		if len(os.Args) < 3 {
-			log.Fatalf("❌ Usage: claviger approve <visa_token>")
-		}
-		cli.HandleApprove(vault, os.Args[2])
-	case "list":
-		cli.HandleList(vault)
-	case "remove":
-		if len(os.Args) < 3 {
-			log.Fatalf("❌ Usage: claviger remove <profile_id>")
-		}
-		cli.HandleRemove(vault, os.Args[2])
-	case "connect":
-		// 🎯 3. Pass the Context (ctx) instead of the old channel
-		cli.HandleConnect(vault, os.Args[2:], ctx)
-	case "disconnect":
-		cli.HandleDisconnect(vault)
-	case "status":
-		cli.HandleStatus(vault)
-	case "autoconnect":
-		if len(os.Args) < 3 {
-			log.Fatalf("❌ Usage: claviger-client autoconnect <enable|disable>")
-		}
-		cli.HandleAutostart(vault, os.Args[2])
-	case "global":
-		if len(os.Args) < 3 {
-			log.Fatalf("❌ Usage: claviger-client global <enable|disable>")
-		}
-		cli.HandleGlobalRouting(vault, os.Args[2])
-
-	case "daemon":
+	// ---------------------------------------------------------
+	// 🤖 DAEMON-SPECIFIC LOGIC
+	// ---------------------------------------------------------
+	if isDaemon {
 		log.Println("Starting Claviger Background Daemon...")
 
 		// AUTO-CONNECT LOGIC
@@ -141,21 +165,27 @@ func main() {
 				}()
 			}
 		}
-
-		// 🎯 4. FREEZE AND WAIT FOR THE ALARM
-		<-ctx.Done()
-
-		// 🎯 5. EXECUTE THE CLEANUP
-		log.Println("🔔 Fire Alarm triggered (Context Canceled)! Executing clean disconnect...")
-		engine.Disconnect()
-		log.Println("👋 Claviger Daemon shut down gracefully. Network restored.")
-		os.Exit(0)
-
-	case "uninstall":
-		cli.HandleUninstall()
-
-	default:
-		fmt.Printf("❌ Unknown command: %s\n", command)
-		cli.PrintHelp()
 	}
+
+	// ---------------------------------------------------------
+	// 🖥️ GUI-SPECIFIC LOGIC
+	// ---------------------------------------------------------
+	if isGUI {
+		log.Println("Starting Claviger GUI...")
+		gui.Run(vault, wakeUpChan) // This blocks until the user closes the GUI window
+
+		log.Println("GUI Window Closed. Triggering clean shutdown...")
+		cancelFunc() // Pull the fire alarm manually when GUI closes
+	}
+
+	// ---------------------------------------------------------
+	// 🎯 FREEZE AND CLEANUP (Applies to Daemon & GUI)
+	// ---------------------------------------------------------
+
+	<-ctx.Done() // The ultimate anchor. Freezes here until cancelFunc is called!
+
+	log.Println("🔔 Fire Alarm triggered (Context Canceled)! Executing clean disconnect...")
+	engine.Disconnect()
+	log.Println("👋 Claviger shut down gracefully. Network restored.")
+	os.Exit(0)
 }

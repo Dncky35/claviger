@@ -10,7 +10,6 @@ import (
 
 	"claviger-client/internal/auth"
 	"claviger-client/internal/config"
-	// ❌ REMOVED: "claviger-client/internal/vpn"
 )
 
 // 🎯 1. Define the interface so the API doesn't need to import the VPN package
