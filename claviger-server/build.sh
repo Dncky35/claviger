@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e # Exit immediately if any command fails
 
 # Define the output directory
 OUT_DIR="release"
@@ -24,13 +25,13 @@ echo "🔨 Building Linux ARM64 (aarch64)..."
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o $OUT_DIR/claviger-server-arm64 .
 
 # ---------------------------------------------------------
-# Generate Checksums (Open Source Standard Practice)
+# Generate Checksums (Unified for the Auto-Updater)
 # ---------------------------------------------------------
 echo "🔏 Generating SHA256 Checksums..."
 cd $OUT_DIR
-sha256sum claviger-server-amd64 > claviger-server-amd64.sha256
-sha256sum claviger-server-arm64 > claviger-server-arm64.sha256
+# Grab hashes of all built binaries and put them into a single file
+sha256sum * > checksums.txt
 cd ..
 
 echo ""
-echo "✅ Server builds complete! Binaries and checksums are in the '$OUT_DIR/' folder."
+echo "✅ Server builds complete! Binaries and checksums.txt are in the '$OUT_DIR/' folder."

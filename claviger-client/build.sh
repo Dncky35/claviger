@@ -1,6 +1,8 @@
 #!/bin/bash
+set -e # Exit immediately if a command fails
 
-# Create the release directory if it doesn't exist
+# Create the directories if they don't exist
+mkdir -p build
 mkdir -p release
 
 echo "🚀 Starting Claviger Cross-Compilation..."
@@ -39,4 +41,15 @@ nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_amd64.rpm
 nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_arm64.rpm
 
 cd ..
-echo "✅ Packaging complete! .deb and .rpm files are in the release/ folder."
+echo "✅ Packaging complete!"
+
+# --- NEW: CHECKSUM GENERATION ---
+echo "🔐 Generating SHA256 Checksums for Release..."
+
+cd release
+# Generate hashes for all files in the release directory and save to checksums.txt
+sha256sum * > checksums.txt
+cd ..
+
+echo "✅ Build, Packaging, and Security Checksums are 100% complete!"
+echo "📂 Your deployment files are ready in the 'release/' folder."

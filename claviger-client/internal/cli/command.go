@@ -1,13 +1,11 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 	"time"
@@ -312,6 +310,10 @@ func HandleDisconnect(vault *config.ClientVault) {
 	}
 }
 
+func HandleUpdate(vault *config.ClientVault) {
+
+}
+
 func HandleStatus(vault *config.ClientVault) {
 	fmt.Println("=======================================")
 	fmt.Println("🛡️  CLAVIGER ZERO TRUST GATEWAY STATUS")
@@ -377,59 +379,4 @@ func HandleStatus(vault *config.ClientVault) {
 		fmt.Printf("🛜  VPN State:    %s\n", stateStr)
 	}
 	fmt.Println("=======================================")
-}
-
-// HandleUninstall safely shuts down the daemon, wipes the vault, and deletes the app.
-func HandleUninstall() {
-	// 1. MUST BE ROOT
-	if os.Geteuid() != 0 {
-		log.Fatalf("❌ Uninstallation requires Admin rights. Please run: sudo claviger-client uninstall")
-	}
-
-	// 2. CONFIRMATION PROMPT
-	fmt.Printf("⚠️  WARNING: This will completely erase Claviger, including all VPN profiles, keys, and settings.\n")
-	fmt.Printf("Are you absolutely sure? (type 'yes' to confirm): ")
-	reader := bufio.NewReader(os.Stdin)
-	response, _ := reader.ReadString('\n')
-	response = strings.TrimSpace(strings.ToLower(response))
-
-	if response != "yes" {
-		fmt.Println("🛑 Uninstallation aborted.")
-		os.Exit(0)
-	}
-
-	fmt.Println("\n🔥 Initiating Scorched Earth uninstallation...")
-
-	// 3. STOP AND DISABLE SYSTEMD SERVICE
-	fmt.Println("🛑 Stopping background daemon...")
-	exec.Command("systemctl", "stop", "claviger-client.service").Run()
-	exec.Command("systemctl", "disable", "claviger-client.service").Run()
-
-	// 4. WIPE CONFIGURATIONS & VAULT
-	fmt.Println("🗑️  Wiping Vault and configuration files (/etc/claviger)...")
-	os.RemoveAll("/etc/claviger")
-
-	// 5. REMOVE START MENU SHORTCUT
-	fmt.Println("🧹 Removing Start Menu and Desktop integrations...")
-	os.Remove("/usr/share/applications/claviger.desktop")
-	os.Remove("/usr/share/applications/claviger-client.desktop") // Just in case of different naming
-
-	// 6. REMOVE SYSTEMD SERVICE FILE
-	fmt.Println("⚙️  Removing Systemd service...")
-	os.Remove("/etc/systemd/system/claviger-client.service")
-	exec.Command("systemctl", "daemon-reload").Run() // Tell Linux to forget the service
-
-	// 7. SELF-DELETE (Remove the binary)
-	// In Linux, an executable can actually delete its own file from the disk while running!
-	fmt.Println("💀 Erasing Claviger executable...")
-	binaryPath, err := os.Executable()
-	if err == nil {
-		os.Remove(binaryPath)
-		// Also wipe standard paths just to be safe
-		os.Remove("/usr/bin/claviger-client")
-		os.Remove("/usr/local/bin/claviger-client")
-	}
-
-	fmt.Println("\n✅ Claviger has been completely removed from this system. Goodbye!")
-	os.Exit(0)
 }

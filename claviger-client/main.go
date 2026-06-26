@@ -111,8 +111,12 @@ func main() {
 				log.Fatalf("❌ Usage: claviger-client global <enable|disable>")
 			}
 			cli.HandleGlobalRouting(vault, os.Args[2])
-		case "uninstall":
-			cli.HandleUninstall()
+		case "update":
+			cli.HandleUpdate(vault)
+
+		case "help":
+			cli.PrintHelp()
+
 		default:
 			fmt.Printf("❌ Unknown command: %s\n", command)
 			cli.PrintHelp()
