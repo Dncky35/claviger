@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"time"
@@ -34,6 +35,7 @@ Usage:
   claviger-client disconnect       - Gracefully shut down the active VPN connection
   claviger-client status           - Provide current status and config of the client 
   claviger-client daemon           - Start the background VPN engine (Used by systemd)
+  claviger-client update		   - Check and done the update
 `)
 }
 
@@ -310,8 +312,21 @@ func HandleDisconnect(vault *config.ClientVault) {
 	}
 }
 
-func HandleUpdate(vault *config.ClientVault) {
+func HandleUpdate() {
+	fmt.Println("🚀 Initializing secure Claviger update...")
+	cmd := exec.Command("bash", "-c", "curl -sSL https://cloudrocean.com/installers/claviger-client.sh | sudo bash")
 
+	// Bind the output so the user sees the bash script's progress in their terminal
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("❌ Update failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	os.Exit(0)
 }
 
 func HandleStatus(vault *config.ClientVault) {

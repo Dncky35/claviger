@@ -112,7 +112,7 @@ func main() {
 			}
 			cli.HandleGlobalRouting(vault, os.Args[2])
 		case "update":
-			cli.HandleUpdate(vault)
+			cli.HandleUpdate()
 
 		case "help":
 			cli.PrintHelp()
