@@ -105,7 +105,7 @@ func main() {
 			if len(os.Args) < 3 {
 				log.Fatalf("❌ Usage: claviger-client autoconnect <enable|disable>")
 			}
-			cli.HandleAutostart(vault, os.Args[2])
+			cli.HandleAutoConnect(vault, os.Args[2])
 		case "global":
 			if len(os.Args) < 3 {
 				log.Fatalf("❌ Usage: claviger-client global <enable|disable>")
