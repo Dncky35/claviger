@@ -3,6 +3,7 @@ package scheduler
 import (
 	"claviger-server/internal/system"
 	"claviger-server/network"
+	"claviger-server/storage"
 	"database/sql"
 	"fmt"
 	"log"
@@ -48,8 +49,34 @@ func Start(db *sql.DB) {
 	})
 
 	RegisterTask("update-check", "Update Checker", "Pings GitHub for new Claviger releases.", "🔄", "@every 12h", true, func() error {
-		log.Println("[Cron] 🔄 Checking for system updates...")
-		time.Sleep(1 * time.Second)
+		log.Println("[Cron] 🔄 Checking GitHub for system updates...")
+
+		// 1. Check DB for current version, fallback to binary constant if missing
+		currentVersion := storage.GetConfig(db, "current_version")
+		if currentVersion == "" {
+			currentVersion = system.CurrentVersion
+		}
+
+		// 2. Securely ping GitHub API
+		hasUpdate, latestVersion, err := system.CheckGitHubForUpdates()
+		if err != nil {
+			log.Printf("[Cron] ❌ Update check failed: %v", err)
+			return err
+		}
+
+		// 3. Update the database state for the Next.js UI
+		if hasUpdate {
+			log.Printf("[Cron] 🎉 New Update Available: %s (Current: %s)", latestVersion, currentVersion)
+
+			// Signal the UI that an update is ready
+			storage.SetConfig(db, "available_update_version", latestVersion)
+		} else {
+			log.Printf("[Cron] ✅ System is up to date (Running: %s)", currentVersion)
+
+			// Clear any stale update flags to ensure the UI is clean
+			storage.SetConfig(db, "available_update_version", "")
+		}
+
 		return nil
 	})
 
@@ -126,23 +153,25 @@ func DisableTask(id string) {
 	}
 }
 
-// RunNow forces a task to execute immediately (bypassing the schedule)
+// RunNow forces a task to execute immediately AND WAITS for the result
 func RunNow(id string) error {
 	task, exists := Tasks[id]
 	if !exists {
 		return fmt.Errorf("task not found")
 	}
 
-	go func() {
-		task.LastRun = time.Now().Format("Jan 02, 15:04 (Manual)")
-		err := task.job()
-		if err != nil {
-			task.LastStatus = "failed"
-		} else {
-			task.LastStatus = "success"
-		}
-	}()
+	// 🚀 FIX: We removed the 'go func()' so the HTTP request WAITS for this to finish
+	task.LastRun = time.Now().Format("Jan 02, 15:04 (Manual)")
 
+	// Execute the job and capture the error
+	err := task.job()
+
+	if err != nil {
+		task.LastStatus = "failed"
+		return err // Return the actual error so the HTTP handler knows it failed!
+	}
+
+	task.LastStatus = "success"
 	return nil
 }
 

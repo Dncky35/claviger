@@ -152,7 +152,7 @@
                             </div>
 
                             <div class="flex items-center gap-4 border-t border-border pt-4 md:border-0 md:pt-0">
-                                <button onclick="runTaskNow('${task.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-border rounded text-xs font-medium text-slate-300 transition-colors flex items-center gap-2">
+                                <button onclick="runTaskNow('${task.id}', this)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-border rounded text-xs font-medium text-slate-300 transition-colors flex items-center justify-center gap-2 w-28">
                                     ▶ Run Now
                                 </button>
                                 
@@ -172,19 +172,47 @@
             }
         }
 
-        async function runTaskNow(taskId) {
-            if(!confirm("Run this background task immediately?")) return;
+        async function runTaskNow(taskId, btnElement) {
+            // 1. Save original state
+            const originalHTML = btnElement.innerHTML;
+            
+            // 2. Set loading state
+            btnElement.disabled = true;
+            btnElement.classList.add('opacity-50', 'cursor-not-allowed');
+            btnElement.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Running...
+            `;
+
             try {
                 // Send run request to Go
                 const res = await fetch(`/api/system/tasks/${taskId}/run`, { method: 'POST' });
+                
                 if (res.ok) {
-                    alert("Task executed successfully!");
-                    fetchSystemTasks(); // Refresh list to show new last_run time
+                    // 3. Show Success Inline
+                    btnElement.innerHTML = `✅ Success`;
+                    btnElement.classList.replace('text-slate-300', 'text-emerald-400');
+                    
+                    // Wait a brief moment so the user sees the success message, then refresh
+                    setTimeout(() => fetchSystemTasks(), 1200); 
                 } else {
-                    alert("Task failed to run.");
+                    // 4. Show Failure Inline
+                    btnElement.innerHTML = `❌ Failed`;
+                    btnElement.classList.replace('text-slate-300', 'text-red-400');
                 }
             } catch(e) {
-                alert("Network error executing task.");
+                btnElement.innerHTML = `⚠️ Network Error`;
+                btnElement.classList.replace('text-slate-300', 'text-red-400');
+            } finally {
+                // 5. Restore original button state after 2.5 seconds if it didn't refresh
+                setTimeout(() => {
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = originalHTML;
+                    btnElement.className = "px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-border rounded text-xs font-medium text-slate-300 transition-colors flex items-center justify-center gap-2 w-28";
+                }, 2500);
             }
         }
 
