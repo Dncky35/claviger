@@ -33,12 +33,12 @@ echo "📦 Packaging Linux Distributions with nFPM..."
 cd packaging
 
 # Build Debian (.deb) packages
-nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_amd64.deb
-nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_arm64.deb
+nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_client_amd64.deb
+nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_client_arm64.deb
 
 # Build RHEL/CentOS (.rpm) packages
-nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_amd64.rpm
-nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_arm64.rpm
+nfpm pkg --config nfpm-amd64.yaml --target ../release/claviger_client_amd64.rpm
+nfpm pkg --config nfpm-arm64.yaml --target ../release/claviger_client_arm64.rpm
 
 cd ..
 echo "✅ Packaging complete!"
@@ -48,7 +48,7 @@ echo "🔐 Generating SHA256 Checksums for Release..."
 
 cd release
 # Generate hashes for all files in the release directory and save to checksums.txt
-sha256sum * > checksums.txt
+sha256sum * > checksums-client.txt
 cd ..
 
 echo "✅ Build, Packaging, and Security Checksums are 100% complete!"

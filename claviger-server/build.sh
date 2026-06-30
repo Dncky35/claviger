@@ -30,7 +30,7 @@ CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o $OUT_DIR/clav
 echo "🔏 Generating SHA256 Checksums..."
 cd $OUT_DIR
 # Grab hashes of all built binaries and put them into a single file
-sha256sum * > checksums.txt
+sha256sum * > checksums-server.txt
 cd ..
 
 echo ""
