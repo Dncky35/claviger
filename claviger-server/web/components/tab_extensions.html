@@ -146,7 +146,7 @@
                         ${badgeHtml}
                         <button id="btn-remove-${app.id}" 
                             onclick="removeCustomApp('${app.id}')" 
-                            class="${app.is_custom && app.status !== 'not_installed' ? '' : 'hidden'} text-rose-400 hover:text-rose-500 transition-colors text-sm font-bold">
+                            class="${app.is_custom && app.status === 'not_installed' ? '' : 'hidden'} text-rose-400 hover:text-rose-500 transition-colors text-sm font-bold">
                             Remove
                         </button>
                     </div>

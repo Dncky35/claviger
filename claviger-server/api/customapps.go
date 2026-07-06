@@ -26,7 +26,7 @@ func HandleAddCustomApp(db *sql.DB) http.HandlerFunc {
 
 		// 0. Auto-Correct the YAML!
 		// Automatically add the missing networks and labels
-		correctedYAML, err := apps.AutoCorrectZeroTrustYAML(payload.ComposeYAML, payload.Name, payload.HasCustomSetup, payload.SetupPort, payload.NeedsDynamicPort)
+		correctedYAML, err := apps.AutoCorrectZeroTrustYAML(payload)
 		if err == nil {
 			payload.ComposeYAML = correctedYAML // Replace with the hardened version
 		}
@@ -45,9 +45,16 @@ func HandleAddCustomApp(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 2. Generate an ID (if not provided by frontend)
 		if payload.ID == "" {
-			payload.ID = "custom_" + strings.ReplaceAll(strings.ToLower(payload.Name), " ", "_")
+			safeName := strings.ToLower(payload.Name)
+
+			// Replace spaces with underscores
+			safeName = strings.ReplaceAll(safeName, " ", "_")
+
+			// Replace hyphens with underscores
+			safeName = strings.ReplaceAll(safeName, "-", "_")
+
+			payload.ID = "custom_" + safeName
 		}
 
 		// 3. Save to Database
