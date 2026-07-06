@@ -271,6 +271,7 @@ const wgConfigTemplate = `[Interface]
 PrivateKey = {{.PrivateKey}}
 Address = {{.ClientIP}}/32
 DNS = {{.DNSIP}}
+MTU = 1280
 
 [Peer]
 PublicKey = {{.ServerPubKey}}
@@ -286,6 +287,7 @@ type TemplateData struct {
 	ServerPubKey string
 	Endpoint     string
 	AllowedIPs   string
+	MTU          int
 }
 
 // EnrollMobileDevice generates a keypair, saves the public key, injects it into wg0,
