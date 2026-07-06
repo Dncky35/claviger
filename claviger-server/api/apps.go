@@ -14,7 +14,8 @@ import (
 )
 
 type InstallReq struct {
-	AppID string `json:"app_id"`
+	AppID    string `json:"app_id"`
+	IsCustom bool   `json:"is_custom"` // New field to indicate if the app is custom
 }
 
 // --- STATE MANAGER ---
@@ -103,9 +104,9 @@ func HandleAppInstall(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 4. Safe to install
-		err = apps.Install(db, req.AppID)
+		err = apps.Install(db, req.AppID, req.IsCustom)
 	default:
-		err = apps.Install(db, req.AppID)
+		err = apps.Install(db, req.AppID, req.IsCustom)
 	}
 
 	// ---------------------------------------------------------

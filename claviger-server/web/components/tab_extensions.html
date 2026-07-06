@@ -12,81 +12,342 @@
         <!-- Cards will be dynamically injected here -->
     </div>
 
-    <script>
-        // --- THE EXTENSIONS RENDERER ---
-        function renderExtensionsList(apps) {
-            const gridEl = document.getElementById('extensions-grid');
-            if (!gridEl) return;
-            gridEl.innerHTML = ''; // Clear the grid
+    <div id="custom-app-modal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-surface border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col">
+            
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        ➕ Deploy Custom Extension
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-1">Paste your docker-compose YAML. Traffic will be routed securely via the tunnel.</p>
+                </div>
+                <button onclick="closeCustomAppModal()" class="text-slate-400 hover:text-rose-400 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
 
-            // Filter out system apps, we only want the "optional" ones here!
-            const optionalApps = apps.filter(app => app.category === 'optional');
-
-            if (optionalApps.length === 0) {
-                gridEl.innerHTML = `<div class="col-span-full p-12 text-center border border-dashed border-slate-700 rounded-2xl text-slate-500 text-sm">No optional extensions are currently available in the catalog.</div>`;
-                return;
-            }
-
-            optionalApps.forEach(app => {
-                // 1. Determine Button States
-                const isInstalled = app.status !== 'not_installed';
-                const isRunning = app.status === 'running';
-               
-                // Badge Logic (Added 'degraded' support for multi-container apps like RustDesk)
-                let badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">Not Installed</span>`;
-                if (isInstalled) {
-                    if (isRunning) {
-                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Running</span>`;
-                    } else if (app.status === 'degraded') {
-                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">Degraded</span>`;
-                    } else {
-                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">Stopped</span>`;
-                    }
-                }
-
-                // Button Logic
-                let installBtnClass = isInstalled ? 'hidden' : '';
-                let dashBtnClass = isInstalled ? '' : 'hidden'; // Always show if installed
-
-                // Smart Dashboard Button (Clickable web app vs. Static native service)
-                let isDefault = app.action_port > 0;
-                let defaultAction = app.name === "RustDesk Server" ? 
-                `onclick="window.open('https://claviger.cloudrocean.com/documentation/e54a5823-8d66-4999-9d91-70ec7db319a6', '_blank')"` : 'disabled';
-                // console.log(`Action port: ${app.action_port}`)
-                let dashOnClick = isDefault ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
-                let dashColors = 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700 cursor-pointer' 
-
-                // 2. Build the Card
-                const card = `
-                <div class="bg-surface rounded-2xl border border-border overflow-hidden flex flex-col transition-all hover:border-slate-600 hover:shadow-lg hover:shadow-black/20 group relative">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-primary/10 transition-colors"></div>
+            <form id="custom-app-form" onsubmit="submitCustomApp(event)" class="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">App Name</label>
+                        <input type="text" id="custom-app-name" required placeholder="e.g. Nextcloud" class="w-full bg-background border border-slate-700 rounded-lg px-4 py-2 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+                    </div>
                     
-                    <div class="p-6 flex-grow z-10">
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner">
-                                ${app.icon}
-                            </div>
-                            ${badgeHtml}
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Emoji Icon</label>
+                            <input type="text" id="custom-app-icon" placeholder="☁️" maxlength="2" class="w-full bg-background border border-slate-700 rounded-lg px-4 py-2 text-white text-center focus:border-primary outline-none transition-all">
                         </div>
                         
-                        <h3 class="text-lg font-bold text-slate-100 mb-2">${app.name}</h3>
-                        <p class="text-sm text-slate-400 leading-relaxed">${app.description}</p>
                     </div>
+                    <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Network Configuration</label>
+                            
+                            <div class="flex items-center mb-2">
+                                <input type="checkbox" id="custom-app-dynamic-port" checked class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                                <label for="custom-app-dynamic-port" class="ml-2 text-sm font-medium text-gray-300">
+                                    Needs Dynamic Web Port (Auto-assign 1808X)
+                                </label>
+                            </div>
 
-                    <div class="p-4 bg-slate-900/50 border-t border-slate-800 z-10 flex gap-2">
-                        <button id="btn-install-${app.id}" onclick="installApp('${app.id}')" class="${installBtnClass} w-full py-2.5 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm">
-                            Install App
-                        </button>
+                            <div class="flex items-center mb-2">
+                                <input type="checkbox" id="custom-app-needs-setup" onchange="toggleSetupPortField()" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                                <label for="custom-app-needs-setup" class="ml-2 text-sm font-medium text-gray-300">
+                                    App requires a one-time Setup Port (e.g., AdGuard :3000)
+                                </label>
+                            </div>
 
-                        <button id="btn-dash-${app.id}" ${dashOnClick} class="${dashBtnClass} ${dashColors} w-full py-2.5 text-sm font-bold rounded-lg transition-colors border">
-                            ${app.action_text}
-                        </button>
-                    </div>
-                </div>`;
+                            <div id="setup-port-container" class="hidden mt-2 ml-6">
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Specific Setup Port Number</label>
+                                <input type="number" id="custom-app-setup-port" placeholder="e.g., 3000" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-1/3 p-2.5">
+                            </div>
+                        </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</label>
+                    <input type="text" id="custom-app-desc" required placeholder="A brief description of this service..." class="w-full bg-background border border-slate-700 rounded-lg px-4 py-2 text-white focus:border-primary outline-none transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span>Docker Compose YAML</span>
+                        <span class="text-[10px] text-slate-500 normal-case">Do not define networks; Claviger handles this.</span>
+                    </label>
+                    <textarea id="custom-app-yaml" required rows="8" placeholder="version: '3.3'\nservices:\n  app:\n    image: nextcloud:latest\n    restart: unless-stopped" class="w-full bg-background border border-slate-700 rounded-lg px-4 py-3 text-white font-mono text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"></textarea>
+                </div>
+
+                <div class="pt-4 flex gap-3">
+                    <button type="button" onclick="closeCustomAppModal()" class="w-1/3 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-lg transition-colors border border-slate-700">
+                        Cancel
+                    </button>
+                    <button type="submit" id="btn-submit-custom" class="w-2/3 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2">
+                        🚀 Deploy Custom App
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- THE EXTENSIONS RENDERER ---
+    function renderExtensionsList(apps) {
+        const gridEl = document.getElementById('extensions-grid');
+        if (!gridEl) return;
+        gridEl.innerHTML = ''; // Clear the grid
+
+        // 1. Separate Official and Custom Apps
+        const officialApps = apps.filter(app => app.category === 'optional' && !app.is_custom);
+        const customApps = apps.filter(app => app.category === 'optional' && app.is_custom);
+
+        // 2. The Card Builder Helper (Contains all your exact logic!)
+        const buildCard = (app) => {
+            const isInstalled = app.status !== 'not_installed';
+            const isRunning = app.status === 'running';
+            
+            // Badge Logic 
+            let badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">Not Installed</span>`;
+            if (isInstalled) {
+                if (isRunning) {
+                    badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Running</span>`;
+                } else if (app.status === 'degraded') {
+                    badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">Degraded</span>`;
+                } else {
+                    badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">Stopped</span>`;
+                }
+            }
+
+            // Button Logic
+            let installBtnClass = isInstalled ? 'hidden' : '';
+            let dashBtnClass = isInstalled ? '' : 'hidden'; 
+
+            // Smart Dashboard Button 
+            let isDefault = app.action_port > 0;
+            let defaultAction = app.name === "RustDesk Server" ? 
+            `onclick="window.open('https://claviger.cloudrocean.com/documentation/e54a5823-8d66-4999-9d91-70ec7db319a6', '_blank')"` : 'disabled';
+            let dashOnClick = isDefault ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
+            let dashColors = 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700 cursor-pointer';
+
+            // Segregation UI Tweaks
+            const borderStyle = app.is_custom ? 'border-indigo-500/40' : 'border-border';
+            const customPill = app.is_custom ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-400 uppercase tracking-wider">Custom</span>` : '';
+
+            return `
+            <div class="bg-surface rounded-2xl border ${borderStyle} overflow-hidden flex flex-col transition-all hover:border-slate-600 hover:shadow-lg hover:shadow-black/20 group relative">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-primary/10 transition-colors"></div>
                 
-                gridEl.insertAdjacentHTML('beforeend', card);
-            });
+                <div class="p-6 flex-grow z-10">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner">
+                            ${app.icon}
+                        </div>
+                        ${badgeHtml}
+                        <button id="btn-remove-${app.id}" 
+                            onclick="removeCustomApp('${app.id}')" 
+                            class="${app.is_custom && app.status !== 'not_installed' ? '' : 'hidden'} text-rose-400 hover:text-rose-500 transition-colors text-sm font-bold">
+                            Remove
+                        </button>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-slate-100 mb-2 flex items-center">${app.name} ${customPill}</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">${app.description}</p>
+                </div>
+
+                <div class="p-4 bg-slate-900/50 border-t border-slate-800 z-10 flex gap-2">
+                    <button 
+                        id="btn-install-${app.id}" 
+                        onclick="installApp('${app.id}', ${app.is_custom})" 
+                        class="${installBtnClass} w-full py-2.5 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm"
+                    >
+                        Install App
+                    </button>
+
+                    <button id="btn-dash-${app.id}" ${dashOnClick} class="${dashBtnClass} ${dashColors} w-full py-2.5 text-sm font-bold rounded-lg transition-colors border">
+                        ${app.action_text}
+                    </button>
+                </div>
+            </div>`;
+        };
+
+        // 3. Render Official Grid
+        if (officialApps.length > 0) {
+            officialApps.forEach(app => gridEl.insertAdjacentHTML('beforeend', buildCard(app)));
         }
+
+        // 4. Render the "Add Custom App" Placeholder Card
+        const addAppCard = `
+        <div onclick="openCustomAppModal()" class="bg-surface/30 rounded-2xl border border-dashed border-slate-600 overflow-hidden flex flex-col items-center justify-center transition-all hover:border-primary hover:bg-surface hover:shadow-lg group cursor-pointer p-6 min-h-[220px]">
+            <div class="w-14 h-14 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner text-slate-400 group-hover:text-primary group-hover:border-primary/50 transition-colors mb-4">
+                ➕
+            </div>
+            <h3 class="text-lg font-bold text-slate-300 group-hover:text-white transition-colors">Add Custom Extension</h3>
+            <p class="text-sm text-slate-500 text-center mt-2 group-hover:text-slate-400">Deploy a custom docker-compose app safely behind the gateway.</p>
+        </div>`;
+        gridEl.insertAdjacentHTML('beforeend', addAppCard);
+
+        // 5. Render Custom Apps Section (Only if they exist)
+        if (customApps.length > 0) {
+            gridEl.insertAdjacentHTML('beforeend', `
+                <div class="col-span-full mt-8 mb-2 border-b border-slate-700 pb-2">
+                    <h3 class="text-xl font-bold text-slate-300">Your Deployments</h3>
+                    <p class="text-xs text-slate-500">Unverified applications deployed via custom YAML.</p>
+                </div>
+            `);
+            customApps.forEach(app => gridEl.insertAdjacentHTML('beforeend', buildCard(app)));
+        }
+    }
+
+    function openCustomAppModal() {
+        const modal = document.getElementById('custom-app-modal');
+        modal.classList.remove('hidden');
+        // Slight delay to allow CSS transitions if you add them
+        setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+
+    function closeCustomAppModal() {
+        const modal = document.getElementById('custom-app-modal');
+        modal.classList.add('hidden');
+        document.getElementById('custom-app-form').reset();
+    }
+
+    function toggleSetupPortField() {
+        const needsSetup = document.getElementById('custom-app-needs-setup').checked;
+        const container = document.getElementById('setup-port-container');
+        
+        if (needsSetup) {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+            document.getElementById('custom-app-setup-port').value = ''; // Clear value if unchecked
+        }
+    }
+
+    async function submitCustomApp(event) {
+        event.preventDefault(); // Prevent page reload
+    
+        const btn = document.getElementById('btn-submit-custom');
+        const originalText = btn.innerHTML;
+        
+        // 1. Lock the UI for processing
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Deploying...`;
+
+        // 2. Read Checkbox States
+        const needsDynamicPort = document.getElementById('custom-app-dynamic-port').checked;
+        const needsSetupPort = document.getElementById('custom-app-needs-setup').checked;
+        
+        // If they checked the box, read the number. Otherwise, strictly force it to 0.
+        const setupPortValue = needsSetupPort ? (parseInt(document.getElementById('custom-app-setup-port').value) || 0) : 0;
+
+        // 3. Build the Payload for Go Backend
+        const payload = {
+            name: document.getElementById('custom-app-name').value,
+            description: document.getElementById('custom-app-desc').value,
+            icon: document.getElementById('custom-app-icon').value || '📦',
+            compose_yaml: document.getElementById('custom-app-yaml').value,
+            
+            // These replace your old 'action_port'
+            needs_dynamic_port: needsDynamicPort,
+            has_custom_setup: needsSetupPort,
+
+            setup_port: setupPortValue,
+            
+            is_custom: true, // Flag it so Go knows to save it properly
+            category: 'optional'
+        };
+
+        try {
+            // Adjust this endpoint to match your Go router!
+            const response = await fetch('/api/gateway/extensions/custom', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const responseClone = response.clone();
+
+            if (!response.ok) {
+                let errorMessage = `Server Error: ${response.status}`;
+                
+                try {
+                    const errorData = await response.json();
+                    
+                    if (errorData.errors && Array.isArray(errorData.errors)) {
+                        const details = errorData.errors
+                            .map(err => `• ${err.field}: ${err.message}`)
+                            .join('\n');
+                        errorMessage = `Deployment Failed:\n${details}`;
+                    } else {
+                        errorMessage = errorData.message || JSON.stringify(errorData);
+                    }
+                } catch (e) {
+                    // If JSON parsing fails, use the CLONED response for raw text
+                    const rawText = await responseClone.text();
+                    errorMessage = `Server Error: ${response.status} - ${rawText}`;
+                }
+                
+                throw new Error(errorMessage);
+            }
+
+            // 3. Success Workflow
+            closeCustomAppModal();
+            
+            // Re-fetch the extensions list from the server to update the grid
+            // Assuming you have a function like fetchExtensionsStatus() handling this
+            if (typeof fetchExtensionsStatus === 'function') {
+                fetchExtensionsStatus(); 
+            }
+
+        } catch (error) {
+            console.error("Deployment failed:", error);
+            alert(`Failed to deploy: ${error.message}`);
+        } finally {
+            // 4. Unlock UI
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            syncAppStates();
+        }
+    }
+
+    function removeCustomApp(appId) {
+        if (!confirm(`Are you sure you want to remove ${appId}?`)) return;
+
+        btnRemove = document.getElementById(`btn-remove-${appId}`);
+        btnRemove.disabled = true;
+
+        // Fail gracefully if the DOM element isn't found
+        if (!btnRemove) {
+            console.error(`[Orchestrator UI] Target btn-remove-${appId} missing from DOM.`);
+            return;
+        }
+
+        fetch(`/api/gateway/extensions/custom/remove?name=${encodeURIComponent(appId)}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                // Remove the card from the DOM
+                const card = document.getElementById(`badge-app-${appId}`).closest('div');
+                if (card) card.remove();
+                alert(`${appId} has been removed successfully.`);
+            } else {
+                return response.json().then(data => {
+                    throw new Error(data.message || 'Unknown error occurred.');
+                });
+            }
+        })
+        .catch(error => {
+            console.error(`Failed to remove ${appId}:`, error);
+            alert(`Failed to remove ${appId}: ${error.message}`);
+        })
+        .finally(() => {
+            btnRemove.disabled = false;
+            syncAppStates();
+        });
+    } 
+    
     </script>
 </div>
 {{ end }}

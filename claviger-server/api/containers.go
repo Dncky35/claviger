@@ -24,6 +24,7 @@ type AppStatus struct {
 	SetupComplete bool   `json:"setup_complete"`
 	ActionPort    int    `json:"action_port"`
 	ActionText    string `json:"action_text"`
+	IsCustom      bool   `json:"is_custom"`
 }
 
 // HandleContainers merges Docker state, Native state, and the App Catalog
@@ -155,6 +156,60 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 				ActionPort:    actionPort,
 				ActionText:    actionText,
 			})
+		}
+
+		// ---------------------------------------------------------
+		// 3.5. MERGE CUSTOM APPS FROM DATABASE
+		// ---------------------------------------------------------
+		rows, err := db.Query("SELECT id, name, description, icon, needs_dynamic_port, has_custom_setup, setup_port FROM custom_apps")
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var id, name, desc, icon string
+				var needsDynamicPort bool
+				var hasCustomSetup bool
+				var setupPort int
+
+				if err := rows.Scan(&id, &name, &desc, &icon, &needsDynamicPort, &hasCustomSetup, &setupPort); err == nil {
+					status := "not_installed"
+
+					// Check Docker state (accounting for Docker's leading slash quirk)
+					if liveState, exists := containerMap[id]; exists {
+						status = liveState
+					} else if liveState, exists := containerMap["/"+id]; exists {
+						status = liveState
+					}
+
+					actionPort := 0
+					actionText := "Open App ↗"
+
+					if hasCustomSetup && status != "not_installed" {
+						actionPort = setupPort
+						actionText = "Finish Setup ↗"
+					}
+
+					// Fetch port if dynamic mapping was requested
+					if needsDynamicPort {
+						portStr := storage.GetConfig(db, fmt.Sprintf("app_%s_port", id))
+						if portStr != "" {
+							actionPort, _ = strconv.Atoi(portStr)
+						}
+					}
+
+					appList = append(appList, AppStatus{
+						ID:            id,
+						Name:          name,
+						Category:      "optional", // Force into the Extensions tab
+						Description:   desc,
+						Icon:          icon,
+						Status:        status,
+						SetupComplete: true, // Custom apps don't use Claviger's setup wizards
+						ActionPort:    actionPort,
+						ActionText:    actionText,
+						IsCustom:      true, // Flag for the UI Segregation
+					})
+				}
+			}
 		}
 
 		// ---------------------------------------------------------

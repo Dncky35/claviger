@@ -14,6 +14,7 @@ import (
 
 // AppManifest defines everything the system and UI needs to know about an app
 type AppManifest struct {
+	ID               string `json:"id"`
 	Name             string // Clean name for the UI
 	Category         string // "system_core" or "optional"
 	Description      string // Subtitle for the UI
@@ -221,10 +222,46 @@ type TemplateData struct {
 }
 
 // Install runs docker-compose for a specific app, assigning dynamic ports relative to hub_port.
-func Install(db *sql.DB, appID string) error {
-	manifest, exists := Catalog[appID]
-	if !exists {
-		return fmt.Errorf("app %s is not in the catalog", appID)
+func Install(db *sql.DB, appID string, isCustom bool) error {
+
+	var manifest AppManifest
+
+	if isCustom {
+		// Route A: Fetch from local database
+		row := db.QueryRow(`
+		SELECT id, name, description, icon, needs_dynamic_port, compose_yaml 
+		FROM custom_apps 
+		WHERE id = ?
+	`, appID)
+
+		err := row.Scan(
+			&manifest.ID,
+			&manifest.Name,
+			&manifest.Description,
+			&manifest.Icon,
+			&manifest.NeedsDynamicPort,
+			&manifest.ComposeYAML,
+		)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return fmt.Errorf("custom app [%s] not found in database", appID)
+			}
+			return fmt.Errorf("database transaction failed: %w", err)
+		}
+
+		// // SECURITY DIRECTIVE: Deterministically enforce isolation parameters
+		// manifest.Category = "optional"
+		// manifest.HasCustomSetup = false // Custom apps shouldn't have system-level wizards
+		// manifest.SetupPort = 0
+
+	} else {
+		// Route B: Fetch from the compiled, static Zero-Trust Catalog
+		var exists bool
+		manifest, exists = Catalog[appID]
+		if !exists {
+			return fmt.Errorf("official app [%s] is not in the system catalog", appID)
+		}
 	}
 
 	// 1. Fetch the Anchor Port from DB

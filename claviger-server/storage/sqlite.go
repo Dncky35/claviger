@@ -111,6 +111,24 @@ func InitDB() *sql.DB {
 		log.Fatalf("❌ Failed to create invitations table: %v", err)
 	}
 
+	createCustomAppsTable := `
+	CREATE TABLE IF NOT EXISTS custom_apps (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		description TEXT,
+		icon TEXT,
+		needs_dynamic_port BOOLEAN DEFAULT 0,
+		has_custom_setup BOOLEAN DEFAULT 0,
+		setup_port INTEGER DEFAULT 0,
+		compose_yaml TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	_, err = db.Exec(createCustomAppsTable)
+	if err != nil {
+		log.Fatalf("❌ Failed to create custom_apps table: %v", err)
+	}
+
 	return db
 }
 

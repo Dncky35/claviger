@@ -6,11 +6,17 @@
     let lastTimestamp = 0;
 
     // --- APP INSTALLER LOGIC ---
-    async function installApp(appId) {
+    async function installApp(appId, isCustom = false) {
         if (!confirm(`Are you sure you want to install ${appId}?`)) return;
 
         const installBtn = document.getElementById(`btn-install-${appId}`);
         const originalHtml = installBtn.innerHTML;
+
+        // Fail gracefully if the DOM element isn't found
+        if (!installBtn) {
+            console.error(`[Orchestrator] DOM target btn-install-${appId} not found.`);
+            return;
+        }
 
         // 1. LOADING STATE
         installBtn.disabled = true;
@@ -24,7 +30,7 @@
             const res = await fetch('/api/apps/install', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ app_id: appId })
+                body: JSON.stringify({ app_id: appId, is_custom: isCustom })
             });
             const data = await res.json();
             
@@ -75,6 +81,8 @@
             if (typeof renderExtensionsList === "function") {
                 renderExtensionsList(data.registry_apps);
             }
+
+            console.log(`${JSON.stringify(data.registry_apps)} apps found in registry. Syncing UI...`);
 
             // Loop through EVERY app the Go backend knows about
             data.registry_apps.forEach(app => {
