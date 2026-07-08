@@ -7,8 +7,10 @@ import (
 
 	"claviger-client/internal/config"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -24,9 +26,6 @@ func (g *ClavigerGUI) ShowDashboardScreen() {
 		g.SyncStatusBinding = binding.NewString()
 		g.SyncStatusBinding.Set("Stable")
 	}
-
-	// Header
-	// title := widget.NewLabelWithStyle("Claviger Network", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
 	// 🎯 DYNAMIC DROPDOWN
 	g.NameToID = make(map[string]string)
@@ -55,6 +54,13 @@ func (g *ClavigerGUI) ShowDashboardScreen() {
 	g.ServerSelect = widget.NewSelect(options, nil)
 	g.ServerSelect.SetSelected(currentSelection)
 	g.ConnectBtn = widget.NewButton("Connect Tunnel", nil) // Logic in events.go
+
+	serverCard := widget.NewCard("Active Server", "", container.NewVBox(
+		g.ServerSelect,
+		g.ConnectBtn,
+	))
+
+	// 🎯 INITIALIZE SETTINGS CONTROLS (Hidden until Modal opens)
 	g.RouteCheck = widget.NewCheck("Enable Global Routing", func(checked bool) {
 		g.Vault.UseGlobalRouting = checked
 		config.Save(g.Vault)
@@ -67,43 +73,32 @@ func (g *ClavigerGUI) ShowDashboardScreen() {
 	})
 	g.AutoStartCheck.SetChecked(g.Vault.AutoConnect)
 
-	serverCard := widget.NewCard("Active Server", "", container.NewVBox(
-		g.ServerSelect,
-		g.ConnectBtn,
-		g.RouteCheck,
-		g.AutoStartCheck,
-	))
-
-	// 🎯 FOOTER: SETTINGS & DANGEROUS ACTION
 	g.AddServerBtn = widget.NewButton("Add New Server", g.ShowEnrollmentScreen)
 	g.RemoveBtn = widget.NewButton("Remove Server", nil) // Logic in events.go
 
-	// 1. Group the server actions into a single container and hide it initially
-	serverActionsContainer := container.NewVBox(
-		g.RemoveBtn,
-		g.AddServerBtn,
-	)
-	serverActionsContainer.Hide() // Hidden by default
-
-	// 2. Create the Settings Toggle Button with a gear icon
-	settingsToggleBtn := widget.NewButtonWithIcon("Settings", theme.SettingsIcon(), func() {
-		// Toggle the visibility of the action buttons container
-		if serverActionsContainer.Visible() {
-			serverActionsContainer.Hide()
-		} else {
-			serverActionsContainer.Show()
-		}
+	// 🎯 SETTINGS MODAL TRIGGER
+	settingsBtn := widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
+		settingsContent := container.NewVBox(
+			widget.NewLabelWithStyle("Network & Startup", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+			g.RouteCheck,
+			g.AutoStartCheck,
+			widget.NewSeparator(),
+			widget.NewLabelWithStyle("Server Management", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+			g.AddServerBtn,
+			g.RemoveBtn,
+		)
+		settingsDialog := dialog.NewCustom("Claviger Settings", "Close", settingsContent, g.Window)
+		settingsDialog.Show()
 	})
 
-	// Final Layout
+	// Wrap the settings button with a leading spacer to push it to the TOP RIGHT
+	topBar := container.NewHBox(layout.NewSpacer(), settingsBtn)
+
+	// 🎯 FINAL LAYOUT (Main View)
 	content := container.NewPadded(container.NewVBox(
-		statusCard,
-		layout.NewSpacer(),
-		layout.NewSpacer(),
+		topBar, // Placed at the very top
 		serverCard,
-		widget.NewSeparator(),
-		settingsToggleBtn,      // The new gear button sits here
-		serverActionsContainer, // This container expands/collapses when Settings is clicked
+		statusCard,
 	))
 
 	g.Window.SetContent(content)

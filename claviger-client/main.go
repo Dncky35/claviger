@@ -6,11 +6,14 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"syscall"
 
 	"claviger-client/internal/api" // Ensure this matches your project's module path
 	"claviger-client/internal/cli"
 	"claviger-client/internal/config"
+	"claviger-client/internal/daemon"
 	"claviger-client/internal/gui"
 	"claviger-client/internal/vpn"
 )
@@ -27,14 +30,26 @@ func main() {
 	isDaemon := len(os.Args) > 1 && os.Args[1] == "daemon"
 	isCLI := !isGUI && !isDaemon
 
-	// 2. Route the logs based on the mode
 	if isGUI || isDaemon {
+		// 🎯 Step A: Define the OS-specific log path
+		var logPath string
+		if runtime.GOOS == "windows" {
+			// Resolves to C:\ProgramData\Claviger\claviger-client-debug.log
+			logPath = filepath.Join(os.Getenv("ProgramData"), "Claviger", "claviger-client-debug.log")
+		} else {
+			logPath = "/var/log/claviger-client-debug.log"
+		}
+
+		// 🎯 Step B: Ensure the directory actually exists before creating the file
+		os.MkdirAll(filepath.Dir(logPath), 0755)
+
 		// Background tasks write to a log file silently
-		logFile, err := os.OpenFile("/var/log/claviger-client-debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err == nil {
 			log.SetOutput(logFile)
 			defer logFile.Close()
 		} else {
+			log.Println("⚠️ Failed to open log file, falling back to Stdout:", err)
 			log.SetOutput(os.Stdout)
 		}
 	} else {
@@ -153,22 +168,9 @@ func main() {
 	// ---------------------------------------------------------
 	if isDaemon {
 		log.Println("Starting Claviger Background Daemon...")
+		daemon.RunDaemon(vault, engine)
 
-		// AUTO-CONNECT LOGIC
-		if vault.AutoConnect && vault.ActiveProfileID != "" {
-			if profile, exists := vault.Profiles[vault.ActiveProfileID]; exists {
-				log.Printf("🔄 Auto-Connect enabled. Booting tunnel for %s...", profile.Name)
-
-				go func() {
-					err := engine.Connect(vault, profile, vault.UseGlobalRouting)
-					if err != nil {
-						log.Printf("❌ Auto-Connect failed: %v", err)
-					} else {
-						log.Println("✅ Auto-Connect successful!")
-					}
-				}()
-			}
-		}
+		return
 	}
 
 	// ---------------------------------------------------------
@@ -179,7 +181,8 @@ func main() {
 		gui.Run(vault, wakeUpChan) // This blocks until the user closes the GUI window
 
 		log.Println("GUI Window Closed. Triggering clean shutdown...")
-		cancelFunc() // Pull the fire alarm manually when GUI closes
+		// cancelFunc() // Pull the fire alarm manually when GUI closes
+		os.Exit(0)
 	}
 
 	// ---------------------------------------------------------
