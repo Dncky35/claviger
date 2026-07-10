@@ -63,7 +63,7 @@ Execute the following on your target Linux server to begin the Zero-Trust enroll
 
 ```bash
 # Install the claviger-server
-curl -sSL https://cloudrocean.com/installers/claviger-server | sudo bash
+curl -sSL https://api.cloudrocean.com/v1/installers/claviger-server/latest | sudo bash
 
 ```
 
@@ -85,7 +85,24 @@ Once configured, Claviger installs itself as a `systemd` unit:
 sudo systemctl start claviger-server
 ```
 
-### 3. Client Enrollment
+### 3. Client Provisioning (linux)
+Execute the following on your target Linux client to begin the Zero-Trust client:
+
+```bash
+# Install the claviger-server
+curl -sSL https://api.cloudrocean.com/v1/installers/claviger-client/latest | sudo bash
+
+```
+
+### 4. Linux Client Enrolment
+1.  Generete token **"sudo claviger-client generate"**.
+2.  Copy and paste the token into the server's setup terminal.
+3.  The server will provide an **Approval Token (Visa)**, Copy the approval token from server and paste to client terminal **"sudo claviger-client approve [server-token]"**.
+4.  to connect server enter **"sudo claviger-client connect"**.
+
+
+
+### 4. Windows Client Enrollment
 1.  Open the **Claviger Desktop App**.
 2.  Click **"Generate Connection Request"**.
 3.  Paste the resulting token into the server's setup terminal.
