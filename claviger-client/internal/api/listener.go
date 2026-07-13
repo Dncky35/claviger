@@ -28,6 +28,10 @@ type ListenerConfig struct {
 	CancelFunc context.CancelFunc
 	Vault      *config.ClientVault
 	Engine     VPNEngine // 🎯 2. Use the interface here instead of *vpn.Engine
+
+	// ADD THESE TWO LINES:
+	OnSubscribe   func(net.Conn)
+	OnUnsubscribe func(net.Conn)
 }
 
 // StartListener handles the single-instance lock and starts the IPC command server
@@ -179,6 +183,30 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 			currentState = "ONLINE"
 		}
 		c.Write([]byte(currentState))
+
+	case "SUBSCRIBE":
+		log.Println("📡 GUI Client requested event subscription.")
+
+		// 1. Trigger the callback if it exists
+		if cfg.OnSubscribe != nil {
+			cfg.OnSubscribe(c)
+		}
+
+		// 2. Keep the connection alive
+		dummyBuf := make([]byte, 1)
+		for {
+			_, err := c.Read(dummyBuf)
+			if err != nil {
+				log.Printf("⚠️ Subscriber disconnected: %v", err)
+				break
+			}
+		}
+
+		// 3. Clean up when they disconnect
+		if cfg.OnUnsubscribe != nil {
+			cfg.OnUnsubscribe(c)
+		}
+		return
 
 	case "CONNECT":
 

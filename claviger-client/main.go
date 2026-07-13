@@ -161,6 +161,10 @@ func main() {
 		CancelFunc: cancelFunc,
 		Vault:      vault,
 		Engine:     engine,
+
+		// INJECT THE FUNCTIONS HERE:
+		OnSubscribe:   daemon.AddSubscriber,
+		OnUnsubscribe: daemon.RemoveSubscriber,
 	})
 
 	// ---------------------------------------------------------
@@ -168,7 +172,7 @@ func main() {
 	// ---------------------------------------------------------
 	if isDaemon {
 		log.Println("Starting Claviger Background Daemon...")
-		daemon.RunDaemon(vault, engine)
+		daemon.RunDaemon(ctx, vault, engine)
 
 		return
 	}
