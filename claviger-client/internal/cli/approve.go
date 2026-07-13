@@ -29,7 +29,7 @@ func HandleApprove(vault *config.ClientVault, tokenString string) {
 	profile.HubPort = approval.HubPort
 
 	serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
-	profile.Name = fmt.Sprintf("Claviger Hub (%s)", serverIP)
+	profile.Name = fmt.Sprintf("%s", serverIP)
 
 	if err := config.Save(vault); err != nil {
 		log.Fatalf("❌ Failed to save vault: %v", err)

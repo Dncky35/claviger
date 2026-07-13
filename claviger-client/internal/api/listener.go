@@ -87,7 +87,7 @@ func StartListener(cfg ListenerConfig) {
 func handleConnection(c net.Conn, cfg ListenerConfig) {
 	defer c.Close()
 
-	buf := make([]byte, 256)
+	buf := make([]byte, 4096)
 	n, err := c.Read(buf)
 	if err != nil || n == 0 {
 		return
@@ -108,51 +108,83 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 			log.Println("WAKEUP signal dropped (loop is busy or already awake).")
 		}
 
+	case "REMOVE":
+		log.Println("DEBUG: Daemon entered REMOVE case")
+
+		if cfg.Vault == nil {
+			log.Println("ERROR: Daemon vault is nil!")
+			c.Write([]byte("ER"))
+			return
+		}
+
+		if cfg.Vault.ActiveProfileID != "" {
+			// 1. Delete the profile from the Vault's map
+			delete(cfg.Vault.Profiles, cfg.Vault.ActiveProfileID)
+
+			// 2. Clear the Active Profile ID so it doesn't point to a ghost profile
+			cfg.Vault.ActiveProfileID = ""
+
+			// 3. Save the updated Vault to disk
+			if err := config.Save(cfg.Vault); err == nil {
+				log.Println("✅ Root Daemon successfully removed profile and saved Vault.")
+				c.Write([]byte("OK"))
+			} else {
+				log.Printf("❌ Root Daemon failed to save after removal: %v", err)
+				c.Write([]byte("ER"))
+			}
+		} else {
+			log.Println("⚠️ No active profile to remove.")
+			c.Write([]byte("ER"))
+		}
+
 	case "APPROVE":
 		log.Println("DEBUG: Daemon entered APPROVE case")
 		if len(parts) >= 2 {
-			tokenString := parts[1]
-			log.Printf("Root Daemon received APPROVE command.")
+			tokenString := strings.TrimSpace(parts[1])
+			log.Printf("Root Daemon received APPROVE command. Token length: %d", len(tokenString))
 
-			if cfg.Vault == nil {
-				log.Println("ERROR: Daemon vault is nil!")
-				c.Write([]byte("ER"))
-				return
+			// Reload Vault
+			freshVault, err := config.Load()
+			if err == nil {
+				cfg.Vault = freshVault // (Change to m.vault if you are using your Windows service struct)
 			}
 
+			// 🎯 FIX 1: Strictly handle the decoding error!
 			approval, err := auth.DecodeApprovalToken(tokenString)
-			if err != nil {
-				log.Printf("Daemon failed to decode token: %v", err)
+			if err != nil || approval == nil {
+				// If you paste a Request Token here, this blocks the crash!
+				log.Printf("❌ Daemon failed to decode Visa token (Wrong token type?): %v", err)
+				c.Write([]byte("ER"))
+				return // MUST return here to prevent a Nil Pointer Panic
+			}
+
+			profile, exists := cfg.Vault.Profiles[cfg.Vault.ActiveProfileID]
+			if !exists || profile.Status != "pending_approval" {
+				log.Printf("❌ Daemon error: No pending profile found.")
 				c.Write([]byte("ER"))
 				return
 			}
 
-			if cfg.Vault.ActiveProfileID != "" {
-				if profile, exists := cfg.Vault.Profiles[cfg.Vault.ActiveProfileID]; exists {
-					profile.AssignedIP = approval.AssignedIP
-					profile.ServerKey = approval.ServerPubKey
-					profile.ServerEndpoint = approval.ServerEndpoint
-					profile.DNS = approval.DNS
-					profile.BaseSubnet = approval.BaseSubnet
-					profile.Status = "active"
-					profile.HubPort = approval.HubPort
+			profile.AssignedIP = approval.AssignedIP
+			profile.ServerKey = approval.ServerPubKey
+			profile.ServerEndpoint = approval.ServerEndpoint
+			profile.DNS = approval.DNS
+			profile.BaseSubnet = approval.BaseSubnet
+			profile.Status = "active"
+			profile.HubPort = approval.HubPort
 
-					serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
-					profile.Name = fmt.Sprintf("Claviger Hub (%s)", serverIP)
+			serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
+			profile.Name = fmt.Sprintf("%s", serverIP)
 
-					if err := config.Save(cfg.Vault); err == nil {
-						log.Println("✅ Root Daemon successfully saved updated Vault.")
-						c.Write([]byte("OK"))
-					} else {
-						log.Printf("❌ Root Daemon failed to save: %v", err)
-						c.Write([]byte("ER"))
-					}
-				} else {
-					c.Write([]byte("ER"))
-				}
-			} else {
+			// Save back to disk
+			if err := config.Save(cfg.Vault); err != nil {
+				log.Printf("❌ Daemon failed to save approved vault: %v", err)
 				c.Write([]byte("ER"))
+				return
 			}
+
+			log.Println("✅ Root Daemon successfully approved profile and saved Vault.")
+			c.Write([]byte("OK"))
 		}
 
 	case "DISCON":

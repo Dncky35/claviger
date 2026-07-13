@@ -131,8 +131,18 @@
                 <div>
                     <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Assign Network Role</label>
                     <select id="select-mobile-role" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-200 focus:border-primary outline-none">
-                        <!-- Populated by JS -->
-                    </select>
+                        </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Routing Mode</label>
+                    <label class="flex items-start space-x-3 bg-background border border-border rounded-lg p-3 cursor-pointer hover:border-primary/50 transition-colors">
+                        <input type="checkbox" id="checkbox-mobile-global" class="mt-1 w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary focus:ring-1 cursor-pointer">
+                        <div class="flex flex-col">
+                            <span class="text-sm text-slate-200 font-bold">Global Routing (Full Tunnel)</span>
+                            <span class="text-xs text-muted-foreground mt-0.5 leading-relaxed">Route all internet traffic through the VPN. Leave unchecked (Split Tunnel) to save battery and bypass carrier restrictions.</span>
+                        </div>
+                    </label>
                 </div>
                 
                 <p id="mobile-error" class="text-xs text-destructive hidden font-medium"></p>
@@ -317,6 +327,10 @@
     function openMobileModal() {
         document.getElementById('input-mobile-name').value = '';
         document.getElementById('mobile-error').classList.add('hidden');
+        
+        // 🎯 NEW: Reset the checkbox to unchecked (Split Tunnel default)
+        document.getElementById('checkbox-mobile-global').checked = false; 
+
         document.getElementById('mobile-state-1').classList.remove('hidden');
         document.getElementById('mobile-state-2').classList.add('hidden');
         
@@ -348,6 +362,9 @@
     async function submitMobileRegistration() {
         const nameInput = document.getElementById('input-mobile-name').value.trim();
         const roleId = document.getElementById('select-mobile-role').value;
+        // 🎯 NEW: Grab the boolean value from the checkbox
+        const isGlobal = document.getElementById('checkbox-mobile-global').checked; 
+        
         const errText = document.getElementById('mobile-error');
         const btn = document.getElementById('btn-mobile-generate');
 
@@ -357,13 +374,19 @@
             return;
         }
 
-        btn.innerHTML = "Generating Keys... ⏳"; btn.disabled = true;
+        btn.innerHTML = "Generating Keys... ⏳"; 
+        btn.disabled = true;
 
         try {
             const res = await fetch('/api/enrollment/mobile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: nameInput, role: roleId })
+                // 🎯 NEW: Inject `use_global_routing` into the payload
+                body: JSON.stringify({ 
+                    name: nameInput, 
+                    role: roleId,
+                    use_global_routing: isGlobal 
+                })
             });
             const result = await res.json();
 
@@ -383,8 +406,10 @@
                 errText.classList.remove('hidden');
             }
         } catch (err) {
-            errText.innerText = "Network Error."; errText.classList.remove('hidden');
+            errText.innerText = "Network Error."; 
+            errText.classList.remove('hidden');
         }
+        
         btn.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="7" y="7" width="3" height="3"></rect><rect x="14" y="7" width="3" height="3"></rect><rect x="7" y="14" width="3" height="3"></rect><rect x="14" y="14" width="3" height="3"></rect></svg>
             Generate QR Code

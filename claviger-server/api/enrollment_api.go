@@ -109,23 +109,25 @@ func HandleMobileEnrollment(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Parse the incoming JSON (Name and Role)
+		// 1. PARSE INCOMING JSON (Includes Name, Role, and UseGlobalRouting)
 		var req auth.MobileEnrollReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, `{"message": "Invalid request payload"}`, http.StatusBadRequest)
 			return
 		}
 
-		// Basic validation
+		// 2. BASIC VALIDATION
 		if req.Name == "" || req.Role == "" {
 			http.Error(w, `{"message": "Device name and role are required"}`, http.StatusBadRequest)
 			return
 		}
 
-		// Fetch the Server's Public IP (the auth package handles fallbacks if it's empty)
+		// 3. FETCH SERVER CONFIG
+		// The auth package handles fallbacks if it's empty
 		serverIP := storage.GetConfig(db, "vpn_endpoint")
 
-		// Execute the "Burn After Reading" generation flow
+		// 4. EXECUTE "BURN AFTER READING" FLOW
+		// Generates keys, injects to wg0, saves ONLY pubkey to DB, and returns QR Base64
 		resp, err := auth.EnrollMobileDevice(db, &req, serverIP)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -136,7 +138,11 @@ func HandleMobileEnrollment(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Success! Send the QR code and IP back to the React UI
+		// (Optional) Increment the global revision config
+		// so desktop sync managers realize the peer list has changed
+		// _ = storage.IncrementConfigRevision(db)
+
+		// 5. RETURN SECURE DATA TO UI
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "success",
 			"data":   resp, // Contains QRCodeBase64, PublicKey, and AssignedIP

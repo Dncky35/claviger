@@ -6,10 +6,14 @@ import (
 	"claviger-client/internal/config"
 	"claviger-client/internal/controller"
 	"claviger-client/internal/vpn"
+	"fmt"
 	"log"
+	"net"
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/widget"
 )
 
 func (g *ClavigerGUI) SafeUpdate(fn func()) {
@@ -115,7 +119,46 @@ func (g *ClavigerGUI) setupEvents() {
 		}
 	}
 
-	g.RemoveBtn.OnTapped = func() {
-		// ... (Your existing RemoveBtn logic is perfect, leave it as is) ...
-	}
+	g.RemoveBtn = widget.NewButton("Remove Server", func() {
+		// Add a safety confirmation dialog
+		confirmMessage := fmt.Sprintf("Are you sure you want to remove this server (%s) profile and disconnect?", g.ActiveProfile.Name)
+		dialog.ShowConfirm("Remove Server", confirmMessage, func(confirm bool) {
+			if !confirm {
+				return
+			}
+
+			// 🎯 STRICT DAEMON DELEGATION (No Direct Fallback)
+			conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
+			if err != nil {
+				log.Println("❌ Daemon not reachable:", err)
+				dialog.ShowError(fmt.Errorf("Claviger Background Service is not running.\nPlease start the service from Windows Services and try again."), g.Window)
+				return
+			}
+			defer conn.Close()
+
+			log.Println("📡 Whispering REMOVE command to root daemon...")
+			conn.Write([]byte("REMOVE"))
+
+			// Wait for the Daemon to finish deleting & saving
+			ack := make([]byte, 2)
+			conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+			conn.Read(ack)
+
+			if string(ack) == "OK" {
+				// The Daemon deleted it! Now the GUI just reloads the file from disk.
+				updatedVault, loadErr := config.Load()
+				if loadErr != nil {
+					dialog.ShowError(fmt.Errorf("Failed to sync with Daemon: %v", loadErr), g.Window)
+					return
+				}
+				g.Vault = updatedVault
+				g.ActiveProfile = nil // Clear current memory
+
+				dialog.ShowInformation("Success", "Server profile removed successfully!", g.Window)
+				g.ShowDashboardScreen()
+			} else {
+				dialog.ShowError(fmt.Errorf("Daemon failed to remove the profile"), g.Window)
+			}
+		}, g.Window)
+	})
 }

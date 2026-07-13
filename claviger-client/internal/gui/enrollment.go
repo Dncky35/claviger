@@ -60,6 +60,14 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 	copyBtn.Disable()
 
 	genBtn := widget.NewButton("Generate Request Token", func() {
+
+		// before creating new token remove old ones with status: pending_approval
+		for _, p := range g.Vault.Profiles {
+			if p.Status == "pending_approval" {
+				delete(g.Vault.Profiles, p.ID)
+			}
+		}
+
 		privKey, pubKey, _ := vpn.GenerateKeys()
 		hostname, _ := os.Hostname()
 		if hostname == "" {
@@ -101,64 +109,38 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 			return
 		}
 
-		// 🎯 1. ATTEMPT TO DELEGATE TO ROOT DAEMON (Linux/Mac)
+		// 🎯 STRICT DAEMON DELEGATION (No Direct Fallback)
 		conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
-		if err == nil {
-			log.Println("📡 Whispering APPROVE command to root daemon...")
-			payload := fmt.Sprintf("APPROVE|%s", tokenString)
-			conn.Write([]byte(payload))
-
-			// Wait for the Daemon to finish saving
-			ack := make([]byte, 2)
-			conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-			conn.Read(ack)
-			conn.Close()
-
-			if string(ack) == "OK" {
-				// The Daemon saved it! Now the GUI just reloads the file from disk.
-				updatedVault, loadErr := config.Load()
-				if loadErr != nil {
-					dialog.ShowError(fmt.Errorf("Failed to sync with Daemon: %v", loadErr), g.Window)
-					return
-				}
-				g.Vault = updatedVault
-				g.ActiveProfile = g.Vault.Profiles[g.Vault.ActiveProfileID] // Update current memory
-
-				dialog.ShowInformation("Success", "Device enrolled successfully via secure Daemon!", g.Window)
-				g.ShowDashboardScreen()
-				return
-			} else {
-				dialog.ShowError(fmt.Errorf("Daemon rejected the token or failed to save"), g.Window)
-				return
-			}
-		}
-
-		// 🎯 2. FALLBACK FOR WINDOWS (Direct Save)
-		log.Println("⚠️ Daemon not found. Attempting direct save (Windows Mode)...")
-		approval, err := auth.DecodeApprovalToken(tokenString)
 		if err != nil {
-			dialog.ShowError(fmt.Errorf("invalid Visa token: %v", err), g.Window)
+			log.Println("❌ Daemon not reachable:", err)
+			dialog.ShowError(fmt.Errorf("Claviger Background Service is not running.\nPlease start the service from Windows Services and try again."), g.Window)
 			return
 		}
+		defer conn.Close()
 
-		profile := g.Vault.Profiles[g.Vault.ActiveProfileID]
-		profile.AssignedIP = approval.AssignedIP
-		profile.ServerKey = approval.ServerPubKey
-		profile.ServerEndpoint = approval.ServerEndpoint
-		profile.DNS = approval.DNS
-		profile.BaseSubnet = approval.BaseSubnet
-		profile.Status = "active"
-		profile.HubPort = approval.HubPort
+		log.Println("📡 Whispering APPROVE command to root daemon...")
+		payload := fmt.Sprintf("APPROVE|%s", tokenString)
+		conn.Write([]byte(payload))
 
-		serverIP := strings.Split(approval.ServerEndpoint, ":")[0]
-		profile.Name = fmt.Sprintf("%s", serverIP)
+		// Wait for the Daemon to finish saving
+		ack := make([]byte, 2)
+		conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		conn.Read(ack)
 
-		if saveErr := config.Save(g.Vault); saveErr != nil {
-			dialog.ShowError(fmt.Errorf("Failed to save profile: %v", saveErr), g.Window)
-		} else {
-			dialog.ShowInformation("Success", "Device enrolled successfully!", g.Window)
-			g.ActiveProfile = profile
+		if string(ack) == "OK" {
+			// The Daemon saved it! Now the GUI just reloads the file from disk.
+			updatedVault, loadErr := config.Load()
+			if loadErr != nil {
+				dialog.ShowError(fmt.Errorf("Failed to sync with Daemon: %v", loadErr), g.Window)
+				return
+			}
+			g.Vault = updatedVault
+			g.ActiveProfile = g.Vault.Profiles[g.Vault.ActiveProfileID] // Update current memory
+
+			dialog.ShowInformation("Success", "Device enrolled successfully via secure Daemon!", g.Window)
 			g.ShowDashboardScreen()
+		} else {
+			dialog.ShowError(fmt.Errorf("Daemon rejected the token or failed to save"), g.Window)
 		}
 	})
 

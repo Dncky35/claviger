@@ -255,8 +255,9 @@ func EnrollStandardUser(db *sql.DB, req *ConnectionRequest, roleID string, serve
 
 // MobileEnrollReq represents the incoming request from the UI to add a phone
 type MobileEnrollReq struct {
-	Name string `json:"name"`
-	Role string `json:"role"` // e.g., "standard_user", "admin"
+	Name             string `json:"name"`
+	Role             string `json:"role"`               // e.g., "standard_user", "admin"
+	UseGlobalRouting bool   `json:"use_global_routing"` // 🎯 NEW: User selects routing mode
 }
 
 // MobileEnrollResp contains the Base64 image and safe data (NO PRIVATE KEYS!)
@@ -351,15 +352,22 @@ func EnrollMobileDevice(db *sql.DB, req *MobileEnrollReq, serverPublicIP string)
 		customEndpoint = strings.TrimSpace(serverPublicIP)
 	}
 
-	// 🎯 FIX 1: BULLETPROOF GLOBAL ROUTING CHECK
-	// We check for "true", "1", and "on" to handle any way the UI might save the toggle
-	//globalSetting := strings.ToLower(strings.TrimSpace(storage.GetConfig(db, "global_routing")))
-	//globalRouting := (globalSetting == "true" || globalSetting == "1" || globalSetting == "on")
+	// 🎯 FIX 1: DYNAMIC ROUTING (Split vs Global)
+	// Fetch the base subnet from the database (fallback to 10.8.0.0/24 if not found)
+	baseSubnet := storage.GetConfig(db, "vpn_subnet")
+	if baseSubnet == "" {
+		baseSubnet = "10.8.0.0/24"
+	}
 
-	allowedIPs := "0.0.0.0/0, ::/0"
-	// if globalRouting {
-	// 	allowedIPs = "0.0.0.0/0, ::/0"
-	// }
+	var allowedIPs string
+	if req.UseGlobalRouting {
+		// FULL TUNNEL: Route absolutely everything through the VPS
+		allowedIPs = "0.0.0.0/0, ::/0"
+	} else {
+		// SPLIT TUNNEL (ZERO TRUST MODE): Only route traffic meant for the private network
+		// This saves mobile battery and avoids carrier throttling!
+		allowedIPs = baseSubnet
+	}
 
 	// 🎯 FIX 2: SMART DNS FALLBACK
 	// If AdGuard is NOT installed yet, fallback to Cloudflare (1.1.1.1) so the internet still works!
@@ -367,6 +375,12 @@ func EnrollMobileDevice(db *sql.DB, req *MobileEnrollReq, serverPublicIP string)
 	if storage.GetConfig(db, "app_adguard_port") == "" {
 		// AdGuard port isn't in the DB, meaning it's not installed. Use public DNS.
 		dnsIP = "1.1.1.1, 1.0.0.1"
+
+		// CRITICAL EDGE CASE: If they chose Split Tunnel, but use public DNS,
+		// we must append the DNS IPs to the AllowedIPs, otherwise DNS queries will fail!
+		if !req.UseGlobalRouting {
+			allowedIPs = fmt.Sprintf("%s, 1.1.1.1/32, 1.0.0.1/32", baseSubnet)
+		}
 	}
 
 	// 6. BUILD THE RAW CONFIG TEXT FOR THE QR CODE

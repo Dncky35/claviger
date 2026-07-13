@@ -73,7 +73,10 @@ func (g *ClavigerGUI) ShowDashboardScreen() {
 	})
 	g.AutoStartCheck.SetChecked(g.Vault.AutoConnect)
 
-	g.AddServerBtn = widget.NewButton("Add New Server", g.ShowEnrollmentScreen)
+	g.AddServerBtn = widget.NewButton("Add New Server", func() {
+		g.ShowEnrollmentScreen()
+
+	}) // close the modal and navigate teh enrollment
 	g.RemoveBtn = widget.NewButton("Remove Server", nil) // Logic in events.go
 
 	// 🎯 SETTINGS MODAL TRIGGER
