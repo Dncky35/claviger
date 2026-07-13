@@ -74,6 +74,7 @@ func (g *ClavigerGUI) ShowDashboardScreen() {
 	g.AutoStartCheck.SetChecked(g.Vault.AutoConnect)
 
 	g.AddServerBtn = widget.NewButton("Add New Server", func() {
+
 		g.ShowEnrollmentScreen()
 
 	}) // close the modal and navigate teh enrollment

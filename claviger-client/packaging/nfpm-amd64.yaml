@@ -1,7 +1,7 @@
 name: claviger-client
 arch: amd64
 platform: linux
-version: 0.3.5
+version: 0.3.6
 section: net
 priority: optional
 maintainer: "Cloudrocean <support@cloudrocean.com>"
