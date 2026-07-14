@@ -31,6 +31,13 @@ func main() {
 		cmd.ShowRecoveryKey()
 	case "list":
 		cmd.RunGetList(args) // Updated: Pass args to filter by role
+	case "restore":
+		if len(args) < 1 {
+			fmt.Println("❌ Usage: claviger-server restore [backup_file]")
+			return
+		}
+		cmd.RunRestore(args[0]) // New: Passes the path to the backup file
+
 	case "revoke":
 		if len(args) < 1 {
 			fmt.Println("❌ Usage: claviger-server revoke [client_id]")
@@ -47,12 +54,13 @@ func main() {
 func printUsage() {
 	fmt.Println("=== Claviger Zero Trust Gateway - Server CLI ===")
 	fmt.Println("Usage:")
-	fmt.Println("  claviger-server setup                - Provision the server, DB, and VPN keys")
-	fmt.Println("  claviger-server start                - Boot the VPN daemon and Local Web Hub")
-	fmt.Println("  claviger-server register             - Register a new client")
-	fmt.Println("  claviger-server list                 - List all registered VPN clients")
-	fmt.Println("  claviger-server list [role]          - List clients filtered by role (e.g., admin)")
-	fmt.Println("  claviger-server revoke [id]          - Revoke a client and drop their active session")
-	fmt.Println("  claviger-server reset                - Safely wipe the local configuration")
-	fmt.Println("  claviger-server uninstall            - Uninstall the VPN daemon and Local Web Hub")
+	fmt.Println("  claviger-server setup                	- Provision the server, DB, and VPN keys")
+	fmt.Println("  claviger-server start                	- Boot the VPN daemon and Local Web Hub")
+	fmt.Println("  claviger-server register             	- Register a new client")
+	fmt.Println("  claviger-server list                 	- List all registered VPN clients")
+	fmt.Println("  claviger-server list [role]          	- List clients filtered by role (e.g., admin)")
+	fmt.Println("  claviger-server revoke [id]          	- Revoke a client and drop their active session")
+	fmt.Println("  claviger-server reset                	- Safely wipe the local configuration")
+	fmt.Println("  claviger-server uninstall            	- Uninstall the VPN daemon and Local Web Hub")
+	fmt.Println("  claviger-server restore [backup_file]	- Restore from a backup file")
 }

@@ -15,8 +15,8 @@ func EnsureIdentity(db *sql.DB) ([]byte, error) {
 	if _, err := os.Stat(seedPath); err == nil {
 		log.Println("✅ Identity seed found. Loading...")
 		mnemonicBytes, _ := os.ReadFile(seedPath)
-		keys, _ := crypto.DeriveKeys(string(mnemonicBytes))
-		return keys.AESBackupKey, nil
+		key, _ := crypto.DeriveAESKey(string(mnemonicBytes))
+		return key, nil
 	}
 
 	// 2. No seed found? Check for legacy key
@@ -50,6 +50,6 @@ func EnsureIdentity(db *sql.DB) ([]byte, error) {
 
 	// Return the key for the current session
 	mnemonicBytes, _ := os.ReadFile(seedPath)
-	keys, _ := crypto.DeriveKeys(string(mnemonicBytes))
-	return keys.AESBackupKey, nil
+	key, _ := crypto.DeriveAESKey(string(mnemonicBytes))
+	return key, nil
 }

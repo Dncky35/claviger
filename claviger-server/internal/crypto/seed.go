@@ -12,8 +12,7 @@ import (
 
 // ClavigerKeys holds our two mathematically linked root keys.
 type ClavigerKeys struct {
-	WireGuardPrivateKey []byte // Exactly 32 bytes for Curve25519
-	AESBackupKey        []byte // Exactly 32 bytes for AES-256
+	AESBackupKey []byte // Exactly 32 bytes for AES-256
 }
 
 // GenerateNewMnemonic creates a fresh 12-word BIP39 seed phrase.
@@ -35,7 +34,7 @@ func GenerateNewMnemonic() (string, error) {
 
 // DeriveKeys takes the 12-word seed phrase and deterministically expands it
 // into two separate, secure 32-byte keys using HKDF-SHA256.
-func DeriveKeys(mnemonic string) (*ClavigerKeys, error) {
+func DeriveAESKey(mnemonic string) ([]byte, error) {
 	if !bip39.IsMnemonicValid(mnemonic) {
 		return nil, errors.New("invalid seed phrase provided")
 	}
@@ -43,22 +42,16 @@ func DeriveKeys(mnemonic string) (*ClavigerKeys, error) {
 	// 1. Convert the mnemonic to a standard BIP39 seed (no passphrase used)
 	seed := bip39.NewSeed(mnemonic, "")
 
-	// 2. Setup the HKDF (HMAC-based Key Derivation Function)
-	// We use SHA-256 as the hash, the BIP39 seed as the secret, and a custom info string.
-	// The 'info' string binds these keys specifically to the Claviger application context.
-	hkdfReader := hkdf.New(sha256.New, seed, nil, []byte("claviger-zero-trust-gateway-root"))
+	// 2. Setup the HKDF
+	// We bind to a specific "claviger-backup-encryption" context to ensure
+	// this key is cryptographically isolated from any other app secrets.
+	hkdfReader := hkdf.New(sha256.New, seed, nil, []byte("claviger-backup-encryption"))
 
-	// 3. We need 64 bytes total (32 for WireGuard, 32 for AES)
-	keyMaterial := make([]byte, 64)
-	if _, err := io.ReadFull(hkdfReader, keyMaterial); err != nil {
+	// 3. We need exactly 32 bytes for an AES-256 key
+	aesKey := make([]byte, 32)
+	if _, err := io.ReadFull(hkdfReader, aesKey); err != nil {
 		return nil, fmt.Errorf("HKDF derivation failed: %v", err)
 	}
 
-	// 4. Split the derived material perfectly in half
-	keys := &ClavigerKeys{
-		WireGuardPrivateKey: keyMaterial[:32], // First 32 bytes
-		AESBackupKey:        keyMaterial[32:], // Second 32 bytes
-	}
-
-	return keys, nil
+	return aesKey, nil
 }

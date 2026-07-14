@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -259,11 +258,15 @@ func RunSetup(args []string) {
 		// Loop automatically restarts here
 	}
 
-	// Generate Server Keys
+	// serverPriv := keys.WireGuardPrivateKey
+	// serverPub := keys.WireGuardPublicKey
+
+	// // Generate Server Keys
 	serverPriv, serverPub, err := network.GenerateKeys()
 	if err != nil {
 		log.Fatalf("❌ Failed to generate Server keys: %v", err)
 	}
+
 	tempConfig["wg_private_key"] = serverPriv
 	tempConfig["wg_public_key"] = serverPub
 
@@ -338,19 +341,13 @@ func RunSetup(args []string) {
 
 	fmt.Println("\n💾 Committing configurations to disk...")
 
+	// serverPriv = hex.EncodeToString(keys.WireGuardPrivateKey)
+
 	// 1. Generate the Master Identity (12-word Seed)
 	mnemonic, err := crypto.GenerateNewMnemonic()
 	if err != nil {
 		log.Fatalf("❌ Failed to generate identity seed: %v", err)
 	}
-
-	// 2. Deterministically derive keys
-	keys, err := crypto.DeriveKeys(mnemonic)
-	if err != nil {
-		log.Fatalf("❌ Failed to derive keys from seed: %v", err)
-	}
-
-	serverPriv = hex.EncodeToString(keys.WireGuardPrivateKey)
 
 	if err := os.WriteFile("/var/lib/claviger/seed.txt", []byte(mnemonic), 0600); err != nil {
 		log.Fatalf("❌ Failed to save recovery seed: %v", err)
