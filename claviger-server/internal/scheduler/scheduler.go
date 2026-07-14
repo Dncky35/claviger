@@ -44,8 +44,23 @@ func Start(db *sql.DB) {
 
 	RegisterTask("db-backup", "Database Backup", "Creates a safe snapshot of your SQLite database.", "💾", "@daily", true, func() error {
 		log.Println("[Cron] 💾 Executing Database Backup...")
-		time.Sleep(1 * time.Second) // Simulate work
-		return system.PerformSecureBackup(db)
+
+		// 1. Load the seed we saved during install
+		key := system.GetActiveAESKey()
+		if len(key) != 32 {
+			return fmt.Errorf("backup aborted: key not initialized in memory")
+		}
+
+		const backupDir = "/var/lib/claviger/backups"
+
+		err := system.PerformSecureBackup(db, backupDir, key)
+		if err != nil {
+			log.Printf("[Cron] ❌ Backup failed: %v", err)
+			return err
+		}
+
+		log.Println("[Cron] ✅ Backup completed and encrypted successfully.")
+		return nil
 	})
 
 	RegisterTask("update-check", "Update Checker", "Pings GitHub for new Claviger releases.", "🔄", "@every 12h", true, func() error {

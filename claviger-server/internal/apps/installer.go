@@ -213,6 +213,35 @@ networks:
     external: true
 `,
 	},
+	"nextcloud": {
+		Name:             "Nextcloud",
+		Category:         "optional",
+		Description:      "Self-hosted productivity platform, file sync, and secure collaboration.",
+		Icon:             "☁️",
+		HasCustomSetup:   false,
+		NeedsDynamicPort: true, // NPM must handle routing to keep it behind the Zero Trust gateway
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.3'
+services:
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud
+    restart: unless-stopped
+    ports:
+      - "{{.DynamicPort}}:80/tcp"  # Web UI handled by Claviger Proxy
+    volumes:
+      - ./nextcloud-data:/var/www/html
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=nextcloud"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
 }
 
 // Install runs docker-compose for a specific app

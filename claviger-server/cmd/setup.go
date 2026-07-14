@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"bufio"
-	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -13,6 +11,7 @@ import (
 	"strings"
 
 	"claviger-server/internal/auth"
+	"claviger-server/internal/crypto"
 	"claviger-server/internal/firewall"
 	"claviger-server/internal/security"
 	"claviger-server/internal/system"
@@ -339,14 +338,32 @@ func RunSetup(args []string) {
 
 	fmt.Println("\n💾 Committing configurations to disk...")
 
-	// --- NEW: Generate the AES-256 Disaster Recovery Key ---
-	keyBytes := make([]byte, 32)
-	if _, err := io.ReadFull(rand.Reader, keyBytes); err != nil {
-		log.Fatalf("❌ Failed to generate secure backup key: %v", err)
+	// 1. Generate the Master Identity (12-word Seed)
+	mnemonic, err := crypto.GenerateNewMnemonic()
+	if err != nil {
+		log.Fatalf("❌ Failed to generate identity seed: %v", err)
 	}
 
-	recoveryKeyHex := hex.EncodeToString(keyBytes)
-	tempConfig["backup_recovery_key"] = recoveryKeyHex
+	// 2. Deterministically derive keys
+	keys, err := crypto.DeriveKeys(mnemonic)
+	if err != nil {
+		log.Fatalf("❌ Failed to derive keys from seed: %v", err)
+	}
+
+	serverPriv = hex.EncodeToString(keys.WireGuardPrivateKey)
+
+	if err := os.WriteFile("/var/lib/claviger/seed.txt", []byte(mnemonic), 0600); err != nil {
+		log.Fatalf("❌ Failed to save recovery seed: %v", err)
+	}
+
+	// // --- NEW: Generate the AES-256 Disaster Recovery Key ---
+	// keyBytes := make([]byte, 32)
+	// if _, err := io.ReadFull(rand.Reader, keyBytes); err != nil {
+	// 	log.Fatalf("❌ Failed to generate secure backup key: %v", err)
+	// }
+
+	// recoveryKeyHex := hex.EncodeToString(keyBytes)
+	// tempConfig["backup_recovery_key"] = recoveryKeyHex
 
 	// A. Wipe old config to ensure a totally clean slate
 	storage.ClearConfig(db)
@@ -412,10 +429,15 @@ SaveConfig = false
 	fmt.Printf("2. Paste the Server Approval Token below into your Claviger Client.\n")
 	fmt.Printf("3. Once connected, open http://%s:%s to access the Hub.\n", hubIP, hubPort)
 
-	fmt.Println("\n🛡️  DISASTER RECOVERY KEY (SAVE THIS NOW!):")
-	fmt.Println("   If this server is destroyed, you will need this key to decrypt")
-	fmt.Println("   your automated backups. It will NEVER be shown again.")
-	fmt.Printf("   👉 %s\n", recoveryKeyHex)
+	fmt.Println("\n⚠️  CRITICAL: BACKUP YOUR RECOVERY SEED!")
+	fmt.Println("   If this server is destroyed, you MUST have these 12 words")
+	fmt.Println("   to restore your VPN identity and decrypt your database.")
+	fmt.Println("\n   👉 " + mnemonic)
+
+	// fmt.Println("\n🛡️  DISASTER RECOVERY KEY (SAVE THIS NOW!):")
+	// fmt.Println("   If this server is destroyed, you will need this key to decrypt")
+	// fmt.Println("   your automated backups. It will NEVER be shown again.")
+	// fmt.Printf("   👉 %s\n", recoveryKeyHex)
 
 	fmt.Println("\n🔑 YOUR SERVER APPROVAL TOKEN:")
 	fmt.Printf("\n%s\n\n", finalToken)

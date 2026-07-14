@@ -27,6 +27,8 @@ func main() {
 		cmd.RunStart()
 	case "register":
 		cmd.RunRegisterClient()
+	case "recovery-key":
+		cmd.ShowRecoveryKey()
 	case "list":
 		cmd.RunGetList(args) // Updated: Pass args to filter by role
 	case "revoke":

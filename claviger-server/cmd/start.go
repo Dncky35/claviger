@@ -19,6 +19,7 @@ import (
 	"claviger-server/internal/docker"
 	"claviger-server/internal/firewall"
 	"claviger-server/internal/scheduler"
+	"claviger-server/internal/system"
 	"claviger-server/network"
 	"claviger-server/storage"
 	"claviger-server/web"
@@ -271,7 +272,15 @@ func RunStart() {
 		}
 	}))
 
-	db = storage.InitDB() // Or whatever you named your DB connection variable
+	aesKey, err := system.EnsureIdentity(db)
+	if err != nil {
+		log.Fatalf("❌ Critical Failure: Identity could not be secured: %v", err)
+	}
+
+	// 2. Set globally for the lifecycle
+	system.SetBackupKey(aesKey)
+
+	db = storage.InitDB()
 	defer db.Close()
 
 	scheduler.Start(db)

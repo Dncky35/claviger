@@ -5,21 +5,16 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
-
-	"claviger-server/storage" // Update this to your actual storage import path
 )
 
-const backupDir = "/var/lib/claviger/backups"
-
-// PerformSecureBackup creates a safe snapshot of the DB, encrypts it, and saves it.
-func PerformSecureBackup(db *sql.DB) error {
+// PerformSecureBackup creates a safe, atomic snapshot of the DB and encrypts it.
+func PerformSecureBackup(db *sql.DB, backupDir string, aesKey []byte) error {
 	log.Println("[Backup] 💾 Starting secure database backup...")
 
 	// 1. Ensure the backup directory exists
@@ -27,30 +22,22 @@ func PerformSecureBackup(db *sql.DB) error {
 		return fmt.Errorf("failed to create backup directory: %v", err)
 	}
 
-	// 2. Retrieve or Generate the 32-byte AES Recovery Key
-	recoveryKeyHex := storage.GetConfig(db, "backup_recovery_key")
-	if recoveryKeyHex == "" {
-		// First time running! Let's generate a strong key and save it.
-		keyBytes := make([]byte, 32) // AES-256 requires exactly 32 bytes
-		if _, err := io.ReadFull(rand.Reader, keyBytes); err != nil {
-			return fmt.Errorf("failed to generate secure key: %v", err)
-		}
-		recoveryKeyHex = hex.EncodeToString(keyBytes)
-		storage.SetConfig(db, "backup_recovery_key", recoveryKeyHex)
-		log.Println("[Backup] 🔑 New Recovery Key generated! (Admin must save this)")
+	// 2. Validate Key
+	if len(aesKey) != 32 {
+		return fmt.Errorf("invalid AES key length: expected 32 bytes")
 	}
 
-	key, _ := hex.DecodeString(recoveryKeyHex)
-
 	// 3. Create a safe, live snapshot using SQLite's VACUUM INTO
+	// This is atomic and handles locking automatically.
 	tempDBPath := "/tmp/claviger_snapshot.db"
-	_ = os.Remove(tempDBPath) // Clean up any old failed attempts
+	_ = os.Remove(tempDBPath)
 
 	_, err := db.Exec(fmt.Sprintf("VACUUM INTO '%s'", tempDBPath))
 	if err != nil {
 		return fmt.Errorf("failed to create sqlite snapshot: %v", err)
 	}
-	defer os.Remove(tempDBPath) // Always delete the raw temp file when done!
+	// Ensure cleanup even if encryption fails
+	defer os.Remove(tempDBPath)
 
 	// 4. Read the unencrypted snapshot
 	plaintext, err := os.ReadFile(tempDBPath)
@@ -59,7 +46,7 @@ func PerformSecureBackup(db *sql.DB) error {
 	}
 
 	// 5. Encrypt it with AES-256-GCM
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(aesKey)
 	if err != nil {
 		return err
 	}
@@ -67,10 +54,14 @@ func PerformSecureBackup(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+
+	// Prepare nonce
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		return err
 	}
+
+	// Seal the data
 	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
 
 	// 6. Save the encrypted file with a timestamp
@@ -83,22 +74,23 @@ func PerformSecureBackup(db *sql.DB) error {
 
 	log.Printf("[Backup] ✅ Encrypted backup saved successfully to: %s\n", finalPath)
 
-	// 7. Prune old backups (Keep only the last 7 days)
-	pruneOldBackups()
+	// 7. Prune old backups
+	pruneOldBackups(backupDir)
 
 	return nil
 }
 
-// pruneOldBackups deletes any .enc files older than 7 days to save disk space
-func pruneOldBackups() {
+func pruneOldBackups(backupDir string) {
 	files, err := os.ReadDir(backupDir)
 	if err != nil {
+		log.Printf("[Backup] ⚠️ Could not read backup dir for pruning: %v", err)
 		return
 	}
 
 	cutoff := time.Now().AddDate(0, 0, -7)
 
 	for _, file := range files {
+		// Only touch our .enc files
 		if filepath.Ext(file.Name()) == ".enc" {
 			info, err := file.Info()
 			if err == nil && info.ModTime().Before(cutoff) {
