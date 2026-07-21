@@ -18,8 +18,10 @@ import (
 	"claviger-server/api"
 	"claviger-server/internal/docker"
 	"claviger-server/internal/firewall"
+	"claviger-server/internal/notifier"
 	"claviger-server/internal/scheduler"
 	"claviger-server/internal/system"
+	"claviger-server/internal/watchdog"
 	"claviger-server/network"
 	"claviger-server/storage"
 	"claviger-server/web"
@@ -158,10 +160,22 @@ func RunStart() {
 	syncWireGuardPeers(db)
 
 	// ---------------------------------------------------------
-	// 3. START HEARTBEAT ENGINE
+	// 3. START VOICE ENGINE
 	// ---------------------------------------------------------
 	// log.Println("Starting Cloudrocean Heartbeat Engine...")
 	// go api.StartHeartbeatLoop(db, nodeID, apiToken, daemonVersion)
+
+	// Create a context for the whole app
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// 2. Start Notifier Worker (Listens for FireAlert calls in background)
+	notifier.StartWorker(ctx, db)
+
+	// 3. Load Watchdog Config and Start Engine
+	watchdogCfg := watchdog.LoadConfigFromDB(db)
+	watchdogEngine := watchdog.NewEngine(watchdogCfg)
+	watchdogEngine.Start(ctx)
 
 	// ---------------------------------------------------------
 	// 3.5 START DOCKER ORCHESTRATION ENGINE
@@ -349,9 +363,9 @@ func RunStart() {
 	}
 
 	// --- CLEAN UP HTTP SERVER ---
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("⚠️ Web server shutdown error: %v\n", err)
 	}
 
