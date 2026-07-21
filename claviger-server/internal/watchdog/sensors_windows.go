@@ -28,3 +28,7 @@ func checkRAMUsage(thresholdPercent int) {
 func checkCPUUsage(thresholdPercent int) {
 	// Dummy
 }
+
+func checkSSHBruteForce() {
+	// Dummy
+}

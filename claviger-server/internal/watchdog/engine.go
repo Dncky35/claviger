@@ -80,6 +80,10 @@ func (e *Engine) runChecks() {
 	if e.Config.NotifyOnDockerCrash {
 		checkDockerHealth()
 	}
+
+	if e.Config.NotifyOnSSHBruteForce {
+		checkSSHBruteForce()
+	}
 }
 
 // LoadConfigFromDB reads the settings from your config table

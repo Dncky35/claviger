@@ -1,0 +1,332 @@
+{{ define "tab_voice" }}
+<div id="tab-voice" class="space-y-6 hidden animate-fade-in">
+    <!-- Header -->
+    <div>
+        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Alerts & Watchdog</h2>
+        <p class="text-muted-foreground text-sm mt-1">Configure outbound channels and system monitoring thresholds.</p>
+    </div>
+
+    <form id="voice-settings-form" onsubmit="saveVoiceSettings(event)" class="space-y-6">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- LEFT COLUMN: Transmitters (Telegram & Resend) -->
+            <div class="space-y-6">
+                
+                <!-- Telegram Box -->
+                <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-800/40 border-b border-border flex items-center justify-between">
+                        <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
+                            <span>📱</span> Telegram Push
+                        </h3>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="telegram_enabled" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Bot Token</label>
+                            <input type="password" id="telegram_bot_token" placeholder="123456789:ABCdefGHI..." class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Chat ID</label>
+                            <input type="text" id="telegram_chat_id" placeholder="-100123456789" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-2">Alert Levels</label>
+                            <div class="flex items-center gap-4 text-xs text-slate-300">
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="telegram_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> Info
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="telegram_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> Warning
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="telegram_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> Critical
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resend Box -->
+                <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-800/40 border-b border-border flex items-center justify-between">
+                        <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
+                            <span>✉️</span> Resend Email
+                        </h3>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="resend_enabled" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">API Key</label>
+                            <input type="password" id="resend_api_key" placeholder="re_123456789..." class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">From Email</label>
+                                <input type="email" id="resend_from_email" placeholder="alerts@domain.com" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">To Email</label>
+                                <input type="email" id="resend_to_email" placeholder="admin@domain.com" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-2">Alert Levels</label>
+                            <div class="flex items-center gap-4 text-xs text-slate-300">
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="resend_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> Info
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="resend_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> Warning
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="resend_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> Critical
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dispatch Test Alert Button -->
+                <button type="button" onclick="sendTestAlert()" id="btn-test-alert" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors border border-border shadow-sm flex items-center justify-center gap-2">
+                    <span>🔔</span> Send Test Notification
+                </button>
+            </div>
+
+            <!-- RIGHT COLUMN: Watchdog & Perimeter Sensors -->
+            <div class="space-y-6">
+                
+                <!-- Watchdog Thresholds -->
+                <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-800/40 border-b border-border">
+                        <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
+                            <span>🐕</span> Watchdog Thresholds
+                        </h3>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <!-- Disk Threshold -->
+                        <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border">
+                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
+                                <input type="checkbox" id="notify_on_high_disk_usage" class="rounded border-border text-blue-600 focus:ring-0">
+                                Low Disk Space Warning
+                            </label>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="disk_warning_threshold" min="50" max="99" class="w-16 px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono text-center text-slate-200 focus:outline-none focus:border-blue-500" />
+                                <span class="text-xs text-slate-400 font-mono">%</span>
+                            </div>
+                        </div>
+
+                        <!-- RAM Threshold -->
+                        <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border">
+                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
+                                <input type="checkbox" id="notify_on_high_ram_usage" class="rounded border-border text-blue-600 focus:ring-0">
+                                High RAM Usage Warning
+                            </label>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="ram_warning_threshold" min="50" max="99" class="w-16 px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono text-center text-slate-200 focus:outline-none focus:border-blue-500" />
+                                <span class="text-xs text-slate-400 font-mono">%</span>
+                            </div>
+                        </div>
+
+                        <!-- CPU Threshold -->
+                        <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border">
+                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
+                                <input type="checkbox" id="notify_on_high_cpu_usage" class="rounded border-border text-blue-600 focus:ring-0">
+                                High CPU Spike Warning
+                            </label>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="cpu_warning_threshold" min="50" max="99" class="w-16 px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono text-center text-slate-200 focus:outline-none focus:border-blue-500" />
+                                <span class="text-xs text-slate-400 font-mono">%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Perimeter Security Checks -->
+                <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-800/40 border-b border-border">
+                        <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
+                            <span>🛡️</span> Perimeter Guards
+                        </h3>
+                    </div>
+                    <div class="p-5 space-y-3">
+                        <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
+                            <input type="checkbox" id="notify_on_firewall_drop" class="rounded border-border text-rose-500 focus:ring-0">
+                            Alert if UFW Firewall drops or disables
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
+                            <input type="checkbox" id="notify_on_wg_interface_down" class="rounded border-border text-rose-500 focus:ring-0">
+                            Alert if WireGuard interface (wg0) disappears
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
+                            <input type="checkbox" id="notify_on_ssh_brute_force" class="rounded border-border text-amber-500 focus:ring-0">
+                            Alert on SSH Brute Force attempts (Fail2Ban)
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
+                            <input type="checkbox" id="notify_on_docker_crash" class="rounded border-border text-amber-500 focus:ring-0">
+                            Alert on managed Docker Container crashes
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
+                            <input type="checkbox" id="notify_on_daemon_restart" class="rounded border-border text-blue-500 focus:ring-0">
+                            Alert when Claviger daemon restarts
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Submit Button Footer -->
+        <div class="flex justify-end pt-4 border-t border-border">
+            <button type="submit" id="btn-save-voice" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors border border-blue-500 shadow-sm shadow-blue-500/20">
+                💾 Save Voice & Watchdog Settings
+            </button>
+        </div>
+    </form>
+
+    <script>
+        // Load data on page init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadVoiceSettings();
+        });
+
+        async function loadVoiceSettings() {
+            try {
+                // Fetch Notification Config & Watchdog Config concurrently
+                const [notifRes, watchdogRes] = await Promise.all([
+                    fetch('/api/notifications/config'),
+                    fetch('/api/watchdog/config')
+                ]);
+
+                if (notifRes.ok) {
+                    const n = await notifRes.json();
+                    document.getElementById('telegram_enabled').checked = n.telegram_enabled;
+                    document.getElementById('telegram_bot_token').value = n.telegram_bot_token || '';
+                    document.getElementById('telegram_chat_id').value = n.telegram_chat_id || '';
+                    document.getElementById('telegram_notify_info').checked = n.telegram_notify_info;
+                    document.getElementById('telegram_notify_warning').checked = n.telegram_notify_warning;
+                    document.getElementById('telegram_notify_critical').checked = n.telegram_notify_critical;
+
+                    document.getElementById('resend_enabled').checked = n.resend_enabled;
+                    document.getElementById('resend_api_key').value = n.resend_api_key || '';
+                    document.getElementById('resend_from_email').value = n.resend_from_email || '';
+                    document.getElementById('resend_to_email').value = n.resend_to_email || '';
+                    document.getElementById('resend_notify_info').checked = n.resend_notify_info;
+                    document.getElementById('resend_notify_warning').checked = n.resend_notify_warning;
+                    document.getElementById('resend_notify_critical').checked = n.resend_notify_critical;
+                }
+
+                if (watchdogRes.ok) {
+                    const w = await watchdogRes.json();
+                    document.getElementById('notify_on_daemon_restart').checked = w.notify_on_daemon_restart;
+                    document.getElementById('notify_on_high_disk_usage').checked = w.notify_on_high_disk_usage;
+                    document.getElementById('disk_warning_threshold').value = w.disk_warning_threshold || 90;
+                    document.getElementById('notify_on_high_ram_usage').checked = w.notify_on_high_ram_usage;
+                    document.getElementById('ram_warning_threshold').value = w.ram_warning_threshold || 85;
+                    document.getElementById('notify_on_high_cpu_usage').checked = w.notify_on_high_cpu_usage;
+                    document.getElementById('cpu_warning_threshold').value = w.cpu_warning_threshold || 95;
+
+                    document.getElementById('notify_on_firewall_drop').checked = w.notify_on_firewall_drop;
+                    document.getElementById('notify_on_wg_interface_down').checked = w.notify_on_wg_interface_down;
+                    document.getElementById('notify_on_ssh_brute_force').checked = w.notify_on_ssh_brute_force;
+                    document.getElementById('notify_on_docker_crash').checked = w.notify_on_docker_crash;
+                }
+            } catch (err) {
+                console.error('Failed to load voice/watchdog settings:', err);
+            }
+        }
+
+        async function saveVoiceSettings(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save-voice');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Saving...';
+
+            const notifPayload = {
+                telegram_enabled: document.getElementById('telegram_enabled').checked,
+                telegram_bot_token: document.getElementById('telegram_bot_token').value,
+                telegram_chat_id: document.getElementById('telegram_chat_id').value,
+                telegram_notify_info: document.getElementById('telegram_notify_info').checked,
+                telegram_notify_warning: document.getElementById('telegram_notify_warning').checked,
+                telegram_notify_critical: document.getElementById('telegram_notify_critical').checked,
+
+                resend_enabled: document.getElementById('resend_enabled').checked,
+                resend_api_key: document.getElementById('resend_api_key').value,
+                resend_from_email: document.getElementById('resend_from_email').value,
+                resend_to_email: document.getElementById('resend_to_email').value,
+                resend_notify_info: document.getElementById('resend_notify_info').checked,
+                resend_notify_warning: document.getElementById('resend_notify_warning').checked,
+                resend_notify_critical: document.getElementById('resend_notify_critical').checked,
+            };
+
+            const watchdogPayload = {
+                notify_on_daemon_restart: document.getElementById('notify_on_daemon_restart').checked,
+                notify_on_high_disk_usage: document.getElementById('notify_on_high_disk_usage').checked,
+                disk_warning_threshold: parseInt(document.getElementById('disk_warning_threshold').value, 10),
+                notify_on_high_ram_usage: document.getElementById('notify_on_high_ram_usage').checked,
+                ram_warning_threshold: parseInt(document.getElementById('ram_warning_threshold').value, 10),
+                notify_on_high_cpu_usage: document.getElementById('notify_on_high_cpu_usage').checked,
+                cpu_warning_threshold: parseInt(document.getElementById('cpu_warning_threshold').value, 10),
+
+                notify_on_firewall_drop: document.getElementById('notify_on_firewall_drop').checked,
+                notify_on_wg_interface_down: document.getElementById('notify_on_wg_interface_down').checked,
+                notify_on_ssh_brute_force: document.getElementById('notify_on_ssh_brute_force').checked,
+                notify_on_docker_crash: document.getElementById('notify_on_docker_crash').checked,
+            };
+
+            try {
+                // Notice the updated URLs pointing to /config/save
+                const [r1, r2] = await Promise.all([
+                    fetch('/api/notifications/config/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(notifPayload)
+                    }),
+                    fetch('/api/watchdog/config/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(watchdogPayload)
+                    })
+                ]);
+
+                if (r1.ok && r2.ok) {
+                    btn.innerHTML = '✅ Saved!';
+                    setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+                } else {
+                    throw new Error("Failed to update one or more configurations.");
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                alert(`Save Error: ${err.message}`);
+            }
+        }
+
+        async function sendTestAlert() {
+            const btn = document.getElementById('btn-test-alert');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Dispatching...';
+            try {
+                // Test URL remains the same
+                const res = await fetch('/api/notifications/test', { method: 'POST' });
+                if (res.ok) {
+                    btn.innerHTML = '✅ Dispatched!';
+                } else {
+                    throw new Error('Test request failed.');
+                }
+            } catch (err) {
+                alert(`Test failed: ${err.message}`);
+            } finally {
+                setTimeout(() => { btn.disabled = false; btn.innerHTML = '<span>🔔</span> Send Test Notification'; }, 2500);
+            }
+        }
+    </script>
+</div>
+{{ end }}

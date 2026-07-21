@@ -241,6 +241,17 @@ func RunStart() {
 	// --- PROTECTED GATEWAY ROUTES ---
 	mux.HandleFunc("/api/gateway/status", api.HubAccessMiddleware(db, api.HandleGatewayStatus()))
 
+	// ---  PROTECTED NOTIFICATIONS
+	mux.HandleFunc("/api/notifications/config", api.HubAccessMiddleware(db, api.HandleGetNotifications(db)))
+	mux.HandleFunc("/api/notifications/config/save", api.HubAccessMiddleware(db, api.HandleSaveNotifications(db)))
+	mux.HandleFunc("/api/notifications/test", api.HubAccessMiddleware(db, api.HandleTestNotification()))
+
+	// --- PROTECTED WATCHDOGS
+	mux.HandleFunc("/api/watchdog/config", api.HubAccessMiddleware(db, api.HandleGetWatchdogConfig(db)))
+	mux.HandleFunc("/api/watchdog/config/save", api.HubAccessMiddleware(db, api.HandleSaveWatchdogConfig(db)))
+
+	mux.HandleFunc("/api/logs/system", api.HubAccessMiddleware(db, api.HandleGetLogs()))
+
 	// --- PROTECTED SETTINGS ROUTES ---
 	mux.HandleFunc("/api/settings/endpoint", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {

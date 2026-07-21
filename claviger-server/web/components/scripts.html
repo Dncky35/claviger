@@ -148,7 +148,7 @@
 
     // --- Tab Navigation Logic ---
     function switchTab(tabId) {
-        const tabs = ['system', 'security', 'clients', "access", "roles", "containers", "network", "uninstall", "extensions"];
+        const tabs = ['system', 'security', 'clients', "voice", "access", "roles", "containers", "network", "uninstall", "extensions"];
         
         // New Sidebar Tailwind CSS states
         const inactiveClass = 'px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors';
@@ -205,6 +205,9 @@
         if (tabId === 'system') {
             fetchSystemSettings();
             fetchSystemTasks();
+        }
+        if (tabId === "voice" ) {
+            loadVoiceSettings();
         }
     }
     

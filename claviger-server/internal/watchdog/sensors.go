@@ -188,3 +188,57 @@ func checkDockerHealth() {
 		)
 	}
 }
+
+var lastKnownSSHBans = -1
+
+// checkSSHBruteForce queries Fail2Ban to see if new IPs have been blocked.
+func checkSSHBruteForce() {
+	cmd := exec.Command("fail2ban-client", "status", "sshd")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	if err := cmd.Run(); err != nil {
+		// Fail2Ban is either not installed or the daemon is down.
+		// We silently return so we don't spam errors on systems without it.
+		return
+	}
+
+	output := out.String()
+	currentTotalBans := 0
+
+	// Parse the Fail2Ban output to find the "Total banned" metric
+	// Output looks like: "|- Total banned:     15"
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "Total banned:") {
+			fields := strings.Fields(line)
+			if len(fields) > 0 {
+				val, err := strconv.Atoi(fields[len(fields)-1])
+				if err == nil {
+					currentTotalBans = val
+				}
+			}
+			break
+		}
+	}
+
+	// First run initialization
+	if lastKnownSSHBans == -1 {
+		lastKnownSSHBans = currentTotalBans
+		return
+	}
+
+	// If the number went up, we caught a brute force attempt!
+	if currentTotalBans > lastKnownSSHBans {
+		newBans := currentTotalBans - lastKnownSSHBans
+
+		notifier.FireAlert(
+			notifier.LevelWarning,
+			"🛡️ SSH Brute Force Blocked",
+			fmt.Sprintf("Fail2Ban just blocked %d new IP(s) attempting to brute force SSH.", newBans),
+		)
+
+		// Update state
+		lastKnownSSHBans = currentTotalBans
+	}
+}
