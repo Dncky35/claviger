@@ -53,7 +53,7 @@ func (g *ClavigerGUI) ShowDashboardScreen() {
 	// 🎯 CARD: SERVER MANAGEMENT
 	g.ServerSelect = widget.NewSelect(options, nil)
 	g.ServerSelect.SetSelected(currentSelection)
-	g.ConnectBtn = widget.NewButton("Connect Tunnel", nil) // Logic in events.go
+	g.ConnectBtn = widget.NewButton("Connect", nil) // Logic in events.go
 
 	serverCard := widget.NewCard("Active Server", "", container.NewVBox(
 		g.ServerSelect,

@@ -15,7 +15,9 @@ import (
 	"fyne.io/fyne/v2"
 
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
@@ -41,8 +43,55 @@ type ClavigerGUI struct {
 	SyncStatusBinding binding.String // Tracks "Stable/Syncing"
 }
 
-func Run(vault *config.ClientVault, wakeUpChan chan bool) {
+// Ping the local daemon to see if it is listening
+func (gui *ClavigerGUI) isDaemonAlive() bool {
+	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 1*time.Second)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}
 
+// Show a blocking screen that prevents user interaction until the service is restored
+func (gui *ClavigerGUI) ShowServiceOfflineScreen() {
+	// 🎯 Wrap the entire UI construction and injection in fyne.Do
+	fyne.Do(func() {
+		title := widget.NewLabelWithStyle("⚠️ Service Offline", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+		desc := widget.NewLabel("The Claviger Zero Trust background service is not reachable.")
+		fixInst := widget.NewLabel("Please ensure the service is running in Windows Services or Systemd.")
+
+		retryBtn := widget.NewButton("Retry Connection", func() {
+			if gui.isDaemonAlive() {
+				// If it's back online, resume normal startup flow
+				gui.RouteToMainScreen()
+			} else {
+				dialog.ShowError(fmt.Errorf("Daemon is still unreachable"), gui.Window)
+			}
+		})
+
+		content := container.NewVBox(title, desc, fixInst, retryBtn)
+
+		gui.Window.SetContent(container.NewCenter(content))
+	})
+}
+
+// Helper to handle the routing logic that used to be directly in Run()
+func (gui *ClavigerGUI) RouteToMainScreen() {
+	if gui.Vault.ActiveProfileID == "" || len(gui.Vault.Profiles) == 0 {
+		gui.ShowEnrollmentScreen()
+	} else {
+		gui.ActiveProfile = gui.Vault.Profiles[gui.Vault.ActiveProfileID]
+		gui.ShowDashboardScreen()
+
+		// Only attempt auto-connect AFTER we confirm daemon is alive
+		if gui.Vault.AutoConnect && gui.Vault.ActiveProfileID != "" {
+			go gui.SendConnectCommandToDaemon()
+		}
+	}
+}
+
+func Run(vault *config.ClientVault, wakeUpChan chan bool) {
 	a := app.NewWithID("com.cloudrocean.claviger-client")
 	w := a.NewWindow("Claviger Client")
 
@@ -68,36 +117,27 @@ func Run(vault *config.ClientVault, wakeUpChan chan bool) {
 		log.Println("Window hidden to system tray.")
 	})
 
-	if vault.ActiveProfileID == "" || len(vault.Profiles) == 0 {
-		gui.ShowEnrollmentScreen()
-	} else {
-		gui.ActiveProfile = vault.Profiles[vault.ActiveProfileID]
-		gui.ShowDashboardScreen()
-	}
-
-	// 🎯 BACKGROUND LISTENER FOR INSTANCE B WAKEUP CALLS
-	go func() {
-		for range wakeUpChan {
-			w.Show()
-			w.RequestFocus() // Pulls the window to the absolute front of the screen
-		}
-	}()
-
 	w.Resize(fyne.NewSize(450, 400))
 	w.CenterOnScreen()
 
-	// 🎯 FIX: Auto-Connect via IPC, not direct Engine call!
-	if vault.AutoConnect && vault.ActiveProfileID != "" {
-		// This should trigger your function that sends a TCP command
-		// to 127.0.0.1:42899 telling the Daemon to connect!
-		go gui.SendConnectCommandToDaemon()
+	// 🎯 ZERO TRUST BLOCKER: Check daemon before loading UI
+	if !gui.isDaemonAlive() {
+		gui.ShowServiceOfflineScreen()
+	} else {
+		gui.RouteToMainScreen()
 	}
+
+	// 🎯 BACKGROUND LISTENER FOR WAKEUP CALLS
+	go func() {
+		for range wakeUpChan {
+			w.Show()
+			w.RequestFocus()
+		}
+	}()
 
 	w.ShowAndRun()
 
 	log.Println("⚠️ App terminating. Executing clean disconnect...")
-	// gui.SendDisconnectCommandToDaemon()
-	// gui.Engine.Disconnect()
 }
 
 func (gui *ClavigerGUI) SendConnectCommandToDaemon() {
@@ -110,10 +150,10 @@ func (gui *ClavigerGUI) SendConnectCommandToDaemon() {
 	// 1. ATTEMPT TO DELEGATE TO THE DAEMON
 	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
 	if err != nil {
-		// 🛑 SECURITY: Do NOT fallback to direct connection.
-		// If the daemon is unreachable, the gateway is likely down.
-		log.Printf("❌ Daemon not found: %v. Please check the Claviger Service.", err)
-		log.Println("Engine Disconnected", "The Claviger background service is unreachable. Please ensure it is running in Services.")
+		// 🛑 UX FIX: Show visual error and trap them on the offline screen
+		log.Printf("❌ Daemon not found: %v", err)
+		dialog.ShowError(fmt.Errorf("The background service died or is unreachable."), gui.Window)
+		gui.ShowServiceOfflineScreen() // Instantly lock the UI
 		return
 	}
 
@@ -122,7 +162,7 @@ func (gui *ClavigerGUI) SendConnectCommandToDaemon() {
 
 	payload := fmt.Sprintf("CONNECT|%s|%s", profile.ID, routing)
 	if _, writeErr := conn.Write([]byte(payload)); writeErr != nil {
-		log.Println("Communication Error", "Failed to send command to service.")
+		dialog.ShowError(fmt.Errorf("Failed to send command to service."), gui.Window)
 		return
 	}
 
@@ -131,7 +171,7 @@ func (gui *ClavigerGUI) SendConnectCommandToDaemon() {
 	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	n, readErr := conn.Read(buf)
 	if readErr != nil {
-		log.Println("Connection Timeout", "The service did not respond to the connect command.")
+		dialog.ShowError(fmt.Errorf("Service timed out while connecting."), gui.Window)
 		return
 	}
 
@@ -139,32 +179,44 @@ func (gui *ClavigerGUI) SendConnectCommandToDaemon() {
 	if response == "OK" {
 		log.Println("✅ Connection delegated successfully.")
 	} else {
-		log.Println("Engine Rejected", fmt.Sprintf("The service returned: %s", response))
+		dialog.ShowError(fmt.Errorf("Engine Rejected: %s", response), gui.Window)
 	}
 }
 
 func (gui *ClavigerGUI) SendDisconnectCommandToDaemon() {
-	// Handle DISCONNECT
 	// 🎯 1. ATTEMPT TO DELEGATE TO THE ROOT DAEMON
 	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
-	if err == nil {
-		defer conn.Close()
-		log.Println("📡 Whispering DISCONNECT to root daemon...")
+	if err != nil {
+		// 🛑 UX FIX: Trap the user if the service died before they clicked disconnect
+		log.Printf("❌ Daemon not found: %v", err)
+		dialog.ShowError(fmt.Errorf("The background service died or is unreachable."), gui.Window)
+		gui.ShowServiceOfflineScreen()
+		return
+	}
+	defer conn.Close()
 
-		if _, writeErr := conn.Write([]byte("DISCON")); writeErr == nil {
-			// 🛑 CRITICAL FIX: Must wait for Ack here too, otherwise GUI might
-			// refresh its state before the Daemon has actually finished tearing down!
-			buf := make([]byte, 16)
-			conn.SetReadDeadline(time.Now().Add(3 * time.Second))
-			n, _ := conn.Read(buf)
+	log.Println("📡 Whispering DISCONNECT to root daemon...")
 
-			response := strings.TrimSpace(string(buf[:n]))
-			if response == "OK" {
-				log.Println("✅ Disconnect acknowledged by daemon.")
-			} else {
-				log.Printf("⚠️ Daemon replied with error: %s", response)
-			}
-		}
+	if _, writeErr := conn.Write([]byte("DISCON")); writeErr != nil {
+		dialog.ShowError(fmt.Errorf("Failed to send disconnect command to service."), gui.Window)
+		return
+	}
+
+	// 🛑 CRITICAL FIX: Must wait for Ack here too, otherwise GUI might
+	// refresh its state before the Daemon has actually finished tearing down!
+	buf := make([]byte, 16)
+	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	n, readErr := conn.Read(buf)
+	if readErr != nil {
+		dialog.ShowError(fmt.Errorf("Service timed out while disconnecting."), gui.Window)
+		return
+	}
+
+	response := strings.TrimSpace(string(buf[:n]))
+	if response == "OK" {
+		log.Println("✅ Disconnect acknowledged by daemon.")
+	} else {
+		dialog.ShowError(fmt.Errorf("Engine Rejected: %s", response), gui.Window)
 	}
 }
 
@@ -173,19 +225,26 @@ func (gui *ClavigerGUI) GetDaemonState() string {
 	// 1. Quick dial to the daemon (1-second timeout so the UI doesn't freeze!)
 	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 1*time.Second)
 	if err != nil {
-		// If the daemon is dead or not installed, we assume it's offline.
+		// 🛑 ZERO TRUST TRAP: Service went offline!
+		// We deliberately DO NOT use dialog.ShowError here to prevent
+		// infinite popup spam during the 1-second polling heartbeat.
+		gui.ShowServiceOfflineScreen()
 		return vpn.StateDisconnected
 	}
 	defer conn.Close()
 
 	// 2. Whisper the status command
-	conn.Write([]byte("STATUS"))
+	if _, err := conn.Write([]byte("STATUS")); err != nil {
+		gui.ShowServiceOfflineScreen()
+		return vpn.StateDisconnected
+	}
 
 	// 3. Read the exact string response from the Engine
 	buf := make([]byte, 32)
 	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	n, err := conn.Read(buf)
 	if err != nil {
+		gui.ShowServiceOfflineScreen()
 		return vpn.StateDisconnected
 	}
 

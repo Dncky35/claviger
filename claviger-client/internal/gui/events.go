@@ -23,12 +23,13 @@ func (g *ClavigerGUI) SafeUpdate(fn func()) {
 func (g *ClavigerGUI) setupEvents() {
 
 	updateUI := func(newState string) {
-		// Update the main status label safely
-		if g.StatusBinding != nil {
-			g.StatusBinding.Set("Status: " + newState)
-		}
-
+		// 🎯 FIX: Wrap EVERY UI and binding change inside SafeUpdate/fyne.Do
 		g.SafeUpdate(func() {
+			// Update the main status label safely
+			if g.StatusBinding != nil {
+				g.StatusBinding.Set("Status: " + newState)
+			}
+
 			switch newState {
 			case vpn.StateDisconnected:
 				g.ConnectBtn.SetText("Connect")
@@ -43,13 +44,11 @@ func (g *ClavigerGUI) setupEvents() {
 
 			case vpn.StateConnecting, vpn.StateVerifying:
 				g.ConnectBtn.SetText("Cancel")
-				g.ConnectBtn.Enable()
+				g.ConnectBtn.Enable() // Enabled so the user can abort
 				g.RouteCheck.Disable()
 				g.RemoveBtn.Disable()
 				g.ServerSelect.Disable()
 				g.AddServerBtn.Disable()
-
-				// Sync hasn't started yet during connecting
 
 			case vpn.StateSecured:
 				g.ConnectBtn.SetText("Disconnect")
@@ -59,22 +58,22 @@ func (g *ClavigerGUI) setupEvents() {
 				g.ServerSelect.Disable()
 				g.AddServerBtn.Disable()
 
-				// ⚠️ NOTE: You will need to add a GetDaemonSyncStatus() IPC method later!
-				// For now, we hardcode it to Stable so the UI doesn't crash.
 				g.SyncStatusBinding.Set(controller.SyncStable)
 
 			case vpn.StateReconnecting:
-				g.ConnectBtn.SetText("Cancel")
-				g.ConnectBtn.Enable()
+				g.ConnectBtn.SetText("Cancel") // Or "Disconnect"
+				g.ConnectBtn.Enable()          // Enabled so the user can abort a stuck reconnect loop
+				g.RouteCheck.Disable()
 				g.RemoveBtn.Disable()
 				g.ServerSelect.Disable()
 				g.AddServerBtn.Disable()
+
 			}
 		})
 	}
 
 	// -------------------------------------------------------------------
-	// 🎯 THE FIX: Background Polling Loop instead of Engine Callbacks
+	// 🎯 Background Polling Loop
 	// -------------------------------------------------------------------
 	go func() {
 		lastState := ""
@@ -110,24 +109,49 @@ func (g *ClavigerGUI) setupEvents() {
 	g.ConnectBtn.OnTapped = func() {
 		state := g.GetDaemonState()
 
-		if state == vpn.StateDisconnected || state == vpn.StateReconnecting {
-			log.Println("🖥️ UI: Commanding Daemon to Connect...")
-			g.SendConnectCommandToDaemon()
-		} else {
+		if state == vpn.StateConnecting || state == vpn.StateVerifying || state == vpn.StateReconnecting {
+			log.Println("🖥️ UI: Aborting connection/reconnection attempt...")
+
+			g.ConnectBtn.Disable()
+			g.ConnectBtn.SetText("Aborting...")
+
+			go func() {
+				// Send the explicit abort/disconnect command safely
+				g.SendDisconnectCommandToDaemon()
+			}()
+			return
+		}
+
+		if state == vpn.StateSecured {
 			log.Println("🖥️ UI: Commanding Daemon to Disconnect...")
-			g.SendDisconnectCommandToDaemon()
+			g.ConnectBtn.Disable()
+			g.ConnectBtn.SetText("Disconnecting...")
+
+			go func() {
+				g.SendDisconnectCommandToDaemon()
+			}()
+			return
+		}
+
+		if state == vpn.StateDisconnected {
+			log.Println("🖥️ UI: Commanding Daemon to Connect...")
+			g.ConnectBtn.Disable()
+			g.ConnectBtn.SetText("Connecting...")
+
+			go func() {
+				g.SendConnectCommandToDaemon()
+			}()
+			return
 		}
 	}
 
 	g.RemoveBtn = widget.NewButton("Remove Server", func() {
-		// Add a safety confirmation dialog
 		confirmMessage := fmt.Sprintf("Are you sure you want to remove this server (%s) profile and disconnect?", g.ActiveProfile.Name)
 		dialog.ShowConfirm("Remove Server", confirmMessage, func(confirm bool) {
 			if !confirm {
 				return
 			}
 
-			// 🎯 STRICT DAEMON DELEGATION (No Direct Fallback)
 			conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
 			if err != nil {
 				log.Println("❌ Daemon not reachable:", err)
@@ -136,23 +160,23 @@ func (g *ClavigerGUI) setupEvents() {
 			}
 			defer conn.Close()
 
-			log.Println("📡 Whispering REMOVE command to root daemon...")
-			conn.Write([]byte("REMOVE"))
+			// 🎯 THE FIX: Append the exact ID to the REMOVE command
+			payload := fmt.Sprintf("REMOVE|%s", g.ActiveProfile.ID)
+			log.Printf("📡 Whispering %s command to root daemon...", payload)
+			conn.Write([]byte(payload))
 
-			// Wait for the Daemon to finish deleting & saving
 			ack := make([]byte, 2)
 			conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 			conn.Read(ack)
 
 			if string(ack) == "OK" {
-				// The Daemon deleted it! Now the GUI just reloads the file from disk.
 				updatedVault, loadErr := config.Load()
 				if loadErr != nil {
 					dialog.ShowError(fmt.Errorf("Failed to sync with Daemon: %v", loadErr), g.Window)
 					return
 				}
 				g.Vault = updatedVault
-				g.ActiveProfile = nil // Clear current memory
+				g.ActiveProfile = nil
 
 				dialog.ShowInformation("Success", "Server profile removed successfully!", g.Window)
 				g.ShowDashboardScreen()

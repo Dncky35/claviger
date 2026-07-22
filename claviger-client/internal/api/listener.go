@@ -95,6 +95,8 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 
 	// 🛡️ SAFETY 1: Trim any invisible newline characters from the TCP payload
 	commandReceived := strings.TrimSpace(string(buf[:n]))
+
+	// Split by the PIPE delimiter
 	parts := strings.Split(commandReceived, "|")
 	baseCommand := parts[0]
 
@@ -109,31 +111,54 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 		}
 
 	case "REMOVE":
-		log.Println("DEBUG: Daemon entered REMOVE case")
+		log.Println("DEBUG: Daemon entered REMOVE command")
 
-		if cfg.Vault == nil {
-			log.Println("ERROR: Daemon vault is nil!")
+		// 1. We already split by "|", so the ID is simply sitting in parts[1]!
+		if len(parts) < 2 || parts[1] == "" {
+			log.Println("ERROR: No profile ID provided in REMOVE command")
+			c.Write([]byte("ER"))
+			return // exit early
+		}
+
+		targetID := parts[1]
+		log.Printf("DEBUG: Target profile to remove is %s\n", targetID)
+
+		// 2. Load fresh state from disk to prevent stale memory overwrites
+		freshVault, loadErr := config.Load()
+		if loadErr != nil {
+			log.Printf("ERROR: Daemon failed to load fresh vault: %v\n", loadErr)
+			c.Write([]byte("ER"))
+			return
+		}
+		cfg.Vault = freshVault
+
+		if cfg.Vault == nil || cfg.Vault.Profiles == nil {
+			log.Println("ERROR: Daemon vault or profiles map is nil!")
 			c.Write([]byte("ER"))
 			return
 		}
 
-		if cfg.Vault.ActiveProfileID != "" {
-			// 1. Delete the profile from the Vault's map
-			delete(cfg.Vault.Profiles, cfg.Vault.ActiveProfileID)
+		// 3. Verify the target profile exists before trying to delete
+		if _, exists := cfg.Vault.Profiles[targetID]; exists {
 
-			// 2. Clear the Active Profile ID so it doesn't point to a ghost profile
-			cfg.Vault.ActiveProfileID = ""
+			// Delete the explicitly requested profile
+			delete(cfg.Vault.Profiles, targetID)
 
-			// 3. Save the updated Vault to disk
+			// Clear active profile if we just deleted it
+			if cfg.Vault.ActiveProfileID == targetID {
+				cfg.Vault.ActiveProfileID = ""
+			}
+
+			// 4. Save the cleanly updated Vault to disk
 			if err := config.Save(cfg.Vault); err == nil {
-				log.Println("✅ Root Daemon successfully removed profile and saved Vault.")
+				log.Printf("✅ Root Daemon successfully removed profile %s and saved Vault.\n", targetID)
 				c.Write([]byte("OK"))
 			} else {
-				log.Printf("❌ Root Daemon failed to save after removal: %v", err)
+				log.Printf("❌ Root Daemon failed to save after removal: %v\n", err)
 				c.Write([]byte("ER"))
 			}
 		} else {
-			log.Println("⚠️ No active profile to remove.")
+			log.Printf("⚠️ Profile %s not found in vault. Nothing to remove.\n", targetID)
 			c.Write([]byte("ER"))
 		}
 
