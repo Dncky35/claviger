@@ -1,18 +1,29 @@
 {{ define "tab_voice" }}
-<div id="tab-voice" class="space-y-6 hidden animate-fade-in">
-    <!-- Header -->
-    <div>
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Alerts & Watchdog</h2>
-        <p class="text-muted-foreground text-sm mt-1">Configure outbound channels and system monitoring thresholds.</p>
-    </div>
-
-    <form id="voice-settings-form" onsubmit="saveVoiceSettings(event)" class="space-y-6">
+<div id="tab-voice" class="hidden animate-fade-in">
+    
+    <form id="voice-settings-form" onsubmit="saveVoiceSettings(event)" class="space-y-10">
         
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <!-- LEFT COLUMN: Transmitters (Telegram & Resend) -->
-            <div class="space-y-6">
-                
+        <!-- HEADER (Title + Save Button) -->
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Alerts & Watchdog</h2>
+                <p class="text-muted-foreground text-sm mt-1">Configure outbound channels and system monitoring thresholds.</p>
+            </div>
+            <button type="submit" id="btn-save-voice" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors border border-blue-500 shadow-sm shadow-blue-500/20 whitespace-nowrap shrink-0">
+                💾 Save Settings
+            </button>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- SECTION 1: DELIVERY CHANNELS               -->
+        <!-- ========================================== -->
+        <div class="space-y-5">
+            <div class="border-b border-border pb-2">
+                <h3 class="text-lg font-bold text-slate-200">1. Delivery Channels</h3>
+                <p class="text-xs text-slate-400">Configure where the system should send your alerts.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Telegram Box -->
                 <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div class="p-4 bg-slate-800/40 border-b border-border flex items-center justify-between">
@@ -36,15 +47,9 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-400 mb-2">Alert Levels</label>
                             <div class="flex items-center gap-4 text-xs text-slate-300">
-                                <label class="flex items-center gap-1.5 cursor-pointer">
-                                    <input type="checkbox" id="telegram_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> Info
-                                </label>
-                                <label class="flex items-center gap-1.5 cursor-pointer">
-                                    <input type="checkbox" id="telegram_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> Warning
-                                </label>
-                                <label class="flex items-center gap-1.5 cursor-pointer">
-                                    <input type="checkbox" id="telegram_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> Critical
-                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="telegram_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> Info</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="telegram_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> Warning</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="telegram_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> Critical</label>
                             </div>
                         </div>
                     </div>
@@ -79,39 +84,44 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-400 mb-2">Alert Levels</label>
                             <div class="flex items-center gap-4 text-xs text-slate-300">
-                                <label class="flex items-center gap-1.5 cursor-pointer">
-                                    <input type="checkbox" id="resend_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> Info
-                                </label>
-                                <label class="flex items-center gap-1.5 cursor-pointer">
-                                    <input type="checkbox" id="resend_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> Warning
-                                </label>
-                                <label class="flex items-center gap-1.5 cursor-pointer">
-                                    <input type="checkbox" id="resend_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> Critical
-                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="resend_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> Info</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="resend_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> Warning</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="resend_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> Critical</label>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Dispatch Test Alert Button -->
-                <button type="button" onclick="sendTestAlert()" id="btn-test-alert" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors border border-border shadow-sm flex items-center justify-center gap-2">
+            </div>
+            
+            <!-- Test Alert Row -->
+            <div class="flex justify-end mt-2">
+                <button type="button" onclick="sendTestAlert()" id="btn-test-alert" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors border border-border shadow-sm flex items-center justify-center gap-2">
                     <span>🔔</span> Send Test Notification
                 </button>
             </div>
+        </div>
 
-            <!-- RIGHT COLUMN: Watchdog & Perimeter Sensors -->
-            <div class="space-y-6">
+        <!-- ========================================== -->
+        <!-- SECTION 2: WATCHDOG TRIGGERS               -->
+        <!-- ========================================== -->
+        <div class="space-y-5">
+            <div class="border-b border-border pb-2">
+                <h3 class="text-lg font-bold text-slate-200">2. Watchdog Rules</h3>
+                <p class="text-xs text-slate-400">Define which system conditions and security events trigger an alert.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 <!-- Watchdog Thresholds -->
                 <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div class="p-4 bg-slate-800/40 border-b border-border">
                         <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
-                            <span>🐕</span> Watchdog Thresholds
+                            <span>📊</span> Hardware Thresholds
                         </h3>
                     </div>
                     <div class="p-5 space-y-4">
-                        <!-- Disk Threshold -->
-                        <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border">
+                        <!-- Disk -->
+                        <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border hover:bg-background/80 transition-colors">
                             <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
                                 <input type="checkbox" id="notify_on_high_disk_usage" class="rounded border-border text-blue-600 focus:ring-0">
                                 Low Disk Space Warning
@@ -122,8 +132,8 @@
                             </div>
                         </div>
 
-                        <!-- RAM Threshold -->
-                        <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border">
+                        <!-- RAM -->
+                        <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border hover:bg-background/80 transition-colors">
                             <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
                                 <input type="checkbox" id="notify_on_high_ram_usage" class="rounded border-border text-blue-600 focus:ring-0">
                                 High RAM Usage Warning
@@ -134,8 +144,8 @@
                             </div>
                         </div>
 
-                        <!-- CPU Threshold -->
-                        <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border">
+                        <!-- CPU -->
+                        <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border hover:bg-background/80 transition-colors">
                             <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
                                 <input type="checkbox" id="notify_on_high_cpu_usage" class="rounded border-border text-blue-600 focus:ring-0">
                                 High CPU Spike Warning
@@ -152,7 +162,7 @@
                 <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div class="p-4 bg-slate-800/40 border-b border-border">
                         <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
-                            <span>🛡️</span> Perimeter Guards
+                            <span>🛡️</span> Security & Apps
                         </h3>
                     </div>
                     <div class="p-5 space-y-3">
@@ -182,12 +192,6 @@
             </div>
         </div>
 
-        <!-- Submit Button Footer -->
-        <div class="flex justify-end pt-4 border-t border-border">
-            <button type="submit" id="btn-save-voice" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors border border-blue-500 shadow-sm shadow-blue-500/20">
-                💾 Save Voice & Watchdog Settings
-            </button>
-        </div>
     </form>
 
     <script>
@@ -282,7 +286,6 @@
             };
 
             try {
-                // Notice the updated URLs pointing to /config/save
                 const [r1, r2] = await Promise.all([
                     fetch('/api/notifications/config/save', {
                         method: 'POST',
@@ -311,10 +314,10 @@
 
         async function sendTestAlert() {
             const btn = document.getElementById('btn-test-alert');
+            const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '⏳ Dispatching...';
             try {
-                // Test URL remains the same
                 const res = await fetch('/api/notifications/test', { method: 'POST' });
                 if (res.ok) {
                     btn.innerHTML = '✅ Dispatched!';
@@ -324,7 +327,7 @@
             } catch (err) {
                 alert(`Test failed: ${err.message}`);
             } finally {
-                setTimeout(() => { btn.disabled = false; btn.innerHTML = '<span>🔔</span> Send Test Notification'; }, 2500);
+                setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; }, 2500);
             }
         }
     </script>

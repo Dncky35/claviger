@@ -15,6 +15,7 @@ import (
 // 🎯 1. Define the interface so the API doesn't need to import the VPN package
 type VPNEngine interface {
 	GetState() string
+	GetSyncStatus() string
 	Connect(vault *config.ClientVault, profile *config.ServerProfile, useGlobal bool) error
 	Disconnect() error
 }
@@ -239,7 +240,11 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 		if currentState == "" {
 			currentState = "ONLINE"
 		}
-		c.Write([]byte(currentState))
+
+		currentSync := cfg.Engine.GetSyncStatus()
+
+		payload := fmt.Sprintf("%s|%s", currentState, currentSync)
+		c.Write([]byte(payload))
 
 	case "SUBSCRIBE":
 		log.Println("📡 GUI Client requested event subscription.")

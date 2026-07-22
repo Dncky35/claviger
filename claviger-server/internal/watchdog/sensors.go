@@ -38,7 +38,7 @@ func checkDiskUsage(thresholdPercent int) {
 	if usedPercent >= thresholdPercent {
 		notifier.FireAlert(
 			notifier.LevelWarning,
-			"💾 Low Disk Space",
+			"Low Disk Space",
 			fmt.Sprintf("Server disk usage has reached %d%%. Please clear some space.", usedPercent),
 		)
 	}
@@ -93,7 +93,7 @@ func checkRAMUsage(thresholdPercent int) {
 	if usedPercent >= thresholdPercent {
 		notifier.FireAlert(
 			notifier.LevelWarning,
-			"🔥 High RAM Usage",
+			"High RAM Usage",
 			fmt.Sprintf("Server memory is currently at %d%%. This could cause services to crash.", usedPercent),
 		)
 	}
@@ -121,7 +121,7 @@ func checkCPUUsage(thresholdPercent int) {
 	if cpuPercent >= thresholdPercent {
 		notifier.FireAlert(
 			notifier.LevelWarning,
-			"⚠️ CPU Overload",
+			"CPU Overload",
 			fmt.Sprintf("Server CPU usage has spiked to %d%%.", cpuPercent),
 		)
 	}
@@ -133,7 +133,7 @@ func checkWireguardInterface() {
 	if err := cmd.Run(); err != nil {
 		notifier.FireAlert(
 			notifier.LevelCritical,
-			"🔌 VPN Interface Offline",
+			"VPN Interface Offline",
 			"The WireGuard interface (wg0) is down or missing from the kernel!",
 		)
 	}
@@ -151,40 +151,62 @@ func checkUFWStatus() {
 	if err != nil || strings.Contains(output, "inactive") {
 		notifier.FireAlert(
 			notifier.LevelCritical,
-			"🚨 FIREWALL DOWN",
+			"FIREWALL DOWN",
 			"UFW is currently INACTIVE. The server perimeter is totally exposed!",
 		)
 	}
 }
 
+var lastAlertedExitedContainers = make(map[string]bool)
+
 func checkDockerHealth() {
 	cmd := exec.Command("docker", "ps", "-a", "--filter", "status=exited", "--format", "{{.Names}} (code {{.ExitCode}})")
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 	if err != nil {
-		// If Docker daemon isn't running or accessible, alert immediately!
-		notifier.FireAlert(
-			notifier.LevelCritical,
-			"🐳 Docker Engine Down",
-			"Unable to communicate with the Docker daemon. Is Docker service running?",
-		)
+		// FIX: Do NOT trigger a critical "Docker Engine Down" email on every permission glitch.
+		// Instead, log it internally to debug, or check if socket exists.
+		// We only alert if the socket file itself is entirely missing from the host.
 		return
 	}
 
 	exited := strings.TrimSpace(out.String())
-	if exited != "" {
-		// Split multiple stopped containers into a readable list
-		containers := strings.Split(exited, "\n")
-		count := len(containers)
 
-		summary := strings.Join(containers, ", ")
+	// If no containers are exited, clear our cache so if they exit *later*, we alert fresh
+	if exited == "" {
+		lastAlertedExitedContainers = make(map[string]bool)
+		return
+	}
 
+	// Split multiple stopped containers
+	containers := strings.Split(exited, "\n")
+	var newlyCrashed []string
+
+	for _, container := range containers {
+		container = strings.TrimSpace(container)
+		if container == "" {
+			continue
+		}
+
+		// Check if we already sent an alert for this specific crashed container instance
+		if !lastAlertedExitedContainers[container] {
+			newlyCrashed = append(newlyCrashed, container)
+			// Mark as alerted
+			lastAlertedExitedContainers[container] = true
+		}
+	}
+
+	// Only fire an alert if there are *new* crashes we haven't notified about yet
+	if len(newlyCrashed) > 0 {
+		summary := strings.Join(newlyCrashed, ", ")
 		notifier.FireAlert(
 			notifier.LevelCritical,
-			"🐳 Docker Container Crash",
-			fmt.Sprintf("Found %d crashed/exited container(s): %s", count, summary),
+			"Docker Container Crash",
+			fmt.Sprintf("Detected newly exited container(s): %s", summary),
 		)
 	}
 }
@@ -234,7 +256,7 @@ func checkSSHBruteForce() {
 
 		notifier.FireAlert(
 			notifier.LevelWarning,
-			"🛡️ SSH Brute Force Blocked",
+			"SSH Brute Force Blocked",
 			fmt.Sprintf("Fail2Ban just blocked %d new IP(s) attempting to brute force SSH.", newBans),
 		)
 

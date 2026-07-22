@@ -38,6 +38,7 @@ type ClavigerGUI struct {
 	AutoStartCheck *widget.Check
 	ConnectBtn     *widget.Button
 	RemoveBtn      *widget.Button
+	SettingsDialog dialog.Dialog
 
 	StatusBinding     binding.String // Tracks "Connected/Disconnected"
 	SyncStatusBinding binding.String // Tracks "Stable/Syncing"
@@ -220,41 +221,48 @@ func (gui *ClavigerGUI) SendDisconnectCommandToDaemon() {
 	}
 }
 
-// GetDaemonState pings the background service via TCP to get the true VPN state.
-func (gui *ClavigerGUI) GetDaemonState() string {
+// GetDaemonState pings the background service via TCP to get the true VPN state AND Sync state.
+func (gui *ClavigerGUI) GetDaemonState() (string, string) {
 	// 1. Quick dial to the daemon (1-second timeout so the UI doesn't freeze!)
 	conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 1*time.Second)
 	if err != nil {
-		// 🛑 ZERO TRUST TRAP: Service went offline!
-		// We deliberately DO NOT use dialog.ShowError here to prevent
-		// infinite popup spam during the 1-second polling heartbeat.
 		gui.ShowServiceOfflineScreen()
-		return vpn.StateDisconnected
+		return vpn.StateDisconnected, "Unknown"
 	}
 	defer conn.Close()
 
 	// 2. Whisper the status command
 	if _, err := conn.Write([]byte("STATUS")); err != nil {
 		gui.ShowServiceOfflineScreen()
-		return vpn.StateDisconnected
+		return vpn.StateDisconnected, "Unknown"
 	}
 
 	// 3. Read the exact string response from the Engine
-	buf := make([]byte, 32)
+	// Slightly increased buffer to handle the combined string "RECONNECTING|SYNCHRONIZING"
+	buf := make([]byte, 64)
 	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	n, err := conn.Read(buf)
 	if err != nil {
 		gui.ShowServiceOfflineScreen()
-		return vpn.StateDisconnected
+		return vpn.StateDisconnected, "Unknown"
 	}
 
 	response := strings.TrimSpace(string(buf[:n]))
 
-	// Ensure the daemon didn't return garbage data
-	switch response {
+	// 4. Split the response by the pipe delimiter
+	parts := strings.Split(response, "|")
+
+	connState := parts[0]
+	syncState := "Unknown"
+	if len(parts) > 1 {
+		syncState = parts[1]
+	}
+
+	// Ensure the daemon didn't return garbage data for connection state
+	switch connState {
 	case vpn.StateConnecting, vpn.StateVerifying, vpn.StateSecured, vpn.StateReconnecting:
-		return response
+		return connState, syncState
 	default:
-		return vpn.StateDisconnected
+		return vpn.StateDisconnected, syncState
 	}
 }

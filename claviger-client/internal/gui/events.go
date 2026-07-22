@@ -77,15 +77,25 @@ func (g *ClavigerGUI) setupEvents() {
 	// -------------------------------------------------------------------
 	go func() {
 		lastState := ""
-		for {
-			// Ask the Windows Service/Linux Daemon over TCP
-			currentState := g.GetDaemonState()
+		lastSync := ""
 
-			// Only update the UI if the state actually changed
+		for {
+			// Ask the Windows Service/Linux Daemon over TCP for both states
+			currentState, currentSync := g.GetDaemonState()
+
+			// 1. Handle Connection State changes
 			if currentState != lastState {
 				log.Printf("🖥️ UI detected state change: %s -> %s", lastState, currentState)
-				updateUI(currentState)
+				updateUI(currentState) // Assuming this updates g.StatusBinding
 				lastState = currentState
+			}
+
+			// 2. Handle Sync State changes
+			if currentSync != lastSync {
+				log.Printf("🔄 UI detected sync change: %s -> %s", lastSync, currentSync)
+				// Immediately update the bound UI variable for sync
+				g.SyncStatusBinding.Set(currentSync)
+				lastSync = currentSync
 			}
 
 			// Wait 1 second before checking again
@@ -107,7 +117,7 @@ func (g *ClavigerGUI) setupEvents() {
 	}
 
 	g.ConnectBtn.OnTapped = func() {
-		state := g.GetDaemonState()
+		state, _ := g.GetDaemonState()
 
 		if state == vpn.StateConnecting || state == vpn.StateVerifying || state == vpn.StateReconnecting {
 			log.Println("🖥️ UI: Aborting connection/reconnection attempt...")
@@ -144,6 +154,24 @@ func (g *ClavigerGUI) setupEvents() {
 			return
 		}
 	}
+
+	g.AddServerBtn = widget.NewButton("Add New Server", func() {
+
+		if g.SettingsDialog != nil {
+			g.SettingsDialog.Hide()
+			g.SettingsDialog = nil
+		}
+
+		overlays := g.Window.Canvas().Overlays()
+		if top := overlays.Top(); top != nil {
+			overlays.Remove(top)
+		}
+
+		// cleanup before we completely replace the window content.
+		time.AfterFunc(100*time.Millisecond, func() {
+			g.ShowEnrollmentScreen()
+		})
+	})
 
 	g.RemoveBtn = widget.NewButton("Remove Server", func() {
 		confirmMessage := fmt.Sprintf("Are you sure you want to remove this server (%s) profile and disconnect?", g.ActiveProfile.Name)
