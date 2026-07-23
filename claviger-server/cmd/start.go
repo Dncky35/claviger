@@ -222,6 +222,9 @@ func RunStart() {
 	mux.HandleFunc("/api/security/fail2ban/unban", api.HubAccessMiddleware(db, api.HandleFail2BanUnban))
 	mux.HandleFunc("/api/security/fail2ban/config", api.HubAccessMiddleware(db, api.HandleFail2BanConfig))
 
+	mux.HandleFunc("/api/mfa/generate", api.HubAccessMiddleware(db, api.HandleGenerateTOTPHandler(db)))
+	mux.HandleFunc("/api/mfa/verify-setup", api.HubAccessMiddleware(db, api.HandleVerifyTOTPSetupHandler(db)))
+
 	mux.HandleFunc("/api/clients", api.HubAccessMiddleware(db, api.HandleClients(db)))
 	mux.HandleFunc("/api/enrollment/mobile", api.HubAccessMiddleware(db, api.HandleMobileEnrollment(db)))
 	mux.HandleFunc("/api/revoke", api.HubAccessMiddleware(db, api.HandleRevoke(db)))

@@ -97,6 +97,21 @@ func InitDB() *sql.DB {
 		log.Fatalf("❌ Failed to create clients table: %v", err)
 	}
 
+	createClientMFATable := `
+    CREATE TABLE IF NOT EXISTS client_mfa (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        mfa_type TEXT DEFAULT 'totp',
+        secret TEXT NOT NULL,
+        recovery_keys TEXT, 
+        is_verified BOOLEAN DEFAULT 0, 
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+    );`
+	if _, err := db.Exec(createClientMFATable); err != nil {
+		log.Fatalf("❌ Failed to create client_mfa table: %v", err)
+	}
+
 	// 4. Invitations Table
 	createInvitationsTable := `
 	CREATE TABLE IF NOT EXISTS invitations (

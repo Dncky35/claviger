@@ -9,6 +9,8 @@ require (
 
 require (
 	github.com/docker/docker v0.0.0-00010101000000-000000000000
+	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/pquerna/otp v1.5.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/tyler-smith/go-bip39 v1.1.0
@@ -20,6 +22,7 @@ require (
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect

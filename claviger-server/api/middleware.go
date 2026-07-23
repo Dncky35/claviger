@@ -1,11 +1,20 @@
 package api
 
 import (
+	"claviger-server/storage"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
+
+	"github.com/golang-jwt/jwt/v5"
 )
+
+type HubClaims struct {
+	ClientID string `json:"client_id"`
+	jwt.RegisteredClaims
+}
 
 // HubAccessMiddleware acts as the Bouncer for the Web Hub
 func HubAccessMiddleware(db *sql.DB, next http.HandlerFunc) http.HandlerFunc {
@@ -51,7 +60,79 @@ func HubAccessMiddleware(db *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		// Check if the mfa is enabled for the server
+		// endpoint := storage.GetConfig(db, "vpn_endpoint")
+		// wgPort := storage.GetConfig(db, "wg_port")
+		mfaEnabled := storage.GetConfig(db, "mfa_enabled")
+		if mfaEnabled == "true" {
+			var clientID string
+			var isVerified bool
+
+			// We use LEFT JOIN because they might not have an MFA record yet
+			query := `
+			SELECT c.id, COALESCE(m.is_verified, 0)
+			FROM clients c
+			LEFT JOIN client_mfa m ON c.id = m.client_id
+			WHERE c.ip_address = ? AND c.status = 'active'
+		`
+			err = db.QueryRow(query, clientIP).Scan(&clientID, &isVerified)
+			if err != nil {
+				log.Printf("🔒 Blocked: Unknown IP in Step-Up check (%s)", clientIP)
+				http.Error(w, "403 Forbidden - Unauthorized Device", http.StatusForbidden)
+				return
+			}
+
+			// Look for the secure session cookie
+			cookie, err := r.Cookie("claviger_hub_session")
+			if err != nil {
+				// No cookie present (or it expired). Trigger the frontend TOTP modal.
+				sendStepUpChallenge(w)
+				return
+			}
+
+			// Validate the JWT
+			jwtSecretStr := storage.GetConfig(db, "jwt_secret")
+			if jwtSecretStr == "" {
+				// Fallback or initialization logic
+				jwtSecretStr = "default-secret-change-me-in-production"
+			}
+			jwtSecret := []byte(jwtSecretStr)
+
+			token, err := jwt.ParseWithClaims(cookie.Value, &HubClaims{}, func(t *jwt.Token) (interface{}, error) {
+				return jwtSecret, nil
+			})
+
+			if err != nil || !token.Valid {
+				// Token is expired, tampered with, or invalid
+				sendStepUpChallenge(w)
+				return
+			}
+
+			// Security Check: Does the cookie belong to the IP address using it?
+			if claims, ok := token.Claims.(*HubClaims); ok {
+				if claims.ClientID != clientID {
+					log.Printf("⚠️ Session mismatch! Token ID %s doesn't match IP owner %s", claims.ClientID, clientID)
+					sendStepUpChallenge(w)
+					return
+				}
+			}
+
+		}
+
 		// 5. Passed! Send them to the requested page/API.
 		next.ServeHTTP(w, r)
 	}
+}
+
+// sendStepUpChallenge sends a specific 401 payload that tells the frontend
+// to pause the current API request and show the "Enter Authenticator Code" modal.
+func sendStepUpChallenge(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+
+	payload := map[string]interface{}{
+		"requires_stepup": true,
+		"message":         "Elevated privileges required. Please enter your authenticator code.",
+	}
+	json.NewEncoder(w).Encode(payload)
 }
