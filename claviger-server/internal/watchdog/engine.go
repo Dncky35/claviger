@@ -86,7 +86,7 @@ func (e *Engine) runChecks() {
 	}
 }
 
-// LoadConfigFromDB reads the settings from your config table
+// LoadConfigFromDB reads all settings from your config table
 func LoadConfigFromDB(db *sql.DB) WatchdogConfig {
 	cfg := DefaultConfig // Start with defaults
 
@@ -100,7 +100,7 @@ func LoadConfigFromDB(db *sql.DB) WatchdogConfig {
 		return val
 	}
 
-	// Parse Booleans
+	// --- 1. System Health & Docker ---
 	if val := getVal("watchdog_notify_daemon_restart"); val != "" {
 		cfg.NotifyOnDaemonRestart = val == "true"
 	}
@@ -113,8 +113,11 @@ func LoadConfigFromDB(db *sql.DB) WatchdogConfig {
 	if val := getVal("watchdog_notify_ram"); val != "" {
 		cfg.NotifyOnHighRAMUsage = val == "true"
 	}
+	if val := getVal("watchdog_notify_cpu"); val != "" {
+		cfg.NotifyOnHighCPUUsage = val == "true" // This was missing!
+	}
 
-	// Parse Integers (Thresholds)
+	// --- 2. Parse Integers (Thresholds) ---
 	if val := getVal("watchdog_disk_threshold"); val != "" {
 		if parsed, err := strconv.Atoi(val); err == nil {
 			cfg.DiskWarningThreshold = parsed
@@ -124,6 +127,23 @@ func LoadConfigFromDB(db *sql.DB) WatchdogConfig {
 		if parsed, err := strconv.Atoi(val); err == nil {
 			cfg.RAMWarningThreshold = parsed
 		}
+	}
+	if val := getVal("watchdog_cpu_threshold"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil {
+			cfg.CPUWarningThreshold = parsed // This was missing!
+		}
+	}
+
+	// --- 3. Zero Trust Perimeter Guards ---
+	// (These were completely missing from the GET reader!)
+	if val := getVal("watchdog_notify_firewall"); val != "" {
+		cfg.NotifyOnFirewallDrop = val == "true"
+	}
+	if val := getVal("watchdog_notify_wg"); val != "" {
+		cfg.NotifyOnWGInterfaceDown = val == "true"
+	}
+	if val := getVal("watchdog_notify_ssh"); val != "" {
+		cfg.NotifyOnSSHBruteForce = val == "true"
 	}
 
 	return cfg
