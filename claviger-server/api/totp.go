@@ -2,11 +2,15 @@ package api
 
 import (
 	"claviger-server/internal/security"
+	"claviger-server/storage"
 	"database/sql"
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -30,29 +34,52 @@ type VerifySetupResponse struct {
 	RecoveryKeys []string `json:"recovery_keys"` // Plaintext keys shown ONLY once
 }
 
-func HandleGenerateTOTPHandler(db *sql.DB) http.HandlerFunc {
+type ValidateMfaRequest struct {
+	Code string `json:"code"` // Can be 6-digit TOTP code or recovery key
+}
+
+type ValidateMfaResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+func HandleGenerateTOTP(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req GenerateMfaRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			sendJSONError(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
 
 		// 1. Get the client's name for the Authenticator app label
-		var clientName string
-		err := db.QueryRow("SELECT name FROM clients WHERE id = ?", req.ClientID).Scan(&clientName)
+		clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			sendJSONError(w, "Invalid Request IP", http.StatusBadRequest)
+			return
+		}
+
+		// Handle localhost testing override
+		if clientIP == "127.0.0.1" || clientIP == "::1" {
+			clientIP = "10.8.0.1" // Default test IP
+		}
+
+		// 2. Look up the Client ID and Name securely from the database
+		var clientID, clientName string
+		err = db.QueryRow("SELECT id, name FROM clients WHERE ip_address = ? AND status = 'active'", clientIP).Scan(&clientID, &clientName)
+
 		if err == sql.ErrNoRows {
-			http.Error(w, "Client not found", http.StatusNotFound)
+			sendJSONError(w, "Active client not found for this IP address.", http.StatusNotFound)
 			return
 		} else if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
+			log.Printf("⚠️ DB error looking up client for MFA setup: %v", err)
+			sendJSONError(w, "Database error", http.StatusInternalServerError)
 			return
 		}
 
 		// 2. Generate the TOTP Secret
 		secret, qrURL, err := security.GenerateTOTPSecret(clientName)
 		if err != nil {
-			http.Error(w, "Failed to generate secret", http.StatusInternalServerError)
+			sendJSONError(w, "Failed to generate secret", http.StatusInternalServerError)
 			return
 		}
 
@@ -70,7 +97,7 @@ func HandleGenerateTOTPHandler(db *sql.DB) http.HandlerFunc {
 
 		if _, err := db.Exec(query, mfaID, req.ClientID, secret); err != nil {
 			log.Printf("⚠️ DB Error inserting MFA secret: %v", err)
-			http.Error(w, "Failed to store secret", http.StatusInternalServerError)
+			sendJSONError(w, "Failed to store secret", http.StatusInternalServerError)
 			return
 		}
 
@@ -83,11 +110,11 @@ func HandleGenerateTOTPHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func HandleVerifyTOTPSetupHandler(db *sql.DB) http.HandlerFunc {
+func HandleVerifyTOTPSetup(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req VerifySetupRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			sendJSONError(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
 
@@ -98,31 +125,31 @@ func HandleVerifyTOTPSetupHandler(db *sql.DB) http.HandlerFunc {
 			Scan(&secret, &isVerified)
 
 		if err == sql.ErrNoRows {
-			http.Error(w, "No MFA setup in progress", http.StatusBadRequest)
+			sendJSONError(w, "No MFA setup in progress", http.StatusBadRequest)
 			return
 		}
 		if isVerified {
-			http.Error(w, "MFA is already verified and active", http.StatusConflict)
+			sendJSONError(w, "MFA is already verified and active", http.StatusConflict)
 			return
 		}
 
 		// 2. Validate the 6-digit passcode
 		isValid := security.ValidateTOTPCode(req.Passcode, secret)
 		if !isValid {
-			http.Error(w, "Invalid authenticator code", http.StatusUnauthorized)
+			sendJSONError(w, "Invalid authenticator code", http.StatusUnauthorized)
 			return
 		}
 
 		// 3. Setup successful! Generate and hash recovery keys
 		plainKeys, err := security.GenerateRecoveryKeys()
 		if err != nil {
-			http.Error(w, "Error generating recovery keys", http.StatusInternalServerError)
+			sendJSONError(w, "Error generating recovery keys", http.StatusInternalServerError)
 			return
 		}
 
 		hashedKeysJSON, err := security.HashRecoveryKeys(plainKeys)
 		if err != nil {
-			http.Error(w, "Error securing recovery keys", http.StatusInternalServerError)
+			sendJSONError(w, "Error securing recovery keys", http.StatusInternalServerError)
 			return
 		}
 
@@ -134,7 +161,7 @@ func HandleVerifyTOTPSetupHandler(db *sql.DB) http.HandlerFunc {
 		`
 		if _, err := db.Exec(updateQuery, hashedKeysJSON, req.ClientID); err != nil {
 			log.Printf("⚠️ DB Error finalizing MFA setup: %v", err)
-			http.Error(w, "Database error finalizing setup", http.StatusInternalServerError)
+			sendJSONError(w, "Database error finalizing setup", http.StatusInternalServerError)
 			return
 		}
 
@@ -145,4 +172,206 @@ func HandleVerifyTOTPSetupHandler(db *sql.DB) http.HandlerFunc {
 			RecoveryKeys: plainKeys, // The frontend must force the user to download/copy these
 		})
 	}
+}
+
+// POST /api/mfa/validate
+func HandleValidateTOTP(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// 1. Extract request body
+		var req ValidateMfaRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Code == "" {
+			sendJSONError(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// 2. Identify the device via WireGuard IP
+		clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			sendJSONError(w, "Invalid Request", http.StatusBadRequest)
+			return
+		}
+
+		// Handle localhost testing override if applicable
+		if clientIP == "127.0.0.1" || clientIP == "::1" {
+			clientIP = "10.8.0.1"
+		}
+
+		// 3. Resolve client ID from IP
+		var clientID string
+		err = db.QueryRow("SELECT id FROM clients WHERE ip_address = ? AND status = 'active'", clientIP).Scan(&clientID)
+		if err == sql.ErrNoRows {
+			sendJSONError(w, "Unauthorized Device", http.StatusForbidden)
+			return
+		} else if err != nil {
+			log.Printf("⚠️ DB error during MFA login IP lookup: %v", err)
+			sendJSONError(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// 4. Fetch user's verified MFA record
+		var secret string
+		var recoveryKeysJSON sql.NullString
+		query := `
+			SELECT secret, recovery_keys 
+			FROM client_mfa 
+			WHERE client_id = ? AND is_verified = 1
+		`
+		err = db.QueryRow(query, clientID).Scan(&secret, &recoveryKeysJSON)
+		if err == sql.ErrNoRows {
+			sendJSONError(w, "MFA is not enabled for this client", http.StatusBadRequest)
+			return
+		} else if err != nil {
+			log.Printf("⚠️ DB error fetching MFA record: %v", err)
+			sendJSONError(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// 5. Check passcode against TOTP algorithm
+		isValid := security.ValidateTOTPCode(req.Code, secret)
+		isRecovery := false
+
+		// 6. If TOTP failed, check if it's a valid Recovery Key
+		if !isValid && recoveryKeysJSON.Valid && recoveryKeysJSON.String != "" {
+			if security.VerifyRecoveryKey(req.Code, recoveryKeysJSON.String) {
+				isValid = true
+				isRecovery = true
+				log.Printf("🔑 Client %s authenticated using a Recovery Key!", clientID)
+			}
+		}
+
+		if !isValid {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(ValidateMfaResponse{
+				Success: false,
+				Message: "Invalid authenticator code or recovery key",
+			})
+			return
+		}
+
+		// Fetch session duration string from config
+		sessionDurationStr := storage.GetConfig(db, "session_duration")
+		if sessionDurationStr == "" {
+			sessionDurationStr = "15m"
+		}
+
+		// Convert the string to a time.Duration type
+		duration, err := time.ParseDuration(sessionDurationStr)
+		if err != nil {
+			log.Printf("⚠️ Invalid session_duration format in DB ('%s'): %v. Defaulting to 15m.", sessionDurationStr, err)
+			duration = 15 * time.Minute
+		}
+
+		// 7. Generate JWT Session Token using the parsed duration
+		expirationTime := time.Now().Add(duration)
+		claims := &HubClaims{
+			ClientID: clientID,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(expirationTime),
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				Issuer:    "claviger-gateway",
+			},
+		}
+
+		jwtSecret := security.EnsureJWTSecret(db)
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, err := token.SignedString(jwtSecret)
+		if err != nil {
+			log.Printf("⚠️ Failed to sign JWT session token: %v", err)
+			sendJSONError(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// Check if the request came in over HTTPS
+		isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+
+		// 8. Set HTTP-Only Session Cookie
+		http.SetCookie(w, &http.Cookie{
+			Name:     "claviger_hub_session",
+			Value:    tokenString,
+			Expires:  expirationTime,
+			Path:     "/",
+			HttpOnly: true,                    // XSS Protection
+			Secure:   isSecure,                // True for HTTPS, False for HTTP
+			SameSite: http.SameSiteStrictMode, // CSRF Protection
+		})
+
+		// 9. Respond Success
+		w.Header().Set("Content-Type", "application/json")
+		msg := "Authentication successful"
+		if isRecovery {
+			msg = "Authenticated via Recovery Key. Please generate new backup codes if needed."
+		}
+
+		json.NewEncoder(w).Encode(ValidateMfaResponse{
+			Success: true,
+			Message: msg,
+		})
+	}
+}
+
+// GET /api/mfa/status
+func HandleGetMFAStatus(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// 1. Identify the device via WireGuard IP
+		clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			sendJSONError(w, "Invalid Request IP", http.StatusBadRequest)
+			return
+		}
+
+		// Handle localhost testing override
+		if clientIP == "127.0.0.1" || clientIP == "::1" {
+			clientIP = "10.8.0.1"
+		}
+
+		// 2. Check the user's specific MFA configuration
+		var isVerifiedInt int
+		queryMFA := `
+			SELECT COALESCE(m.is_verified, 0)
+			FROM clients c
+			LEFT JOIN client_mfa m ON c.id = m.client_id
+			WHERE c.ip_address = ? AND c.status = 'active'
+		`
+		err = db.QueryRow(queryMFA, clientIP).Scan(&isVerifiedInt)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				sendJSONError(w, "Active client not found", http.StatusNotFound)
+			} else {
+				log.Printf("⚠️ DB error looking up MFA status: %v", err)
+				sendJSONError(w, "Database error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		// 3. Check the Global MFA configuration
+		// Note: ensure your storage package is imported if it isn't already
+		globalMfaStr := storage.GetConfig(db, "mfa_enabled")
+		globalEnabled := (globalMfaStr == "true")
+
+		// 4. Return the state to the UI
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{
+			"is_configured":  isVerifiedInt == 1,
+			"global_enabled": globalEnabled,
+		})
+	}
+}
+
+// Helper function to ensure errors are always sent as JSON to the frontend
+func sendJSONError(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(map[string]string{"message": message})
 }

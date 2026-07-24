@@ -148,7 +148,7 @@
 
     // --- Tab Navigation Logic ---
     function switchTab(tabId) {
-        const tabs = ['system', 'security', 'clients', "voice", "access", "roles", "containers", "network", "uninstall", "extensions"];
+        const tabs = ['system', 'security', 'clients', "voice", "access", "roles", "mfa", "containers", "network", "uninstall", "extensions"];
         
         // New Sidebar Tailwind CSS states
         const inactiveClass = 'px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors';
@@ -208,6 +208,9 @@
         }
         if (tabId === "voice" ) {
             loadVoiceSettings();
+        }
+        if (tabId === "mfa") {
+            
         }
     }
     
@@ -270,6 +273,136 @@
             updateRoutingUI();
         }
     }
+
+    // --- STEP-UP MODAL CONTROLLER ---
+const StepUpController = {
+    pendingResolve: null,
+    pendingReject: null,
+
+    show: function() {
+        return new Promise((resolve, reject) => {
+            this.pendingResolve = resolve;
+            this.pendingReject = reject;
+            
+            const modal = document.getElementById('stepup-modal');
+            const content = document.getElementById('stepup-modal-content');
+            const input = document.getElementById('stepup-code-input');
+            
+            // Reset UI
+            input.value = '';
+            document.getElementById('stepup-error-msg').classList.add('hidden');
+            
+            // Show Modal with animation
+            modal.classList.remove('hidden');
+            // Small delay to allow display:block to apply before animating opacity
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                input.focus();
+            });
+        });
+    },
+
+    hide: function(success) {
+        const modal = document.getElementById('stepup-modal');
+        const content = document.getElementById('stepup-modal-content');
+        
+        // Animate out
+        modal.classList.add('opacity-0');
+        content.classList.add('scale-95');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            if (success && this.pendingResolve) this.pendingResolve(true);
+            if (!success && this.pendingReject) this.pendingReject(new Error("Step-up cancelled by user"));
+        }, 300); // Matches the Tailwind duration-300
+    },
+
+    verify: async function() {
+        const code = document.getElementById('stepup-code-input').value.trim();
+        const errorEl = document.getElementById('stepup-error-msg');
+        const btn = document.getElementById('btn-stepup-verify');
+
+        if (!code) return;
+
+        errorEl.classList.add('hidden');
+        btn.innerHTML = '⏳...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/mfa/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code }) 
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok && data.success) {
+                // We got the secure cookie! Hide modal and resolve true.
+                this.hide(true);
+            } else {
+                throw new Error(data.message || "Invalid code");
+            }
+        } catch (e) {
+            errorEl.textContent = e.message;
+            errorEl.classList.remove('hidden');
+        } finally {
+            btn.innerHTML = 'Verify';
+            btn.disabled = false;
+        }
+    }
+};
+
+// --- EVENT LISTENERS FOR MODAL ---
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-stepup-cancel').addEventListener('click', () => StepUpController.hide(false));
+    document.getElementById('btn-stepup-verify').addEventListener('click', () => StepUpController.verify());
+    document.getElementById('stepup-code-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') StepUpController.verify();
+    });
+});
+
+// --- THE GLOBAL FETCH INTERCEPTOR ---
+// We store the original browser fetch function
+const originalFetch = window.fetch;
+
+// We override it with our own Zero Trust wrapper
+window.fetch = async function(...args) {
+    // 1. Make the normal network request
+    let response = await originalFetch(...args);
+    
+    // 2. Did the Go backend hit our StepUpMiddleware?
+    if (response.status === 401) {
+        // Clone the response so we can safely read the JSON body
+        const clone = response.clone();
+        try {
+            const data = await clone.json();
+            
+            if (data.requires_stepup) {
+                console.log("🔒 Elevated privileges required. Pausing fetch and showing Step-Up UI.");
+                
+                try {
+                    // 3. Wait for the user to type their TOTP code in the modal
+                    await StepUpController.show();
+                    
+                    // 4. If we get here, StepUpController resolved successfully!
+                    // Retry the EXACT same original API request automatically.
+                    console.log("🔓 Step-Up successful. Resuming original request.");
+                    response = await originalFetch(...args);
+                } catch (cancelError) {
+                    // User clicked "Cancel Action" on the modal
+                    console.log(cancelError.message);
+                }
+            }
+        } catch (parseError) {
+            // It was a 401, but not our JSON step-up payload. Ignore.
+        }
+    }
+    
+    // 5. Return the final response back to whatever frontend function called it
+    return response;
+};
 
 </script>
 {{ end }}

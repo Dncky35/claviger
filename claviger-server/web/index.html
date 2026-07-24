@@ -59,6 +59,7 @@
                 {{ template "tab_voice" . }}
                 {{ template "tab_peers" . }}
                 {{ template "tab_roles" . }}
+                {{ template "tab_mfa" . }}
                 {{ template "tab_containers" . }}
                 {{ template "tab_uninstall" . }}
                 {{ template "tab_extensions" . }}
@@ -71,5 +72,33 @@
 
     {{ template "scripts" . }}
 
+    <div id="stepup-modal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div class="bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-300" id="stepup-modal-content">
+        
+        <div class="p-6 text-center space-y-4">
+            <div class="w-14 h-14 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-2 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                🔒
+            </div>
+            <h3 class="text-xl font-bold text-slate-100 tracking-tight">Session Expired</h3>
+            <p class="text-sm text-slate-400">
+                Elevated privileges are required to complete this action. Please enter your authenticator code.
+            </p>
+            
+            <div class="pt-2">
+                <input type="text" id="stepup-code-input" maxlength="11" placeholder="000000" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 font-mono text-center tracking-[0.3em] text-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                <p id="stepup-error-msg" class="text-rose-500 text-xs hidden font-medium mt-2 text-left"></p>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button id="btn-stepup-cancel" class="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-lg transition-colors">
+                    Cancel Action
+                </button>
+                <button id="btn-stepup-verify" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm shadow-blue-500/20">
+                    Verify
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"claviger-server/internal/security"
 	"claviger-server/storage"
 	"database/sql"
 	"encoding/json"
@@ -63,8 +64,11 @@ func HubAccessMiddleware(db *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 		// Check if the mfa is enabled for the server
 		// endpoint := storage.GetConfig(db, "vpn_endpoint")
 		// wgPort := storage.GetConfig(db, "wg_port")
-		mfaEnabled := storage.GetConfig(db, "mfa_enabled")
-		if mfaEnabled == "true" {
+		globalMfaStr := storage.GetConfig(db, "mfa_enabled")
+		globalMfaEnabled := (globalMfaStr == "true")
+
+		if globalMfaEnabled {
+
 			var clientID string
 			var isVerified bool
 
@@ -90,14 +94,7 @@ func HubAccessMiddleware(db *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 
-			// Validate the JWT
-			jwtSecretStr := storage.GetConfig(db, "jwt_secret")
-			if jwtSecretStr == "" {
-				// Fallback or initialization logic
-				jwtSecretStr = "default-secret-change-me-in-production"
-			}
-			jwtSecret := []byte(jwtSecretStr)
-
+			jwtSecret := security.EnsureJWTSecret(db)
 			token, err := jwt.ParseWithClaims(cookie.Value, &HubClaims{}, func(t *jwt.Token) (interface{}, error) {
 				return jwtSecret, nil
 			})

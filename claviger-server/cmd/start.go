@@ -20,6 +20,7 @@ import (
 	"claviger-server/internal/firewall"
 	"claviger-server/internal/notifier"
 	"claviger-server/internal/scheduler"
+	"claviger-server/internal/security"
 	"claviger-server/internal/system"
 	"claviger-server/internal/watchdog"
 	"claviger-server/network"
@@ -177,6 +178,8 @@ func RunStart() {
 	watchdogEngine := watchdog.NewEngine(watchdogCfg)
 	watchdogEngine.Start(ctx)
 
+	security.EnsureJWTSecret(db)
+
 	// ---------------------------------------------------------
 	// 3.5 START DOCKER ORCHESTRATION ENGINE
 	// ---------------------------------------------------------
@@ -204,6 +207,12 @@ func RunStart() {
 
 	mux.Handle("/static/", http.FileServer(http.FS(web.TemplatesFS)))
 
+	mux.HandleFunc("/api/mfa/generate", api.HandleGenerateTOTP(db))
+	mux.HandleFunc("/api/mfa/verify-setup", api.HandleVerifyTOTPSetup(db))
+
+	mux.HandleFunc("/api/mfa/validate", api.HandleValidateTOTP(db))
+	mux.HandleFunc("/api/mfa/status", api.HandleGetMFAStatus(db))
+
 	// --- PROTECTED ROUTES (Requires allow_hub = 1) ---
 	mux.HandleFunc("/api/status", api.HubAccessMiddleware(db, api.HandleStatus()))
 	mux.HandleFunc("/api/system", api.HubAccessMiddleware(db, api.HandleSystemStats))
@@ -222,8 +231,9 @@ func RunStart() {
 	mux.HandleFunc("/api/security/fail2ban/unban", api.HubAccessMiddleware(db, api.HandleFail2BanUnban))
 	mux.HandleFunc("/api/security/fail2ban/config", api.HubAccessMiddleware(db, api.HandleFail2BanConfig))
 
-	mux.HandleFunc("/api/mfa/generate", api.HubAccessMiddleware(db, api.HandleGenerateTOTPHandler(db)))
-	mux.HandleFunc("/api/mfa/verify-setup", api.HubAccessMiddleware(db, api.HandleVerifyTOTPSetupHandler(db)))
+	// --- PROTECTED MFA ---
+	mux.HandleFunc("/api/mfa/remove", api.HubAccessMiddleware(db, api.HandleRemoveMFA(db)))
+	mux.HandleFunc("/api/config/mfa_enabled", api.HubAccessMiddleware(db, api.HandleUpdateMFAConfig(db)))
 
 	mux.HandleFunc("/api/clients", api.HubAccessMiddleware(db, api.HandleClients(db)))
 	mux.HandleFunc("/api/enrollment/mobile", api.HubAccessMiddleware(db, api.HandleMobileEnrollment(db)))

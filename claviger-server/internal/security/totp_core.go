@@ -1,7 +1,9 @@
 package security
 
 import (
+	"claviger-server/storage"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"log"
@@ -93,4 +95,26 @@ func VerifyRecoveryKey(providedKey string, dbHashesJSON string) bool {
 		}
 	}
 	return false
+}
+
+func EnsureJWTSecret(db *sql.DB) []byte {
+	secretStr := storage.GetConfig(db, "jwt_secret")
+
+	// 2. If it exists, return it immediately
+	if secretStr != "" {
+		return []byte(secretStr)
+	}
+
+	// 3. If it does NOT exist (first boot), generate a secure 32-byte random key
+	log.Println("🌱 First boot detected: Generating secure JWT secret...")
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		log.Fatalf("❌ Failed to generate cryptographic random bytes: %v", err)
+	}
+
+	// 4. Convert it to a hex string to easily store it in the SQLite config table
+	newSecretStr := hex.EncodeToString(key)
+	storage.SetConfig(db, "jwt_secret", newSecretStr)
+
+	return []byte(newSecretStr)
 }
