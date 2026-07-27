@@ -65,10 +65,10 @@ networks:
 	"cloudflared": {
 		Name:             "Cloudflare Tunnel",
 		Category:         "system_core",
-		Description:      "Securely route traffic from Cloudflare's global edge directly to your local containers with zero open firewall ports.",
+		Description:      "Securely route traffic from Cloudflare's global edge.",
 		Icon:             "☁️",
-		HasCustomSetup:   false, // Requires the user to input their tunnel token
-		NeedsDynamicPort: false, // No web UI dashboard, so no 1808X dynamic port needed
+		HasCustomSetup:   true,
+		NeedsDynamicPort: false,
 		SetupPort:        0,
 		ComposeYAML: `
 version: '3.8'
@@ -77,7 +77,9 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: claviger-cloudflared
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token {{.CustomToken}}
+    environment:
+      - TUNNEL_TOKEN={{.CustomToken}}
+    command: tunnel --no-autoupdate run
     networks:
       - cloudrocean-net
     labels:
@@ -336,48 +338,52 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 
 	var finalYAML string
 	data := TemplateData{}
+	needsTemplate := false // We use this flag to decide if we need to run the template parser
 
-	// 3. DYNAMIC PORT ALLOCATION
+	// 3a. DYNAMIC PORT ALLOCATION
 	if manifest.NeedsDynamicPort {
-		// 🎯 Use the dynamic range based on the user's hub_port choice
 		assignedPort, err := GetNextAvailablePort(startRange, endRange)
 		if err != nil {
 			return fmt.Errorf("failed to allocate internal port in range %d-%d: %v", startRange, endRange, err)
 		}
 
-		// Inject into the YAML template
+		data.DynamicPort = assignedPort // ✅ Add the port to the template data
+		needsTemplate = true            // ✅ Flag that we need to run the parser
+
+		// Save the specific app's port
+		dbKey := fmt.Sprintf("app_%s_port", appID)
+		if err := storage.SetConfig(db, dbKey, strconv.Itoa(assignedPort)); err != nil {
+			return fmt.Errorf("failed to save assigned port to DB: %v", err)
+		}
+		fmt.Printf("🚀 App %s anchored to Port %d (Hub was at %d)\n", manifest.Name, assignedPort, hubPort)
+	}
+
+	// 3b. CUSTOM TOKEN FETCHING
+	if appID == "cloudflared" {
+		token := storage.GetConfig(db, "cloudflare_tunnel_token")
+		if token == "" {
+			return fmt.Errorf("cloudflared requires a tunnel token, but none was found in the database")
+		}
+
+		data.CustomToken = token // ✅ Add the token to the template data
+		needsTemplate = true     // ✅ Flag that we need to run the parser
+	}
+
+	// 3c. EXECUTE TEMPLATE (If needed)
+	if needsTemplate {
 		tmpl, err := template.New("compose").Parse(manifest.ComposeYAML)
 		if err != nil {
 			return fmt.Errorf("failed to parse YAML template: %v", err)
 		}
 
 		var renderedYAML bytes.Buffer
-		// data := TemplateData{DynamicPort: assignedPort}
 		if err := tmpl.Execute(&renderedYAML, data); err != nil {
-			return fmt.Errorf("failed to inject dynamic port: %v", err)
+			return fmt.Errorf("failed to inject template data: %v", err)
 		}
 
-		finalYAML = renderedYAML.String()
-
-		// Save the specific app's port so we don't have to scan for it again later
-		dbKey := fmt.Sprintf("app_%s_port", appID)
-		if err := storage.SetConfig(db, dbKey, strconv.Itoa(assignedPort)); err != nil {
-			return fmt.Errorf("failed to save assigned port to DB: %v", err)
-		}
-
-		fmt.Printf("🚀 App %s anchored to Port %d (Hub was at %d)\n", manifest.Name, assignedPort, hubPort)
-
+		finalYAML = renderedYAML.String() // This now has the REAL token injected!
 	} else {
-
-		if appID == "cloudflared" {
-			token := storage.GetConfig(db, "cloudflare_tunnel_token")
-			if token == "" {
-				return fmt.Errorf("cloudflared requires a tunnel token, but none was found in the database")
-			}
-			data.CustomToken = token
-
-		}
-		finalYAML = manifest.ComposeYAML
+		finalYAML = manifest.ComposeYAML // Only apps with no dynamic ports and no tokens use the raw string
 	}
 
 	// 4. Write and Deploy

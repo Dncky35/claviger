@@ -10,6 +10,7 @@ import (
 
 	"claviger-server/internal/firewall"
 	"claviger-server/internal/security"
+	"claviger-server/network"
 	"claviger-server/storage"
 )
 
@@ -222,4 +223,39 @@ func HandleUpdateProxyConfig(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+type StaticIPReq struct {
+	IP        string `json:"ip"`        // e.g., 192.168.1.15/24
+	Gateway   string `json:"gateway"`   // e.g., 192.168.1.1
+	Interface string `json:"interface"` // e.g., eth0
+}
+
+// /api/network/static-ip
+func HandleSetStaticIP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req StaticIPReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("🔒 [Network] Attempting to set static IP %s on %s via gateway %s", req.IP, req.Interface, req.Gateway)
+
+	err := network.ApplyStaticIP(req.Interface, req.IP, req.Gateway)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": err.Error()})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Static IP configured successfully.",
+	})
 }

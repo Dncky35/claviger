@@ -243,7 +243,6 @@ func RunStart() {
 	mux.HandleFunc("/api/revoke", api.HubAccessMiddleware(db, api.HandleRevoke(db)))
 	mux.HandleFunc("/api/access/ssh", api.HubAccessMiddleware(db, api.HandleSSHKeys))
 	mux.HandleFunc("/api/roles", api.HubAccessMiddleware(db, api.HandleRoles(db)))
-	mux.HandleFunc("/api/network/internet", api.HubAccessMiddleware(db, api.HandleNetworkSettings(db)))
 	mux.HandleFunc("/api/settings/proxy", api.HubAccessMiddleware(db, api.HandleGetProxyConfig))
 	mux.HandleFunc("/api/settings/proxy/update", api.HubAccessMiddleware(db, api.HandleUpdateProxyConfig))
 
@@ -278,6 +277,8 @@ func RunStart() {
 	})
 
 	mux.HandleFunc("/api/network/watchdog", api.HubAccessMiddleware(db, api.HandleRunIPWatchdog(db)))
+	mux.HandleFunc("/api/network/internet", api.HubAccessMiddleware(db, api.HandleNetworkSettings(db)))
+	mux.HandleFunc("/api/network/static-ip", api.HubAccessMiddleware(db, api.HandleSetStaticIP))
 
 	mux.HandleFunc("/api/system/tasks", api.HubAccessMiddleware(db, api.HandleGetTasks))
 
@@ -303,7 +304,7 @@ func RunStart() {
 	}
 
 	// Wrap the UI in the same middleware so only authorized VPN IPs can see it
-	mux.HandleFunc("/", api.HubAccessMiddleware(db, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", api.HubAccessBasicMiddleware(db, func(w http.ResponseWriter, r *http.Request) {
 		// Strictly enforce the root path. Ignore /favicon.ico or random browser requests
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)

@@ -275,12 +275,17 @@
         }
     }
 
-    // --- STEP-UP MODAL CONTROLLER ---
+// --- STEP-UP MODAL CONTROLLER ---
 const StepUpController = {
+    isShowing: false, // Prevents background refreshes from resetting the modal
     pendingResolve: null,
     pendingReject: null,
 
     show: function() {
+        // If the modal is already open, don't re-trigger or clear inputs
+        if (this.isShowing) return Promise.resolve(true);
+        
+        this.isShowing = true;
         return new Promise((resolve, reject) => {
             this.pendingResolve = resolve;
             this.pendingReject = reject;
@@ -289,13 +294,12 @@ const StepUpController = {
             const content = document.getElementById('stepup-modal-content');
             const input = document.getElementById('stepup-code-input');
             
-            // Reset UI
+            // Reset UI only when first opened
             input.value = '';
             document.getElementById('stepup-error-msg').classList.add('hidden');
             
             // Show Modal with animation
             modal.classList.remove('hidden');
-            // Small delay to allow display:block to apply before animating opacity
             requestAnimationFrame(() => {
                 modal.classList.remove('opacity-0');
                 content.classList.remove('scale-95');
@@ -305,6 +309,7 @@ const StepUpController = {
     },
 
     hide: function(success) {
+        this.isShowing = false; // Release the lock
         const modal = document.getElementById('stepup-modal');
         const content = document.getElementById('stepup-modal-content');
         
@@ -316,7 +321,7 @@ const StepUpController = {
             modal.classList.add('hidden');
             if (success && this.pendingResolve) this.pendingResolve(true);
             if (!success && this.pendingReject) this.pendingReject(new Error("Step-up cancelled by user"));
-        }, 300); // Matches the Tailwind duration-300
+        }, 300);
     },
 
     verify: async function() {
@@ -340,7 +345,6 @@ const StepUpController = {
             const data = await res.json();
             
             if (res.ok && data.success) {
-                // We got the secure cookie! Hide modal and resolve true.
                 this.hide(true);
             } else {
                 throw new Error(data.message || "Invalid code");
@@ -365,45 +369,45 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- THE GLOBAL FETCH INTERCEPTOR ---
-// We store the original browser fetch function
 const originalFetch = window.fetch;
 
-// We override it with our own Zero Trust wrapper
 window.fetch = async function(...args) {
-    // 1. Make the normal network request
+    const url = args[0];
+    
+    // Safety check: Never intercept the validation endpoint itself
+    const isValidationReq = typeof url === 'string' && url.includes('/api/mfa/validate');
+
     let response = await originalFetch(...args);
     
-    // 2. Did the Go backend hit our StepUpMiddleware?
-    if (response.status === 401) {
-        // Clone the response so we can safely read the JSON body
+    if (response.status === 401 && !isValidationReq) {
         const clone = response.clone();
         try {
             const data = await clone.json();
             
             if (data.requires_stepup) {
+                // IF MODAL IS ALREADY OPEN, IGNORE BACKGROUND 401s!
+                if (StepUpController.isShowing) {
+                    return response; 
+                }
+
                 console.log("🔒 Elevated privileges required. Pausing fetch and showing Step-Up UI.");
                 
                 try {
-                    // 3. Wait for the user to type their TOTP code in the modal
                     await StepUpController.show();
-                    
-                    // 4. If we get here, StepUpController resolved successfully!
-                    // Retry the EXACT same original API request automatically.
                     console.log("🔓 Step-Up successful. Resuming original request.");
                     response = await originalFetch(...args);
                 } catch (cancelError) {
-                    // User clicked "Cancel Action" on the modal
                     console.log(cancelError.message);
                 }
             }
         } catch (parseError) {
-            // It was a 401, but not our JSON step-up payload. Ignore.
+            // Not a step-up JSON payload, ignore.
         }
     }
     
-    // 5. Return the final response back to whatever frontend function called it
     return response;
 };
+
 
 </script>
 {{ end }}

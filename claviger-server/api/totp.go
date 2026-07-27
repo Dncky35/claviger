@@ -45,13 +45,7 @@ type ValidateMfaResponse struct {
 
 func HandleGenerateTOTP(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req GenerateMfaRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			sendJSONError(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		// 1. Get the client's name for the Authenticator app label
+		// 1. Get the client's IP from the Zero Trust perimeter
 		clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
 			sendJSONError(w, "Invalid Request IP", http.StatusBadRequest)
@@ -63,7 +57,7 @@ func HandleGenerateTOTP(db *sql.DB) http.HandlerFunc {
 			clientIP = "10.8.0.1" // Default test IP
 		}
 
-		// 2. Look up the Client ID and Name securely from the database
+		// 2. Look up the Client ID and Name securely from the database using the IP
 		var clientID, clientName string
 		err = db.QueryRow("SELECT id, name FROM clients WHERE ip_address = ? AND status = 'active'", clientIP).Scan(&clientID, &clientName)
 
@@ -76,32 +70,35 @@ func HandleGenerateTOTP(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 2. Generate the TOTP Secret
+		// 3. Generate the TOTP Secret
 		secret, qrURL, err := security.GenerateTOTPSecret(clientName)
 		if err != nil {
 			sendJSONError(w, "Failed to generate secret", http.StatusInternalServerError)
 			return
 		}
 
-		// 3. Upsert into client_mfa (Resetting if they abandoned a previous setup)
-		mfaID := uuid.New().String()
-		query := `
-			INSERT INTO client_mfa (id, client_id, secret, is_verified) 
-			VALUES (?, ?, ?, 0)
-			ON CONFLICT(client_id) DO UPDATE SET 
-				secret = excluded.secret, 
-				is_verified = 0,
-				recovery_keys = NULL;
-		`
-		// Note: To use ON CONFLICT(client_id), ensure client_id has a UNIQUE constraint in the client_mfa table.
+		// 4. Clear out any previous/abandoned MFA setup for this client first
+		_, err = db.Exec("DELETE FROM client_mfa WHERE client_id = ?", clientID)
+		if err != nil {
+			log.Printf("⚠️ DB Error clearing old MFA state: %v", err)
+			sendJSONError(w, "Database error", http.StatusInternalServerError)
+			return
+		}
 
-		if _, err := db.Exec(query, mfaID, req.ClientID, secret); err != nil {
+		// 5. Insert the fresh unverified secret
+		mfaID := uuid.New().String()
+		insertQuery := `
+            INSERT INTO client_mfa (id, client_id, secret, is_verified) 
+            VALUES (?, ?, ?, 0)
+        `
+
+		if _, err := db.Exec(insertQuery, mfaID, clientID, secret); err != nil {
 			log.Printf("⚠️ DB Error inserting MFA secret: %v", err)
 			sendJSONError(w, "Failed to store secret", http.StatusInternalServerError)
 			return
 		}
 
-		// 4. Return the setup data to the frontend
+		// 6. Return the setup data to the frontend
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(GenerateMfaResponse{
 			Secret: secret,
@@ -118,10 +115,33 @@ func HandleVerifyTOTPSetup(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 1. Fetch the unverified secret from the DB
+		// 1. Identify the device via Zero Trust WireGuard IP
+		clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			sendJSONError(w, "Invalid Request IP", http.StatusBadRequest)
+			return
+		}
+
+		if clientIP == "127.0.0.1" || clientIP == "::1" {
+			clientIP = "10.8.0.1"
+		}
+
+		// 2. Resolve Client ID securely from IP
+		var clientID string
+		err = db.QueryRow("SELECT id FROM clients WHERE ip_address = ? AND status = 'active'", clientIP).Scan(&clientID)
+		if err == sql.ErrNoRows {
+			sendJSONError(w, "Active client not found", http.StatusNotFound)
+			return
+		} else if err != nil {
+			log.Printf("⚠️ DB error looking up client for MFA verify: %v", err)
+			sendJSONError(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
+		// 3. Fetch the unverified secret from the DB using the resolved clientID
 		var secret string
 		var isVerified bool
-		err := db.QueryRow("SELECT secret, is_verified FROM client_mfa WHERE client_id = ?", req.ClientID).
+		err = db.QueryRow("SELECT secret, is_verified FROM client_mfa WHERE client_id = ?", clientID).
 			Scan(&secret, &isVerified)
 
 		if err == sql.ErrNoRows {
@@ -133,14 +153,14 @@ func HandleVerifyTOTPSetup(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 2. Validate the 6-digit passcode
+		// 4. Validate the 6-digit passcode
 		isValid := security.ValidateTOTPCode(req.Passcode, secret)
 		if !isValid {
 			sendJSONError(w, "Invalid authenticator code", http.StatusUnauthorized)
 			return
 		}
 
-		// 3. Setup successful! Generate and hash recovery keys
+		// 5. Setup successful! Generate and hash recovery keys
 		plainKeys, err := security.GenerateRecoveryKeys()
 		if err != nil {
 			sendJSONError(w, "Error generating recovery keys", http.StatusInternalServerError)
@@ -153,23 +173,23 @@ func HandleVerifyTOTPSetup(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 4. Update the DB: Store hashed keys and set is_verified = 1
+		// 6. Update the DB: Store hashed keys and set is_verified = 1 using the resolved clientID
 		updateQuery := `
-			UPDATE client_mfa 
-			SET is_verified = 1, recovery_keys = ? 
-			WHERE client_id = ?
-		`
-		if _, err := db.Exec(updateQuery, hashedKeysJSON, req.ClientID); err != nil {
+            UPDATE client_mfa 
+            SET is_verified = 1, recovery_keys = ? 
+            WHERE client_id = ?
+        `
+		if _, err := db.Exec(updateQuery, hashedKeysJSON, clientID); err != nil {
 			log.Printf("⚠️ DB Error finalizing MFA setup: %v", err)
 			sendJSONError(w, "Database error finalizing setup", http.StatusInternalServerError)
 			return
 		}
 
-		// 5. Send the plaintext keys back to the frontend EXACTLY ONCE
+		// 7. Send the plaintext keys back to the frontend EXACTLY ONCE
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(VerifySetupResponse{
 			Message:      "MFA successfully enabled.",
-			RecoveryKeys: plainKeys, // The frontend must force the user to download/copy these
+			RecoveryKeys: plainKeys,
 		})
 	}
 }

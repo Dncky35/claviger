@@ -35,6 +35,41 @@
             </div>
         </div>
 
+        <!-- 3. OS STATIC IP ENFORCER CARD -->
+        <div class="bg-surface rounded-2xl border border-amber-500/20 p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+            <div class="z-10 flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-400 text-xl">🔒</div>
+                    <h3 class="text-lg font-bold text-slate-100">OS Static IP Lock</h3>
+                </div>
+                <p class="text-muted-foreground text-sm max-w-2xl mb-4">
+                    Lock your current DHCP address at the operating system level so your router cannot change it. 
+                    <strong class="text-amber-400">Warning:</strong> Incorrect values will instantly break server connectivity.
+                </p>
+
+                <!-- Input Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Static IP (CIDR)</label>
+                        <input type="text" id="input-static-ip" placeholder="192.168.1.15/24" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Gateway (Router)</label>
+                        <input type="text" id="input-gateway" placeholder="192.168.1.1" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Interface</label>
+                        <input type="text" id="input-interface" placeholder="eth0 or enp3s0" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500" />
+                    </div>
+                </div>
+                
+                <button onclick="applyStaticIP()" id="btn-apply-static" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm shadow-amber-900/20">
+                    Apply Static Configuration
+                </button>
+            </div>
+        </div>
+
         <!-- 2. CLOUDFLARE TUNNEL (CLOUDFLARED) CARD -->
         <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
             <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
@@ -129,7 +164,7 @@
                 const res = await fetch('/api/apps/install', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ app: 'cloudflared', custom_token: token })
+                    body: JSON.stringify({ app_id: 'cloudflared', custom_token: token })
                 });
                 if (res.ok) {
                     alert('Cloudflare Tunnel deployment initiated successfully!');
@@ -191,6 +226,46 @@
         document.addEventListener("DOMContentLoaded", () => {
             checkDockerForNetworkTab();
         });
+
+        async function applyStaticIP() {
+            const ip = document.getElementById('input-static-ip').value.trim();
+            const gateway = document.getElementById('input-gateway').value.trim();
+            const iface = document.getElementById('input-interface').value.trim();
+
+            if (!ip || !gateway || !iface) {
+                alert('All fields are required. Check your IP, Gateway, and Interface name.');
+                return;
+            }
+
+            if (!confirm(`DANGER: Are you sure you want to lock interface ${iface} to ${ip}? If this is incorrect, you will lose SSH access to the server.`)) {
+                return;
+            }
+
+            const btn = document.getElementById('btn-apply-static');
+            btn.disabled = true;
+            btn.innerHTML = 'Applying...';
+
+            try {
+                const res = await fetch('/api/network/static-ip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: ip, gateway: gateway, interface: iface })
+                });
+
+                if (res.ok) {
+                    alert('Static IP configuration applied successfully!');
+                } else {
+                    const err = await res.text();
+                    alert('Failed to apply config: ' + err);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Connection lost. The IP may have changed successfully!');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Apply Static Configuration';
+            }
+        }
     </script>
 </div>
 {{ end }}
