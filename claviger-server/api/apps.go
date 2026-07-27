@@ -14,8 +14,9 @@ import (
 )
 
 type InstallReq struct {
-	AppID    string `json:"app_id"`
-	IsCustom bool   `json:"is_custom"` // New field to indicate if the app is custom
+	AppID       string `json:"app_id"`
+	IsCustom    bool   `json:"is_custom"` // New field to indicate if the app is custom
+	CustomToken string `json:"custom_token"`
 }
 
 // --- STATE MANAGER ---
@@ -105,6 +106,28 @@ func HandleAppInstall(w http.ResponseWriter, r *http.Request) {
 
 		// 4. Safe to install
 		err = apps.Install(db, req.AppID, req.IsCustom)
+
+	case "cloudflared":
+		// 1. Validate that a token was actually provided by the UI
+		if req.CustomToken == "" {
+			installMutex.Lock()
+			delete(activeInstalls, req.AppID)
+			installMutex.Unlock()
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": "Cloudflare Tunnel token is required."})
+			return
+		}
+
+		// 2. Persist the token to the database so it survives container restarts/reboots
+		if dbErr := storage.SetConfig(db, "cloudflare_tunnel_token", req.CustomToken); dbErr != nil {
+			fmt.Printf("⚠️ Warning: Failed to save cloudflare token to database: %v\n", dbErr)
+		}
+
+		// 3. Trigger installation (passing the custom token into your apps package)
+		err = apps.Install(db, req.AppID, req.IsCustom)
+
 	default:
 		err = apps.Install(db, req.AppID, req.IsCustom)
 	}

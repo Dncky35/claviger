@@ -14,41 +14,55 @@ import (
 
 func enablePersistentForwarding() error {
 	filePath := "/etc/sysctl.conf"
+
+	// 1. Read file, but don't fail if it simply doesn't exist yet
 	contentBytes, err := os.ReadFile(filePath)
-	if err != nil {
-		return err
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to read %s: %v", filePath, err)
 	}
 	content := string(contentBytes)
 
+	// 2. Check if already injected
 	if strings.Contains(content, "BEGIN CLAVIGER SYSCTL") {
-		return nil // Already injected
+		// Ensure it's active in the live kernel session even if the file was already correct
+		exec.Command("sysctl", "-w", "net.ipv4.ip_forward=1").Run()
+		return nil
 	}
 
 	block := "\n# --- BEGIN CLAVIGER SYSCTL ---\nnet.ipv4.ip_forward=1\n# --- END CLAVIGER SYSCTL ---\n"
 
-	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0644)
+	// 3. Open with O_CREATE to handle fresh/minimal servers gracefully
+	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open/create %s: %v", filePath, err)
 	}
 	defer f.Close()
 
 	if _, err := f.WriteString(block); err != nil {
-		return err
+		return fmt.Errorf("failed to write block to %s: %v", filePath, err)
 	}
 
-	// Apply immediately
+	// 4. Apply immediately to the live kernel AND reload the file
+	exec.Command("sysctl", "-w", "net.ipv4.ip_forward=1").Run()
 	exec.Command("sysctl", "-p").Run()
+
 	return nil
 }
 
 func disablePersistentForwarding() error {
 	filePath := "/etc/sysctl.conf"
+
+	// 1. If file doesn't exist, there is nothing to clean up
 	contentBytes, err := os.ReadFile(filePath)
 	if err != nil {
-		return err
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to read %s: %v", filePath, err)
 	}
 	content := string(contentBytes)
 
+	// 2. Look for our block
 	if !strings.Contains(content, "BEGIN CLAVIGER SYSCTL") {
 		return nil
 	}
@@ -57,10 +71,24 @@ func disablePersistentForwarding() error {
 	endTag := "# --- END CLAVIGER SYSCTL ---\n"
 	endIdx := strings.Index(content, endTag)
 
+	// 3. Safely slice out the block
 	if startIdx != -1 && endIdx != -1 {
+		// Include a check to remove the preceding newline if it exists so we don't leave empty lines
+		if startIdx > 0 && content[startIdx-1] == '\n' {
+			startIdx--
+		}
+
 		newContent := content[:startIdx] + content[endIdx+len(endTag):]
-		os.WriteFile(filePath, []byte(newContent), 0644)
+
+		// Write the cleaned file back with standard 0644 permissions
+		if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
+			return fmt.Errorf("failed to update %s: %v", filePath, err)
+		}
 	}
+
+	// 4. Disable forwarding in the live kernel instantly
+	// (Note: sysctl -p won't turn it off just because we removed it from the file)
+	exec.Command("sysctl", "-w", "net.ipv4.ip_forward=0").Run()
 
 	return nil
 }

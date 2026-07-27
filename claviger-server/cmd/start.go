@@ -180,6 +180,9 @@ func RunStart() {
 
 	security.EnsureJWTSecret(db)
 
+	// 4. Start the IP Watchdog (It will safely idle until turned on in the UI)
+	go network.RunIPWatchdog(ctx, db, 5*time.Minute)
+
 	// ---------------------------------------------------------
 	// 3.5 START DOCKER ORCHESTRATION ENGINE
 	// ---------------------------------------------------------
@@ -273,6 +276,8 @@ func RunStart() {
 			api.HubAccessMiddleware(db, api.HandleSaveEndpoint(db))(w, r)
 		}
 	})
+
+	mux.HandleFunc("/api/network/watchdog", api.HubAccessMiddleware(db, api.HandleRunIPWatchdog(db)))
 
 	mux.HandleFunc("/api/system/tasks", api.HubAccessMiddleware(db, api.HandleGetTasks))
 

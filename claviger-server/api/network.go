@@ -24,6 +24,58 @@ type ProxyConfig struct {
 	ProxyProvider   string `json:"proxy_provider"` // "cloudflare", "standard", or "none"
 }
 
+type ToggleReq struct {
+	Enable bool `json:"enable"`
+}
+
+func HandleRunIPWatchdog(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.Method {
+		case http.MethodGet:
+			statusStr := storage.GetConfig(db, "ip_watchdog_enabled")
+			isEnabled := statusStr == "true"
+
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]bool{"enabled": isEnabled})
+			return
+
+		case http.MethodPost:
+			var req ToggleReq
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": "Invalid request payload"})
+				return
+			}
+
+			// Convert boolean to string for database storage ("true" or "false")
+			valStr := "false"
+			if req.Enable {
+				valStr = "true"
+			}
+
+			if err := storage.SetConfig(db, "ip_watchdog_enabled", valStr); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": "Failed to update database config"})
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{
+				"status":  "success",
+				"message": "IP Watchdog settings updated successfully.",
+			})
+			return
+
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			json.NewEncoder(w).Encode(map[string]string{"status": "error", "message": "Method not allowed"})
+			return
+		}
+	}
+}
+
 // HandleNetworkSettings manages global routing configurations
 func HandleNetworkSettings(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

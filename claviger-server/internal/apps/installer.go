@@ -62,6 +62,33 @@ networks:
 `,
 	},
 
+	"cloudflared": {
+		Name:             "Cloudflare Tunnel",
+		Category:         "system_core",
+		Description:      "Securely route traffic from Cloudflare's global edge directly to your local containers with zero open firewall ports.",
+		Icon:             "☁️",
+		HasCustomSetup:   false, // Requires the user to input their tunnel token
+		NeedsDynamicPort: false, // No web UI dashboard, so no 1808X dynamic port needed
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.8'
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: claviger-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token {{.CustomToken}}
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=cloudflared"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
+
 	// --- SYSTEM CORE: NETWORK SERVICES ---
 	"adguard": {
 		Name:             "AdGuard Home",
@@ -248,6 +275,7 @@ networks:
 // TemplateData holds the variables we will inject into the YAML
 type TemplateData struct {
 	DynamicPort int
+	CustomToken string
 }
 
 // Install runs docker-compose for a specific app, assigning dynamic ports relative to hub_port.
@@ -279,11 +307,6 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 			return fmt.Errorf("database transaction failed: %w", err)
 		}
 
-		// // SECURITY DIRECTIVE: Deterministically enforce isolation parameters
-		// manifest.Category = "optional"
-		// manifest.HasCustomSetup = false // Custom apps shouldn't have system-level wizards
-		// manifest.SetupPort = 0
-
 	} else {
 		// Route B: Fetch from the compiled, static Zero-Trust Catalog
 		var exists bool
@@ -312,6 +335,7 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 	}
 
 	var finalYAML string
+	data := TemplateData{}
 
 	// 3. DYNAMIC PORT ALLOCATION
 	if manifest.NeedsDynamicPort {
@@ -328,7 +352,7 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 		}
 
 		var renderedYAML bytes.Buffer
-		data := TemplateData{DynamicPort: assignedPort}
+		// data := TemplateData{DynamicPort: assignedPort}
 		if err := tmpl.Execute(&renderedYAML, data); err != nil {
 			return fmt.Errorf("failed to inject dynamic port: %v", err)
 		}
@@ -344,6 +368,15 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 		fmt.Printf("🚀 App %s anchored to Port %d (Hub was at %d)\n", manifest.Name, assignedPort, hubPort)
 
 	} else {
+
+		if appID == "cloudflared" {
+			token := storage.GetConfig(db, "cloudflare_tunnel_token")
+			if token == "" {
+				return fmt.Errorf("cloudflared requires a tunnel token, but none was found in the database")
+			}
+			data.CustomToken = token
+
+		}
 		finalYAML = manifest.ComposeYAML
 	}
 
