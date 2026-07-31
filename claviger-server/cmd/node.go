@@ -22,7 +22,18 @@ func RunCreateNode(db *sql.DB, masterIP string, subServerIP string) error {
 		}
 	}
 
-	// 2. Build registration payload (Now using vpn_ip)
+	// 2. Save Master's VPN IP
+	if err := storage.SetConfig(db, "master_vpn_ip", masterIP); err != nil {
+		return fmt.Errorf("failed to store master vpn ip: %v", err)
+	}
+
+	// 3. Enable public hub mode so the server binds to 0.0.0.0 on startup,
+	// allowing the Master to proxy commands while keeping internal gateway rules intact.
+	if err := storage.SetConfig(db, "public_hub", "true"); err != nil {
+		return fmt.Errorf("failed to set public_hub config: %v", err)
+	}
+
+	// 4. Build registration payload
 	payload := map[string]string{
 		"vpn_ip":   subServerIP,
 		"node_key": key,
@@ -34,9 +45,7 @@ func RunCreateNode(db *sql.DB, masterIP string, subServerIP string) error {
 		return fmt.Errorf("hub port not configured")
 	}
 
-	storage.SetConfig(db, "master_vpn_ip", masterIP)
-
-	// 3. Post to Master over WireGuard IP
+	// 5. Post to Master over WireGuard IP
 	masterURL := fmt.Sprintf("http://%s:%s/api/sub-servers/register", masterIP, hubPort)
 	resp, err := http.Post(masterURL, "application/json", bytes.NewBuffer(jsonBytes))
 	if err != nil {
@@ -49,5 +58,11 @@ func RunCreateNode(db *sql.DB, masterIP string, subServerIP string) error {
 	}
 
 	log.Println("✅ Node registration request sent to Master successfully.")
+	fmt.Println("\n---------------------------------------------------")
+	fmt.Println("⚠️  ACTION REQUIRED: Public Hub mode enabled.")
+	fmt.Println("   Please restart your Sub-server daemon to apply changes:")
+	fmt.Println("   sudo systemctl restart claviger-server (or restart your binary)")
+	fmt.Println("---------------------------------------------------")
+
 	return nil
 }

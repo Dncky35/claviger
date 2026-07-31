@@ -86,9 +86,9 @@ func (gui *ClavigerGUI) RouteToMainScreen() {
 		gui.ShowDashboardScreen()
 
 		// Only attempt auto-connect AFTER we confirm daemon is alive
-		if gui.Vault.AutoConnect && gui.Vault.ActiveProfileID != "" {
-			go gui.SendConnectCommandToDaemon()
-		}
+		// if gui.Vault.AutoConnect && gui.Vault.ActiveProfileID != "" {
+		// 	go gui.SendConnectCommandToDaemon()
+		// }
 	}
 }
 

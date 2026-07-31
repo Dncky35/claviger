@@ -39,6 +39,14 @@ func main() {
 		}
 		cmd.RunRestore(args[0]) // New: Passes the path to the backup file
 
+	case "public-hub":
+		if len(args) < 1 {
+			fmt.Println("❌ Usage: claviger-server public-hub [enable|disable]")
+			return
+		}
+
+		cmd.RunSwitchPublicHub(args)
+
 	case "revoke":
 		if len(args) < 1 {
 			fmt.Println("❌ Usage: claviger-server revoke [client_id]")
@@ -77,7 +85,8 @@ func printUsage() {
 	fmt.Println("  claviger-server setup                        Run initial setup")
 	fmt.Println("  claviger-server start                        Start server daemon")
 	fmt.Println("  claviger-server register                     Register new VPN client")
-	fmt.Println("  claviger-server register-node <ip> <id>      Register this server as a Node on Master")
+	fmt.Println("  claviger-server register-node <master_ip> <sub_server_vpn_ip>      Register this server as a Node on Master")
+	fmt.Println("  claviger-server public-hub <enable|disable>  Toggle public binding mode (0.0.0.0)")
 	fmt.Println("  claviger-server list [role]                  List registered clients")
 	fmt.Println("  claviger-server revoke <client_id>           Revoke a client access")
 	fmt.Println("  claviger-server restore <file>               Restore from backup")

@@ -237,8 +237,6 @@
                 }
 
                 const runningContainers = data.raw_containers || [];
-                // DEVELOPER LOGGING
-                console.log("Running Containers:", JSON.stringify(runningContainers, null, 2));
                 
                 // Cloudflared State Check
                 const isCloudflaredRunning = runningContainers.some(c => c.name === 'claviger-cloudflared' && c.state === 'running');

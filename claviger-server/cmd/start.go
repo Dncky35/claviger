@@ -222,6 +222,9 @@ func RunStart() {
 	mux.HandleFunc("/api/status", api.HubAccessMiddleware(db, api.HandleStatus()))
 	mux.HandleFunc("/api/system", api.HubAccessMiddleware(db, api.HandleSystemStats))
 
+	// The trailing slash tells Go to route everything under /api/fleet/proxy/ to this handler
+	mux.HandleFunc("/api/fleet/proxy/", api.HubAccessMiddleware(db, api.HandleFleetProxy(db)))
+
 	// http.HandleFunc("/api/sub-servers/approve", HandleNodeApproval(db))
 	mux.HandleFunc("/api/sub-servers/approve", api.HubAccessMiddleware(db, api.HandleNodeApproval(db)))
 	mux.HandleFunc("/api/sub-servers/remove", api.HubAccessMiddleware(db, api.HandleNodeRemoval(db)))
@@ -335,6 +338,11 @@ func RunStart() {
 	defer db.Close()
 
 	scheduler.Start(db)
+
+	publicHub := storage.GetConfig(db, "public_hub")
+	if publicHub == "true" {
+		hubIP = "0.0.0.0" // Override bind address to listen globally, protected by middleware
+	}
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", hubIP, hubPort), // Locked to VPN only
