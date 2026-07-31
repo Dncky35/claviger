@@ -144,6 +144,21 @@ func InitDB() *sql.DB {
 		log.Fatalf("❌ Failed to create custom_apps table: %v", err)
 	}
 
+	createSubServersTable := `
+    CREATE TABLE IF NOT EXISTS sub_servers (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL UNIQUE,
+        api_key TEXT NOT NULL,
+        status TEXT DEFAULT 'unknown',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+    );`
+
+	_, err = db.Exec(createSubServersTable)
+	if err != nil {
+		log.Fatalf("❌ Failed to create sub_servers table: %v", err)
+	}
+
 	return db
 }
 

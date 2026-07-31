@@ -1,0 +1,140 @@
+{{ define "tab_fleet" }}
+<div id="tab-fleet" class="tab-pane hidden">
+    
+    <!-- Header & Dropdown -->
+    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold tracking-tight text-white">Fleet Nodes</h2>
+            <p class="text-slate-400 text-sm mt-1">Manage and deploy apps to your remote edge servers.</p>
+        </div>
+        
+        <!-- Node Selector Dropdown (Hidden initially if empty) -->
+        <div id="fleet-selector-container" class="hidden flex items-center gap-3">
+            <label for="fleet-node-select" class="text-xs font-bold uppercase tracking-widest text-slate-500">Target Node:</label>
+            <div class="relative min-w-[200px]">
+                <select id="fleet-node-select" onchange="onNodeSelected()" class="appearance-none bg-surface border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full py-2 pl-4 pr-10 shadow-sm cursor-pointer outline-none transition-colors">
+                    <option value="">Select a node...</option>
+                </select>
+                <!-- Custom Arrow Icon for the Select -->
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empty State (Shows if 0 nodes returned) -->
+    <div id="fleet-empty-state" class="hidden bg-surface border border-border rounded-2xl p-12 text-center shadow-sm">
+        <div class="w-16 h-16 bg-slate-800/50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-2">No Sub-Servers Found</h3>
+        <p class="text-slate-400 max-w-md mx-auto mb-6">You haven't paired any remote nodes yet. Go to the VPN Peers tab to promote a connected device.</p>
+        <button onclick="switchTab('clients')" class="px-4 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors">
+            View VPN Peers
+        </button>
+    </div>
+
+    <!-- Node Dashboard Content (Hidden until a node is selected from dropdown) -->
+    <div id="fleet-node-dashboard" class="hidden">
+        <!-- Node Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
+                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Node Status</h3>
+                <div id="node-stat-status" class="text-lg font-bold text-slate-200 flex items-center gap-2">-</div>
+            </div>
+            <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
+                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">VPN Tunnel IP</h3>
+                <div id="node-stat-ip" class="text-lg font-mono font-bold text-slate-200">-</div>
+            </div>
+        </div>
+
+        <!-- Apps Container Wrapper -->
+        <div id="node-apps-container" class="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm p-8 text-center text-slate-400">
+            <!-- This will be replaced by app lists in Phase 2 -->
+            Loading remote apps...
+        </div>
+    </div>
+
+    <script>
+        // Triggered every time the user clicks the "Fleet" tab in the sidebar
+        async function loadFleetNodes() {
+            try {
+                const res = await fetch('/api/sub-servers');
+                if (!res.ok) return;
+                
+                const nodes = await res.json();
+                
+                const emptyState = document.getElementById('fleet-empty-state');
+                const selectorContainer = document.getElementById('fleet-selector-container');
+                const nodeSelect = document.getElementById('fleet-node-select');
+                const dashboard = document.getElementById('fleet-node-dashboard');
+
+                // Case 1: No nodes configured
+                if (!nodes || nodes.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    selectorContainer.classList.add('hidden');
+                    dashboard.classList.add('hidden');
+                    return;
+                } 
+                
+                // Case 2: Nodes exist
+                emptyState.classList.add('hidden');
+                selectorContainer.classList.remove('hidden');
+                
+                // Reset dropdown options (keeping only the default prompt)
+                nodeSelect.innerHTML = '<option value="">Select a node...</option>';
+                
+                nodes.forEach(node => {
+                    const opt = document.createElement('option');
+                    opt.value = node.id;
+                    opt.textContent = node.status === 'pending' ? node.name + ' (Pending)' : node.name;
+                    
+                    // Attach the whole node object as a JSON string to the option dataset
+                    // This lets us grab the IP and status instantly without another API call!
+                    opt.dataset.nodeInfo = JSON.stringify(node);
+                    
+                    nodeSelect.appendChild(opt);
+                });
+
+            } catch (error) {
+                console.error('Error fetching fleet nodes:', error);
+            }
+        }
+
+        // Triggered when the user changes the dropdown selection
+        function onNodeSelected() {
+            const select = document.getElementById('fleet-node-select');
+            const selectedOption = select.options[select.selectedIndex];
+            const dashboard = document.getElementById('fleet-node-dashboard');
+            
+            // If they clicked back to "Select a node..."
+            if (!select.value) {
+                dashboard.classList.add('hidden');
+                return;
+            }
+
+            // Parse the stored data from the option
+            const node = JSON.parse(selectedOption.dataset.nodeInfo);
+            dashboard.classList.remove('hidden');
+
+            // Update Status Badge
+            const statusEl = document.getElementById('node-stat-status');
+            if (node.status === 'active') {
+                statusEl.innerHTML = '<div class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_8px_rgba(129,140,248,0.6)]"></div> <span class="text-indigo-400">Active Node</span>';
+            } else {
+                statusEl.innerHTML = '<div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div> <span class="text-amber-400">Pending Approval</span>';
+            }
+
+            // Update IP
+            document.getElementById('node-stat-ip').textContent = node.ip_address || 'Unknown';
+            
+            // Placeholder for the next phase
+            document.getElementById('node-apps-container').innerHTML = 
+                '<div class="p-8 text-center text-slate-400 italic">Connected to <strong>' + node.name + '</strong>.<br>Remote app fetching will be implemented next.</div>';
+        }
+
+        loadFleetNodes()
+    </script>
+</div>
+{{ end }}

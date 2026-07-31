@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -180,4 +181,49 @@ func sendStepUpChallenge(w http.ResponseWriter) {
 		"message":         "Elevated privileges required. Please enter your authenticator code.",
 	}
 	json.NewEncoder(w).Encode(payload)
+}
+
+// MasterAuthMiddleware protects Sub-server endpoints from unauthorized execution
+func MasterAuthMiddleware(db *sql.DB, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 1. IP Security Check
+		// Ensure the request is coming exactly from the Master's WireGuard IP (e.g., 10.8.0.1)
+		clientIP := strings.Split(r.RemoteAddr, ":")[0]
+		masterIP := storage.GetConfig(db, "master_vpn_ip") // Assume you save this during setup, or hardcode 10.8.0.1 for now
+
+		if masterIP == "" {
+			masterIP = "10.8.0.1" // Fallback to default Master IP
+		}
+
+		if clientIP != masterIP {
+			http.Error(w, "Forbidden: Invalid origin IP", http.StatusForbidden)
+			return
+		}
+
+		// 2. Fetch the expected secret key from the Sub-server's local database
+		expectedKey := storage.GetConfig(db, "node_secret")
+		if expectedKey == "" {
+			http.Error(w, "Node not configured for remote access", http.StatusServiceUnavailable)
+			return
+		}
+
+		// 3. Token Check
+		// The Master will send the key in the Authorization header: "Bearer clvg_node_..."
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			http.Error(w, "Unauthorized: Missing or invalid token format", http.StatusUnauthorized)
+			return
+		}
+
+		providedKey := strings.TrimPrefix(authHeader, "Bearer ")
+
+		// 4. Final Comparison
+		if providedKey != expectedKey {
+			http.Error(w, "Unauthorized: Invalid node key", http.StatusUnauthorized)
+			return
+		}
+
+		// Passed all checks! Allow the request to reach the actual handler
+		next.ServeHTTP(w, r)
+	}
 }

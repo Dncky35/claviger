@@ -30,11 +30,12 @@
                             <th class="p-5">Assigned IP</th>
                             <th class="p-5">Role</th>
                             <th class="p-5 text-center">State</th> 
+                            <th class="p-5 text-center">Node Ops</th> <!-- NEW COLUMN -->
                             <th class="p-5 text-right">Controls</th>
                         </tr>
                     </thead>
                     <tbody id="list-active-peers" class="divide-y divide-border/50 text-sm text-slate-300">
-                        <tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="5">Loading devices...</td></tr>
+                        <tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="6">Loading devices...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -311,7 +312,7 @@
         }
         btn.innerText = "Approve & Generate Visa"; btn.disabled = false;
     }
-
+1
     function copyAndCloseRegistration() {
         const token = document.getElementById('output-server-approval').value;
         navigator.clipboard.writeText(token).then(() => {
@@ -453,25 +454,46 @@
                 clients.forEach(c => {
                     if (c.status === 'active') {
                         activeCount++;
-                        let stateBadge = '';
-                        if (c.is_online) {
-                            stateBadge = `
-                                <div class="flex flex-col items-center justify-center">
-                                    <div class="flex items-center">
-                                        <div class="w-2 h-2 rounded-full bg-success mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
-                                        <span class="text-xs font-bold text-success uppercase tracking-wider">Online</span>
+                        
+                        // --- 1. Connection State Badge ---
+                        let stateBadge = c.is_online ? `
+                            <div class="flex flex-col items-center justify-center">
+                                <div class="flex items-center">
+                                    <div class="w-2 h-2 rounded-full bg-success mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                                    <span class="text-xs font-bold text-success uppercase tracking-wider">Online</span>
+                                </div>
+                            </div>` : `
+                            <div class="flex flex-col items-center justify-center">
+                                <div class="flex items-center">
+                                    <div class="w-2 h-2 rounded-full bg-muted-foreground/40 mr-2"></div>
+                                    <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Offline</span>
+                                </div>
+                            </div>`;
+
+                        // --- 2. Node Ops Column Logic ---
+                        let nodeOpsHtml = `<span class="text-muted-foreground/50">-</span>`; // Default if not a node
+
+                        if (c.is_sub_server) {
+                            if (c.sub_server_status === 'pending') {
+                                nodeOpsHtml = `
+                                    <div class="flex items-center justify-center gap-2">
+                                        <button onclick="approveNode('${c.id}', '${c.name}')" class="text-success hover:text-white text-[10px] uppercase font-bold tracking-wider bg-success/10 hover:bg-success px-2 py-1 rounded border border-success/20 transition-colors">Approve</button>
+                                        <button onclick="removeNode('${c.id}', '${c.name}')" class="text-amber-500 hover:text-white text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 hover:bg-amber-500 px-2 py-1 rounded border border-amber-500/20 transition-colors">Deny</button>
                                     </div>
-                                </div>`;
-                        } else {
-                            stateBadge = `
-                                <div class="flex flex-col items-center justify-center">
-                                    <div class="flex items-center">
-                                        <div class="w-2 h-2 rounded-full bg-muted-foreground/40 mr-2"></div>
-                                        <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Offline</span>
+                                `;
+                            } else if (c.sub_server_status === 'active') {
+                                nodeOpsHtml = `
+                                    <div class="flex items-center justify-center gap-3">
+                                        <span class="text-indigo-400 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">
+                                            <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></div> Active
+                                        </span>
+                                        <button onclick="removeNode('${c.id}', '${c.name}')" class="text-muted-foreground hover:text-destructive text-[10px] uppercase font-bold tracking-wider bg-background px-2 py-1 rounded border border-border hover:border-destructive transition-colors" title="Remove Remote Control">Remove</button>
                                     </div>
-                                </div>`;
+                                `;
+                            }
                         }
 
+                        // --- 3. Build Row ---
                         const tr = document.createElement('tr');
                         tr.className = 'hover:bg-background/50 transition-colors';
                         tr.innerHTML = `
@@ -479,6 +501,7 @@
                             <td class="p-4 font-mono text-muted-foreground">${c.ip_address}</td>
                             <td class="p-4 font-medium"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[10px] uppercase tracking-wider font-bold">${c.role_id}</span></td>
                             <td class="p-4">${stateBadge}</td>
+                            <td class="p-4 text-center">${nodeOpsHtml}</td>
                             <td class="p-4 text-right">
                                 <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
                             </td>
@@ -487,9 +510,37 @@
                     }
                 });
 
-                if(activeCount === 0) activeTbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="5">No managed devices found.</td></tr>';
+                if(activeCount === 0) activeTbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="6">No managed devices found.</td></tr>';
             }
         } catch (err) { console.error("Error fetching clients:", err); }
+    }
+
+    async function approveNode(clientId, clientName) {
+        if (!confirm(`Approve remote management for node: ${clientName}?`)) return;
+
+        try {
+            const res = await fetch('/api/sub-servers/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ client_id: clientId })
+            });
+            if (res.ok) fetchPeersData();
+            else alert('Failed to approve node.');
+        } catch (err) { console.error(err); }
+    }
+
+    async function removeNode(clientId, clientName) {
+        if (!confirm(`Remove Node capabilities from ${clientName}?\n(This will NOT revoke their VPN access).`)) return;
+
+        try {
+            const res = await fetch('/api/sub-servers/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ client_id: clientId })
+            });
+            if (res.ok) fetchPeersData();
+            else alert('Failed to remove node.');
+        } catch (err) { console.error(err); }
     }
 
     fetchPeersData();

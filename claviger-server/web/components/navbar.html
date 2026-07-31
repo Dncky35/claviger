@@ -9,13 +9,7 @@
         </h1>
     </div>
     <div class="flex items-center space-x-4">
-        
-        <!-- <span id="cloud-sync-badge" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-background text-slate-400 border border-border transition-colors">
-            ☁️ Syncing...
-        </span> -->
-        <!-- <span id="vpn-status-badge" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-background text-slate-400 border border-border transition-colors">
-            Checking...
-        </span> -->
+        <!-- Badges can go here -->
     </div>
      <div class="flex items-center">
     <a href="https://kreosus.com/cloudrocean" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest shadow-sm">
@@ -36,13 +30,10 @@
             <div class="space-y-1">
                 <button onclick="switchTab('system')" id="btn-system" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">System Overview</button>
                 <button onclick="switchTab('network')" id="btn-network" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Network & Gateway</button>
-                <button onclick="switchTab('homeserver')" id="btn-homeserver" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors flex items-center justify-between">
-                    Homeserver & Edge
-                </button>
+                
                 <button onclick="switchTab('security')" id="btn-security" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Security & Firewall</button>
                 <button onclick="switchTab('voice')" id="btn-voice" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors flex items-center justify-between">
                     Alerts & Watchdog
-                    <!-- <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">Voice</span> -->
                 </button>
                 <button onclick="switchTab('access')" id="btn-access" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Server SSH Keys</button>
             </div>
@@ -65,17 +56,34 @@
                 <button onclick="switchTab('uninstall')" id="btn-uninstall" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">App Management</button>
             </div>
         </div>
+
+        <!-- NEW: Dynamic Fleet Nodes Section (Hidden by Default) -->
+        <div>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Fleet Nodes</h3>
+            <div class="space-y-1">
+                <button onclick="switchTab('fleet')" id="btn-fleet" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">
+                    Fleet Management
+                </button>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Home Server</h3>
+            <div class="space-y-1">
+                <button onclick="switchTab('homeserver')" id="btn-homeserver" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors flex items-center justify-between">
+                    Edge Configuration
+                </button>
+            </div>
+        </div>
     </div>
     
     <script>
-         async function loadSidebarContainerState(){
+        async function loadSidebarContainerState(){
             try {
                 const res = await fetch('/api/containers');
+                if(!res.ok) return;
                 const data = await res.json();
-
-                // console.log('Docker Installed:', data.docker_installed);
                 
-                // If docker is not installed, hide the extension management tabs
                 if(!data.docker_installed){
                     document.getElementById('btn-extensions').classList.add('hidden');
                     document.getElementById('btn-uninstall').classList.add('hidden');
@@ -83,10 +91,12 @@
             } catch (error) {
                 console.error('Error fetching containers for sidebar:', error);
             }
-         }
+        }
+        
 
-         // FIX: Use DOMContentLoaded so it runs safely without top-level await errors
-         document.addEventListener('DOMContentLoaded', loadSidebarContainerState);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSidebarContainerState();
+        });
     </script>
 </aside>
 {{ end }}

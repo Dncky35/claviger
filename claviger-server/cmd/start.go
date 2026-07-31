@@ -216,9 +216,16 @@ func RunStart() {
 	mux.HandleFunc("/api/mfa/validate", api.HandleValidateTOTP(db))
 	mux.HandleFunc("/api/mfa/status", api.HandleGetMFAStatus(db))
 
+	mux.HandleFunc("/api/sub-servers/register", api.HandleNodeRegistration(db))
+
 	// --- PROTECTED ROUTES (Requires allow_hub = 1) ---
 	mux.HandleFunc("/api/status", api.HubAccessMiddleware(db, api.HandleStatus()))
 	mux.HandleFunc("/api/system", api.HubAccessMiddleware(db, api.HandleSystemStats))
+
+	// http.HandleFunc("/api/sub-servers/approve", HandleNodeApproval(db))
+	mux.HandleFunc("/api/sub-servers/approve", api.HubAccessMiddleware(db, api.HandleNodeApproval(db)))
+	mux.HandleFunc("/api/sub-servers/remove", api.HubAccessMiddleware(db, api.HandleNodeRemoval(db)))
+	mux.HandleFunc("/api/sub-servers", api.HubAccessMiddleware(db, api.HandleGetSubServers(db)))
 
 	// --- PROTECTED SECURITY ROUTES ---
 	mux.HandleFunc("/api/security", api.HubAccessMiddleware(db, api.HandleSecurityStats))

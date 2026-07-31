@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -21,6 +22,11 @@ type Client struct {
 	CreatedAt     string `json:"created_at"`
 	IsOnline      bool   `json:"is_online"`      // NEW: Live presence detection
 	LastHandshake string `json:"last_handshake"` // NEW: Exact time of last packet
+
+	// --- New Sub-Server Fields ---
+	IsSubServer     bool   `json:"is_sub_server"`
+	SubServerStatus string `json:"sub_server_status,omitempty"`
+	SubServerID     string `json:"sub_server_id,omitempty"`
 }
 
 // HandleClients manages listing the VPN peers for the Hub UI
@@ -28,11 +34,19 @@ func HandleClients(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		// --- GET: List all current clients (Pending, Active, Suspended) ---
 		if r.Method == http.MethodGet {
 
-			// 1. Fetch the static configurations from SQLite
-			rows, err := db.Query("SELECT id, name, public_key, ip_address, role_id, platform, status, created_at FROM clients ORDER BY created_at DESC")
+			// 1. Fetch the static configurations from SQLite (Now with LEFT JOIN for sub_servers)
+			query := `
+        SELECT 
+            c.id, c.name, c.public_key, c.ip_address, c.role_id, c.platform, c.status, c.created_at,
+            s.id AS sub_server_id, 
+            s.status AS sub_server_status
+        FROM clients c
+        LEFT JOIN sub_servers s ON c.id = s.client_id
+        ORDER BY c.created_at DESC`
+
+			rows, err := db.Query(query)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -42,14 +56,31 @@ func HandleClients(db *sql.DB) http.HandlerFunc {
 			clients := []Client{}
 			for rows.Next() {
 				var c Client
-				var ip, platform sql.NullString
-				rows.Scan(&c.ID, &c.Name, &c.PublicKey, &ip, &c.RoleID, &platform, &c.Status, &c.CreatedAt)
+				var ip, platform, subServerID, subServerStatus sql.NullString
+
+				// Scan all 10 columns
+				err := rows.Scan(
+					&c.ID, &c.Name, &c.PublicKey, &ip, &c.RoleID, &platform, &c.Status, &c.CreatedAt,
+					&subServerID, &subServerStatus,
+				)
+
+				if err != nil {
+					log.Printf("Error scanning client row: %v", err)
+					continue
+				}
 
 				if ip.Valid {
 					c.IPAddress = ip.String
 				}
 				if platform.Valid {
 					c.Platform = platform.String
+				}
+
+				// Check if this client is also registered as a sub-server
+				if subServerID.Valid && subServerID.String != "" {
+					c.IsSubServer = true
+					c.SubServerID = subServerID.String
+					c.SubServerStatus = subServerStatus.String // This will be 'pending' or 'active'
 				}
 
 				clients = append(clients, c)
@@ -87,6 +118,7 @@ func HandleClients(db *sql.DB) http.HandlerFunc {
 			}
 
 			// 4. Send the enriched data back to the UI
+			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(clients)
 			return
 		}
