@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // AppManifest defines everything the system and UI needs to know about an app
@@ -398,6 +400,30 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("docker compose failed: %s\nError: %v", string(output), err)
+	}
+
+	// =========================================================
+	// 5. POST-INSTALL HEALTH CHECK & ROLLBACK
+	// =========================================================
+	fmt.Printf("⏳ Waiting 3 seconds to verify '%s' stability...\n", manifest.Name)
+	time.Sleep(3 * time.Second)
+
+	// Ask Docker if any containers for this app are 'restarting' or 'exited'
+	checkCmd := exec.Command("docker", "compose", "ps", "--status", "exited", "--status", "restarting", "-q")
+	checkCmd.Dir = appDir
+	checkOut, _ := checkCmd.Output()
+
+	if len(strings.TrimSpace(string(checkOut))) > 0 {
+		// 🚨 The container crashed! Grab the last 5 lines of logs to see why.
+		logsCmd := exec.Command("docker", "compose", "logs", "--tail=5")
+		logsCmd.Dir = appDir
+		logsOut, _ := logsCmd.CombinedOutput()
+
+		// Rollback: Destroy the broken container and network so the user can try again cleanly
+		fmt.Printf("❌ App '%s' crashed! Rolling back...\n", manifest.Name)
+		exec.Command("docker", "compose", "down").Run()
+
+		return fmt.Errorf("Container crashed immediately. Reason:\n%s", string(logsOut))
 	}
 
 	fmt.Printf("✅ App '%s' successfully deployed and started!\n", manifest.Name)

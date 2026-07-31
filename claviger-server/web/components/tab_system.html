@@ -235,31 +235,6 @@
                 const statusRes = await fetch('/api/status');
                 if (statusRes.ok) {
                     const statusData = await statusRes.json();
-                    
-                    // Update VPN Badge
-                    // const vpnBadge = document.getElementById('vpn-status-badge');
-                    // if (vpnBadge && statusData.vpn_state === 'active') {
-                    //     vpnBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-success/10 text-success border border-success/20 shadow-[0_0_10px_rgba(34,197,94,0.2)] transition-colors';
-                    //     vpnBadge.innerText = '● VPN Active';
-                    // }
-
-                    // Update Cloud Sync Badge
-                    // const cloudBadge = document.getElementById('cloud-sync-badge');
-                    // if (cloudBadge) {
-                    //     if (statusData.cloud_sync_status === 'Healthy') {
-                    //         cloudBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 transition-colors';
-                            
-                    //         let timeStr = "Healthy";
-                    //         if (statusData.last_cloud_sync) {
-                    //             const secondsAgo = Math.floor((new Date() - new Date(statusData.last_cloud_sync)) / 1000);
-                    //             timeStr = secondsAgo < 60 ? 'Just now' : Math.floor(secondsAgo/60) + 'm ago';
-                    //         }
-                    //         cloudBadge.innerText = '☁️ Cloud: ' + timeStr;
-                    //     } else {
-                    //         cloudBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-destructive/10 text-destructive border border-destructive/20 animate-pulse';
-                    //         cloudBadge.innerText = '⚠️ Cloud: Offline';
-                    //     }
-                    // }
                 }
 
                 // Hardware Stats

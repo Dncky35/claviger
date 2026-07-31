@@ -1,7 +1,7 @@
 {{ define "tab_homeserver" }}
 <div id="tab-homeserver" class="space-y-6 hidden animate-fade-in">
     <div>
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Homeserver & Edge Infrastructure</h2>
+        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Edge Infrastructure</h2>
         <p class="text-muted-foreground text-sm mt-1">Manage local network resilience, automated self-healing, and secure zero-trust edge routing.</p>
     </div>
 
@@ -85,8 +85,8 @@
 
                 <!-- Token Input Drawer (Appears when configuring) -->
                 <div id="wrapper-token-cloudflared" class="hidden flex flex-col sm:flex-row gap-2 max-w-md mt-3">
-                    <input type="password" id="input-tunnel-token" placeholder="Paste Cloudflare Tunnel Token..." class="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-primary flex-1" />
-                    <button onclick="installCloudflaredWithToken()" class="px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    <input type="password" id="input-tunnel-token" placeholder="Paste Cloudflare Tunnel Token..." class="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed" />
+                    <button id="btn-deploy-tunnel" onclick="installCloudflaredWithToken()" class="px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
                         Deploy Tunnel
                     </button>
                 </div>
@@ -154,11 +154,21 @@
         // --- 3. INSTALL CLOUDFLARED WITH TOKEN ---
         async function installCloudflaredWithToken() {
             const tokenInput = document.getElementById('input-tunnel-token');
+            const deployBtn = document.getElementById('btn-deploy-tunnel');
             const token = tokenInput.value.trim();
+            
             if (!token) {
                 alert('Please enter a valid Cloudflare Tunnel token.');
                 return;
             }
+
+            // 1. SET LOADING STATE
+            const originalBtnHtml = deployBtn.innerHTML;
+            deployBtn.disabled = true;
+            tokenInput.disabled = true; // Lock the input so they can't change it mid-flight
+            deployBtn.classList.remove('bg-primary', 'hover:bg-emerald-600');
+            deployBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
+            deployBtn.innerHTML = '⏳ Deploying...';
 
             try {
                 const res = await fetch('/api/apps/install', {
@@ -166,17 +176,43 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ app_id: 'cloudflared', custom_token: token })
                 });
+                
                 if (res.ok) {
-                    alert('Cloudflare Tunnel deployment initiated successfully!');
-                    toggleCloudflareTokenInput();
-                    checkDockerForNetworkTab();
+                    // 2. SET SUCCESS STATE
+                    deployBtn.classList.remove('animate-pulse', 'bg-slate-700');
+                    deployBtn.classList.add('bg-emerald-600');
+                    deployBtn.innerHTML = '✅ Deployed!';
+                    
+                    // Wait 1.5 seconds for the user to see the success checkmark before hiding
+                    setTimeout(() => {
+                        toggleCloudflareTokenInput();
+                        checkDockerForNetworkTab();
+                        
+                        // Reset the form silently in the background in case they need it again later
+                        tokenInput.value = '';
+                        tokenInput.disabled = false;
+                        deployBtn.disabled = false;
+                        deployBtn.className = 'px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm';
+                        deployBtn.innerHTML = originalBtnHtml;
+                    }, 1500);
                 } else {
-                    const err = await res.text();
-                    alert('Failed to deploy tunnel: ' + err);
+                    // Read the error from the backend JSON response
+                    const errData = await res.json();
+                    throw new Error(errData.message || "Unknown server error");
                 }
             } catch (e) {
+                // 3. SET ERROR STATE
                 console.error(e);
-                alert('Network error during deployment.');
+                deployBtn.classList.remove('animate-pulse', 'bg-slate-700', 'cursor-not-allowed');
+                deployBtn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+                deployBtn.innerHTML = '❌ Failed. Retry?';
+                
+                setTimeout(() => {
+                    alert('Failed to deploy tunnel:\n\n' + e.message);
+                    // Unlock the inputs so they can try again
+                    deployBtn.disabled = false;
+                    tokenInput.disabled = false;
+                }, 100);
             }
         }
 
@@ -200,7 +236,9 @@
                     return;
                 }
 
-                const runningContainers = data.containers || [];
+                const runningContainers = data.raw_containers || [];
+                // DEVELOPER LOGGING
+                console.log("Running Containers:", JSON.stringify(runningContainers, null, 2));
                 
                 // Cloudflared State Check
                 const isCloudflaredRunning = runningContainers.some(c => c.name === 'claviger-cloudflared' && c.state === 'running');
@@ -223,9 +261,7 @@
             }
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            checkDockerForNetworkTab();
-        });
+        
 
         async function applyStaticIP() {
             const ip = document.getElementById('input-static-ip').value.trim();
@@ -266,6 +302,8 @@
                 btn.innerHTML = 'Apply Static Configuration';
             }
         }
+
+        checkDockerForNetworkTab();
     </script>
 </div>
 {{ end }}
