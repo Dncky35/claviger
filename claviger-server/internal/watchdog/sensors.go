@@ -7,12 +7,26 @@ import (
 	"bytes"
 	"claviger-server/internal/notifier"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
+
+// --- SMART COOLDOWN TRACKERS ---
+var (
+	lastDiskAlert      time.Time
+	lastRAMAlert       time.Time
+	lastCPUAlert       time.Time
+	lastUFWAlert       time.Time
+	lastWireguardAlert time.Time
+)
+
+// 15 minutes prevents spam while keeping you informed of ongoing critical issues
+const hardwareAlertCooldown = 15 * time.Minute
 
 func checkDiskUsage(thresholdPercent int) {
 	var stat syscall.Statfs_t
@@ -41,6 +55,8 @@ func checkDiskUsage(thresholdPercent int) {
 			"Low Disk Space",
 			fmt.Sprintf("Server disk usage has reached %d%%. Please clear some space.", usedPercent),
 		)
+	} else {
+		lastDiskAlert = time.Time{}
 	}
 }
 
@@ -96,6 +112,8 @@ func checkRAMUsage(thresholdPercent int) {
 			"High RAM Usage",
 			fmt.Sprintf("Server memory is currently at %d%%. This could cause services to crash.", usedPercent),
 		)
+	} else {
+		lastRAMAlert = time.Time{}
 	}
 }
 
@@ -124,6 +142,8 @@ func checkCPUUsage(thresholdPercent int) {
 			"CPU Overload",
 			fmt.Sprintf("Server CPU usage has spiked to %d%%.", cpuPercent),
 		)
+	} else {
+		lastCPUAlert = time.Time{}
 	}
 }
 
@@ -136,6 +156,8 @@ func checkWireguardInterface() {
 			"VPN Interface Offline",
 			"The WireGuard interface (wg0) is down or missing from the kernel!",
 		)
+	} else {
+		lastWireguardAlert = time.Time{}
 	}
 }
 
@@ -154,12 +176,17 @@ func checkUFWStatus() {
 			"FIREWALL DOWN",
 			"UFW is currently INACTIVE. The server perimeter is totally exposed!",
 		)
+	} else {
+		lastUFWAlert = time.Time{}
 	}
 }
 
 var lastAlertedExitedContainers = make(map[string]bool)
 
 func checkDockerHealth() {
+
+	log.Println("🔍 [Debug] checkDockerHealth() is executing...")
+
 	cmd := exec.Command("docker", "ps", "-a", "--filter", "status=exited", "--format", "{{.Names}} (code {{.ExitCode}})")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -171,10 +198,12 @@ func checkDockerHealth() {
 		// FIX: Do NOT trigger a critical "Docker Engine Down" email on every permission glitch.
 		// Instead, log it internally to debug, or check if socket exists.
 		// We only alert if the socket file itself is entirely missing from the host.
+		log.Printf("❌ [Debug] Docker command failed! Error: %v | Stderr: %s\n", err, stderr.String())
 		return
 	}
 
 	exited := strings.TrimSpace(out.String())
+	log.Printf("🐳 [Debug] Raw Docker output: %q\n", exited)
 
 	// If no containers are exited, clear our cache so if they exit *later*, we alert fresh
 	if exited == "" {
@@ -194,9 +223,12 @@ func checkDockerHealth() {
 
 		// Check if we already sent an alert for this specific crashed container instance
 		if !lastAlertedExitedContainers[container] {
+			log.Printf("🚨 [Debug] Found NEW crashed container: %s\n", container)
 			newlyCrashed = append(newlyCrashed, container)
 			// Mark as alerted
 			lastAlertedExitedContainers[container] = true
+		} else {
+			log.Printf("💤 [Debug] Ignoring already-alerted container: %s\n", container)
 		}
 	}
 
