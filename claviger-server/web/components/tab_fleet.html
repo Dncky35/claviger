@@ -1,7 +1,6 @@
 {{ define "tab_fleet" }}
 <div id="tab-fleet" class="tab-pane hidden">
     
-    <!-- Header & Dropdown -->
     <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h2 class="text-2xl font-bold tracking-tight text-white">Fleet Nodes</h2>
@@ -31,56 +30,83 @@
     </div>
 
     <!-- Node Dashboard Content -->
-    <div id="fleet-node-dashboard" class="hidden">
+    <div id="fleet-node-dashboard" class="hidden flex flex-col gap-8">
         
-        <!-- Identity Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-surface p-5 rounded-xl border border-border shadow-sm">
-                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Node Status</h3>
-                <div id="node-stat-status" class="text-lg font-bold text-slate-200 flex items-center gap-2">-</div>
+        <!-- SECTION 1: System & Hardware Telemetry -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">System Telemetry & Status</h3>
             </div>
-            <div class="bg-surface p-5 rounded-xl border border-border shadow-sm">
-                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">VPN Tunnel IP</h3>
-                <div id="node-stat-ip" class="text-lg font-mono font-bold text-slate-200">-</div>
+            
+            <!-- Identity Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-surface p-5 rounded-xl border border-border shadow-sm">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Node Status</h4>
+                    <div id="node-stat-status" class="text-lg font-bold text-slate-200 flex items-center gap-2">-</div>
+                </div>
+                <div class="bg-surface p-5 rounded-xl border border-border shadow-sm">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">VPN Tunnel IP</h4>
+                    <div id="node-stat-ip" class="text-lg font-mono font-bold text-slate-200">-</div>
+                </div>
+            </div>
+
+            <!-- Hardware Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- CPU -->
+                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">CPU Usage</h4>
+                    <div id="fleet-sys-cpu-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5">
+                        <div id="fleet-sys-cpu-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <!-- RAM -->
+                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">RAM Usage</h4>
+                    <div id="fleet-sys-ram-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5">
+                        <div id="fleet-sys-ram-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div id="fleet-sys-ram-text" class="text-[10px] text-slate-400 mt-2 font-mono">-- / -- GB</div>
+                </div>
+                
+                <!-- Disk -->
+                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Disk Usage</h4>
+                    <div id="fleet-sys-disk-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5">
+                        <div id="fleet-sys-disk-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div id="fleet-sys-disk-text" class="text-[10px] text-slate-400 mt-2 font-mono">-- / -- GB</div>
+                </div>
+                
+                <!-- System Info -->
+                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">System Info</h4>
+                    <div id="fleet-sys-os" class="text-sm font-bold text-slate-200 truncate">-</div>
+                    <div id="fleet-sys-uptime" class="text-[11px] text-slate-400 mt-1">-</div>
+                </div>
             </div>
         </div>
 
-        <!-- Hardware Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <!-- CPU -->
-            <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">CPU Usage</h3>
-                <div id="fleet-sys-cpu-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
-                <div class="w-full bg-slate-800 rounded-full h-1.5">
-                    <div id="fleet-sys-cpu-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+        <hr class="border-border">
+
+        <!-- SECTION 2: Edge Applications & Deployments -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">Node Applications & Extensions</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Manage official extensions and custom Docker deployments on this edge server.</p>
                 </div>
+                <button onclick="fetchFleetContainers(currentNodeId, currentNodeVpnIp)" class="px-3 py-1.5 bg-surface hover:bg-slate-800 text-xs font-bold text-slate-300 rounded-lg border border-border transition-colors flex items-center gap-1.5">
+                    🔄 Refresh Apps
+                </button>
             </div>
-            
-            <!-- RAM -->
-            <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">RAM Usage</h3>
-                <div id="fleet-sys-ram-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
-                <div class="w-full bg-slate-800 rounded-full h-1.5">
-                    <div id="fleet-sys-ram-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                </div>
-                <div id="fleet-sys-ram-text" class="text-[10px] text-slate-400 mt-2 font-mono">-- / -- GB</div>
-            </div>
-            
-            <!-- Disk -->
-            <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Disk Usage</h3>
-                <div id="fleet-sys-disk-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
-                <div class="w-full bg-slate-800 rounded-full h-1.5">
-                    <div id="fleet-sys-disk-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                </div>
-                <div id="fleet-sys-disk-text" class="text-[10px] text-slate-400 mt-2 font-mono">-- / -- GB</div>
-            </div>
-            
-            <!-- System Info -->
-            <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">System Info</h3>
-                <div id="fleet-sys-os" class="text-sm font-bold text-slate-200 truncate">-</div>
-                <div id="fleet-sys-uptime" class="text-[11px] text-slate-400 mt-1">-</div>
+
+            <!-- Unified List Container -->
+            <div class="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm divide-y divide-border" id="app-list">
+                <!-- App list rows dynamically injected here -->
             </div>
         </div>
 
@@ -88,6 +114,7 @@
 
     <script>
         let fleetPollingInterval = null;
+        let fleetContainerPollingInterval = null;
 
         async function loadFleetNodes() {
             try {
@@ -129,6 +156,7 @@
             
             // Clear any existing polling loop
             if (fleetPollingInterval) clearInterval(fleetPollingInterval);
+            if (fleetContainerPollingInterval) clearInterval(fleetContainerPollingInterval);
 
             if (!select.value) {
                 dashboard.classList.add('hidden');
@@ -145,7 +173,9 @@
                 
                 // Immediately fetch hardware stats, then set an interval
                 fetchFleetNodeSystemData(node.id);
+                fetchFleetContainers(node.id, node.ip_address);
                 fleetPollingInterval = setInterval(() => fetchFleetNodeSystemData(node.id), 5000);
+                fleetContainerPollingInterval = setInterval(() => fetchFleetContainers(node.id, node.ip_address), 5000);
             } else {
                 statusEl.innerHTML = '<div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div> <span class="text-amber-400">Pending Approval</span>';
                 // Reset stats to dashed state if pending
@@ -154,6 +184,33 @@
 
             document.getElementById('node-stat-ip').textContent = node.ip_address || 'Unknown';
         }
+
+        async function fetchFleetContainers(nodeId, ipAddress){
+            try {
+                const res = await fetch('/api/fleet/proxy/api/containers', {
+                    headers: {
+                        'X-Node-ID': nodeId,
+                    }
+                });
+
+                const data = await res.json();
+                
+                // If the backend didn't send the registry, abort cleanly
+                if (!data.registry_apps) return;
+                
+                const apps = data.registry_apps;
+                
+                // Call our new unified list renderer
+                renderFleetAppsList(apps, nodeId, ipAddress);
+
+            } catch (e) {
+                console.error("Failed to sync fleet app states", e);
+                const listApp = document.getElementById('app-list');
+                if (listApp) {
+                    listApp.innerHTML = '<div class="p-8 text-center text-rose-400 text-sm">Failed to load applications from node.</div>';
+                }
+            }
+        } 
 
         // The Proxy Fetch Function
         async function fetchFleetNodeSystemData(nodeId) {
@@ -200,6 +257,101 @@
             safeSet('fleet-sys-disk-val', '-%'); safeStyle('fleet-sys-disk-bar', 'width', '0%');
             safeSet('fleet-sys-disk-text', '-- / -- GB');
             safeSet('fleet-sys-os', '-'); safeSet('fleet-sys-uptime', '-');
+        }
+
+        function renderFleetAppsList(apps, nodeId, vpnIp) {
+            const listEl = document.getElementById('app-list');
+            if (!listEl) return;
+            listEl.innerHTML = ''; // Clear out the container
+
+            const officialApps = apps.filter(app => app.category === 'optional' && !app.is_custom);
+            const customApps = apps.filter(app => app.category === 'optional' && app.is_custom);
+
+            if (apps.length === 0) {
+                listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">No apps available on this node.</div>`;
+                return;
+            }
+
+            const buildRow = (app) => {
+                const isInstalled = app.status !== 'not_installed';
+                const isRunning = app.status === 'running';
+
+                // Badge Logic
+                let badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">Not Installed</span>`;
+                if (isInstalled) {
+                    if (isRunning) {
+                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Running</span>`;
+                    } else if (app.status === 'degraded') {
+                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">Degraded</span>`;
+                    } else {
+                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">Stopped</span>`;
+                    }
+                }
+
+                let installBtnClass = isInstalled ? 'hidden' : '';
+                let dashBtnClass = isInstalled ? '' : 'hidden';
+                let uninstallBtnClass = isInstalled ? '' : 'hidden';
+
+                let isDefault = app.action_port > 0;
+                let defaultAction = app.name === "RustDesk Server" ? 
+                    `onclick="window.open('https://claviger.cloudrocean.com/documentation/e54a5823-8d66-4999-9d91-70ec7db319a6', '_blank')"` : 'disabled';
+                let dashOnClick = isDefault ? `onclick="window.open('http://${vpnIp}:${app.action_port}', '_blank')"` : defaultAction;
+
+                const customPill = app.is_custom ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-400 uppercase tracking-wider">Custom</span>` : '';
+
+                return `
+                <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface/50 transition-all hover:bg-surface/80" id="row-node-${nodeId}-app-${app.id}">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-slate-800 border border-border flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                            ${app.icon}
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <h4 class="text-sm font-bold text-slate-100 flex items-center">${app.name} ${customPill}</h4>
+                                ${badgeHtml}
+                            </div>
+                            <p class="text-xs text-slate-400 leading-relaxed">${app.description}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 self-end md:self-center flex-shrink-0">
+                        <button 
+                            id="btn-install-node-${nodeId}-${app.id}" 
+                            onclick="installFleetApp('${nodeId}', '${app.id}', ${app.is_custom})" 
+                            class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap"
+                        >
+                            Install App
+                        </button>
+
+                        <button 
+                            id="btn-dash-node-${nodeId}-${app.id}" 
+                            ${dashOnClick} 
+                            class="${dashBtnClass} px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors border border-border whitespace-nowrap"
+                        >
+                            ${app.action_text}
+                        </button>
+
+                        <button 
+                            id="btn-uninstall-node-${nodeId}-${app.id}" 
+                            onclick="uninstallFleetApp('${nodeId}', '${app.id}')" 
+                            class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 whitespace-nowrap"
+                            title="Uninstall & Wipe Data"
+                        >
+                            🗑️
+                        </button>
+                    </div>
+                </div>`;
+            };
+
+            if (officialApps.length > 0) {
+                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-border">Official Extensions</div>`);
+                officialApps.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
+            }
+
+            if (customApps.length > 0) {
+                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-indigo-400 uppercase tracking-widest border-b border-border mt-2">Custom Deployments</div>`);
+                customApps.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
+            }
         }
 
         loadFleetNodes();

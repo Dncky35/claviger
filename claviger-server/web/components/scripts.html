@@ -82,63 +82,6 @@
                 renderExtensionsList(data.registry_apps);
             }
 
-            // Loop through EVERY app the Go backend knows about
-            data.registry_apps.forEach(app => {
-
-                if (!app.id || app.id === "fail2ban") return; // Sanity check to avoid rendering apps without an ID
-
-                const badge = document.getElementById(`badge-app-${app.id}`);
-                const installBtn = document.getElementById(`btn-install-${app.id}`);
-                const dashBtn = document.getElementById(`btn-dash-${app.id}`);
-                const helperText = document.getElementById(`helper-${app.id}-setup`);
-
-                // If the UI element doesn't exist on this page, just skip it
-                if (!badge || !installBtn || !dashBtn) return; 
-
-                if (app.status !== 'not_installed') {
-                    // -----------------------------------------
-                    // STATE: APP IS INSTALLED
-                    // -----------------------------------------
-                    installBtn.classList.add('hidden');
-                    
-                    // Configure the Dashboard/Setup Button
-                    if (app.action_port > 0) {
-                        dashBtn.classList.remove('hidden');
-                        dashBtn.setAttribute('onclick', `window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')`);
-                        dashBtn.innerText = app.action_text;
-                    } else {
-                        if (app.id === "fail2ban")
-                            dashBtn.classList.add('hidden'); // Hide if app has no UI (e.g., Fail2Ban)
-                    }
-
-                    if (app.status === 'running') {
-                        badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-                        badge.innerText = app.setup_complete ? 'Running' : 'Setup Required';
-
-                        // Smart styling: highlight the button blue if they need to finish setup
-                        if (!app.setup_complete) {
-                            dashBtn.classList.replace('bg-slate-800', 'bg-primary');
-                            if (helperText) helperText.classList.remove('hidden');
-                        } else {
-                            dashBtn.classList.replace('bg-primary', 'bg-slate-800');
-                            if (helperText) helperText.classList.add('hidden');
-                        }
-                    } else {
-                        badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-warning/10 text-warning border border-warning/20';
-                        badge.innerText = 'Stopped';
-                    }
-
-                } else {
-                    // -----------------------------------------
-                    // STATE: APP IS NOT INSTALLED
-                    // -----------------------------------------
-                    installBtn.classList.remove('hidden');
-                    dashBtn.classList.add('hidden');
-                    badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700';
-                    badge.innerText = 'Not Installed';
-                    if (helperText) helperText.classList.add('hidden');
-                }
-            });
         } catch (e) {
             console.error("Failed to sync app states", e);
         }

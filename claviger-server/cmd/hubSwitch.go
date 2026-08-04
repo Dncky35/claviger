@@ -3,6 +3,7 @@ package cmd
 import (
 	"claviger-server/storage"
 	"fmt"
+	"os/exec"
 	"strings"
 )
 
@@ -19,11 +20,12 @@ func RunSwitchPublicHub(args []string) {
 	action := strings.ToLower(args[0])
 	var val string
 
-	if action == "enable" {
+	switch action {
+	case "enable":
 		val = "true"
-	} else if action == "disable" {
+	case "disable":
 		val = "false"
-	} else {
+	default:
 		fmt.Println("❌ Invalid action. Use 'enable' or 'disable'.")
 		fmt.Println("   Example: claviger-server public-hub enable")
 		return
@@ -36,9 +38,24 @@ func RunSwitchPublicHub(args []string) {
 	}
 
 	if val == "true" {
+		fmt.Println("🛡️  Opening UFW port 18080 on interface claviger0...")
+		// Equivalent to: sudo ufw allow in on claviger0 proto tcp to any port 18080
+		cmd := exec.Command("ufw", "allow", "in", "on", "claviger0", "proto", "tcp", "to", "any", "port", "18080")
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("⚠️  Could not automatically configure UFW (is UFW installed?): %v\n", err)
+		}
+
 		fmt.Println("✅ Public Hub mode ENABLED.")
 		fmt.Println("   Server will bind to 0.0.0.0 (allowing remote Master proxy connections) on next restart.")
 	} else {
+		fmt.Println("🛡️  Closing UFW port 18080 on interface claviger0...")
+		// Equivalent to: sudo ufw delete allow in on claviger0 proto tcp to any port 18080
+		cmd := exec.Command("ufw", "delete", "allow", "in", "on", "claviger0", "proto", "tcp", "to", "any", "port", "18080")
+		if err := cmd.Run(); err != nil {
+			// It might error if the rule didn't exist in the first place, which is fine
+			fmt.Printf("⚠️  Note: UFW rule removal returned an error or was already removed: %v\n", err)
+		}
+
 		fmt.Println("✅ Public Hub mode DISABLED.")
 		fmt.Println("   Server will bind strictly to internal gateway IP on next restart.")
 	}

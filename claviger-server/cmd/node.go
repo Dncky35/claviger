@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os/exec"
 
 	"github.com/google/uuid"
 )
@@ -27,10 +28,23 @@ func RunCreateNode(db *sql.DB, masterIP string, subServerIP string) error {
 		return fmt.Errorf("failed to store master vpn ip: %v", err)
 	}
 
+	// Fetch hub port early so we can use it for both the firewall and the HTTP post
+	hubPort := storage.GetConfig(db, "hub_port")
+	if hubPort == "" {
+		return fmt.Errorf("hub port not configured")
+	}
+
 	// 3. Enable public hub mode so the server binds to 0.0.0.0 on startup,
 	// allowing the Master to proxy commands while keeping internal gateway rules intact.
 	if err := storage.SetConfig(db, "public_hub", "true"); err != nil {
 		return fmt.Errorf("failed to set public_hub config: %v", err)
+	}
+
+	// ---> NEW: Automatically Configure the UFW Firewall <---
+	log.Printf("🛡️  Opening UFW port %s on interface claviger0...", hubPort)
+	ufwCmd := exec.Command("ufw", "allow", "in", "on", "claviger0", "proto", "tcp", "to", "any", "port", hubPort)
+	if err := ufwCmd.Run(); err != nil {
+		log.Printf("⚠️  Could not automatically configure UFW (is UFW installed?): %v\n", err)
 	}
 
 	// 4. Build registration payload
@@ -39,11 +53,6 @@ func RunCreateNode(db *sql.DB, masterIP string, subServerIP string) error {
 		"node_key": key,
 	}
 	jsonBytes, _ := json.Marshal(payload)
-
-	hubPort := storage.GetConfig(db, "hub_port")
-	if hubPort == "" {
-		return fmt.Errorf("hub port not configured")
-	}
 
 	// 5. Post to Master over WireGuard IP
 	masterURL := fmt.Sprintf("http://%s:%s/api/sub-servers/register", masterIP, hubPort)
@@ -59,7 +68,7 @@ func RunCreateNode(db *sql.DB, masterIP string, subServerIP string) error {
 
 	log.Println("✅ Node registration request sent to Master successfully.")
 	fmt.Println("\n---------------------------------------------------")
-	fmt.Println("⚠️  ACTION REQUIRED: Public Hub mode enabled.")
+	fmt.Println("⚠️  ACTION REQUIRED: Public Hub mode enabled & Firewall configured.")
 	fmt.Println("   Please restart your Sub-server daemon to apply changes:")
 	fmt.Println("   sudo systemctl restart claviger-server (or restart your binary)")
 	fmt.Println("---------------------------------------------------")
