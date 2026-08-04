@@ -99,7 +99,10 @@
                     <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">Node Applications & Extensions</h3>
                     <p class="text-xs text-slate-500 mt-0.5">Manage official extensions and custom Docker deployments on this edge server.</p>
                 </div>
-                <button onclick="fetchFleetContainers(currentNodeId, currentNodeVpnIp)" class="px-3 py-1.5 bg-surface hover:bg-slate-800 text-xs font-bold text-slate-300 rounded-lg border border-border transition-colors flex items-center gap-1.5">
+                <button 
+                id="btn-refresh-fleet-apps"
+                onclick="refetchFleetContainers()" 
+                class="px-3 py-1.5 bg-surface hover:bg-slate-800 text-xs font-bold text-slate-300 rounded-lg border border-border transition-colors flex items-center gap-1.5">
                     🔄 Refresh Apps
                 </button>
             </div>
@@ -115,6 +118,14 @@
     <script>
         let fleetPollingInterval = null;
         let fleetContainerPollingInterval = null;
+
+        async function refetchFleetContainers() {
+            const select = document.getElementById('fleet-node-select');
+            const selectedOption = select.options[select.selectedIndex];
+            const node = JSON.parse(selectedOption.dataset.nodeInfo);
+
+            fetchFleetContainers(node.id, node.ip_address);
+        }
 
         async function loadFleetNodes() {
             try {
@@ -175,7 +186,7 @@
                 fetchFleetNodeSystemData(node.id);
                 fetchFleetContainers(node.id, node.ip_address);
                 fleetPollingInterval = setInterval(() => fetchFleetNodeSystemData(node.id), 5000);
-                fleetContainerPollingInterval = setInterval(() => fetchFleetContainers(node.id, node.ip_address), 5000);
+                fleetContainerPollingInterval = setInterval(() => fetchFleetContainers(node.id, node.ip_address), 60000); // Poll containers every 60 seconds
             } else {
                 statusEl.innerHTML = '<div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div> <span class="text-amber-400">Pending Approval</span>';
                 // Reset stats to dashed state if pending
@@ -333,7 +344,7 @@
 
                         <button 
                             id="btn-uninstall-node-${nodeId}-${app.id}" 
-                            onclick="uninstallFleetApp('${nodeId}', '${app.id}')" 
+                            onclick="uninstallFleetApp('${app.id}', '${nodeId}')" 
                             class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 whitespace-nowrap"
                             title="Uninstall & Wipe Data"
                         >
@@ -351,6 +362,115 @@
             if (customApps.length > 0) {
                 listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-indigo-400 uppercase tracking-widest border-b border-border mt-2">Custom Deployments</div>`);
                 customApps.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
+            }
+        }
+
+        async function installFleetApp(appId, nodeId, isCustom = false) {
+            if (!confirm(`Are you sure you want to install ${appId}?`)) return;
+
+            const installBtn = document.getElementById(`btn-install-node-${nodeId}-${appId}`);
+            const originalHtml = installBtn.innerHTML;
+
+            // Fail gracefully if the DOM element isn't found
+            if (!installBtn) {
+                console.error(`[Orchestrator] DOM target btn-install-node-${nodeId}-${appId} not found.`);
+                return;
+            }
+
+            // 1. LOADING STATE
+            installBtn.disabled = true;
+            // Remove primary blue colors
+            installBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
+            // Add gray, disabled, and pulsing animation classes
+            installBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
+            installBtn.innerHTML = '⏳ Installing... Please wait';
+
+            try {
+                const res = await fetch('/api/fleet/proxy/api/apps/install', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Node-ID': nodeId
+                    },
+                    body: JSON.stringify({ app_id: appId, is_custom: isCustom })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.status === 'success') {
+                    // 2. SUCCESS STATE
+                    installBtn.classList.remove('animate-pulse');
+                    installBtn.classList.add('bg-emerald-600');
+                    installBtn.innerHTML = '✅ Installed!';
+                    
+                    // Wait 1 second so the user sees the success checkmark, then sync the UI
+                    setTimeout(() => {
+                        // syncAppStates(); 
+                        // if (appId === 'adguard') loadContainers(); // Refresh containers tab in background
+                        refetchFleetContainers(); // Refresh the app list for this node
+                    }, 1000);
+                } else {
+                    // Trigger the catch block below
+                    throw new Error(data.message || "Unknown server error");
+                }
+            } catch (e) {
+                // 3. FAILURE & RETRY STATE
+                installBtn.disabled = false;
+                installBtn.classList.remove('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
+                // Turn the button red to indicate failure
+                installBtn.classList.add('bg-rose-600', 'hover:bg-rose-500'); 
+                installBtn.innerHTML = '❌ Failed. Retry?';
+                
+                // Show the exact reason why it failed (e.g., "Port 53 already in use")
+                setTimeout(() => {
+                    alert(`Installation Failed for ${appId}:\n\n${e.message}\n\nPlease check your server logs.`);
+                }, 100);
+            }
+        }
+
+        async function uninstallFleetApp(appId, nodeId) {
+            if (!confirm(`WARNING: This will permanently delete ${appId} and ALL its configuration data. Are you absolutely sure?`)) return;
+
+            const btn = document.getElementById(`btn-uninstall-node-${nodeId}-${appId}`);
+            const originalHtml = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.classList.replace('bg-rose-600', 'bg-slate-700');
+            btn.classList.replace('hover:bg-rose-700', 'cursor-not-allowed');
+            btn.classList.add('animate-pulse');
+            btn.innerHTML = '⏳ Destroying...';
+
+            try {
+                const res = await fetch('/api/fleet/proxy/api/apps/uninstall', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Node-ID': nodeId
+                    },
+                    body: JSON.stringify({ app_id: appId })
+                });
+                const data = await res.json();
+                
+                if (res.ok && data.status === 'success') {
+                    btn.classList.remove('animate-pulse');
+                    btn.classList.replace('bg-slate-700', 'bg-emerald-600');
+                    btn.innerHTML = '✅ Removed';
+                    
+                    setTimeout(() => {
+                        // Resync everything. This will automatically remove the row from this list!
+                        // syncAppStates(); 
+                        // if (typeof loadContainers === "function") loadContainers();
+                        refetchFleetContainers();
+                    }, 1500);
+                } else {
+                    throw new Error(data.message || "Unknown server error");
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.classList.replace('bg-slate-700', 'bg-rose-600');
+                btn.classList.remove('cursor-not-allowed', 'animate-pulse');
+                btn.innerHTML = originalHtml;
+                alert(`Uninstall Failed:\n\n${e.message}`);
             }
         }
 
