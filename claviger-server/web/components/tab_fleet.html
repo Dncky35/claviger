@@ -365,17 +365,17 @@
             }
         }
 
-        async function installFleetApp(appId, nodeId, isCustom = false) {
+        async function installFleetApp(nodeId, appId, isCustom = false) {
             if (!confirm(`Are you sure you want to install ${appId}?`)) return;
 
             const installBtn = document.getElementById(`btn-install-node-${nodeId}-${appId}`);
-            const originalHtml = installBtn.innerHTML;
-
             // Fail gracefully if the DOM element isn't found
             if (!installBtn) {
                 console.error(`[Orchestrator] DOM target btn-install-node-${nodeId}-${appId} not found.`);
                 return;
             }
+
+            const originalHtml = installBtn.innerHTML;
 
             // 1. LOADING STATE
             installBtn.disabled = true;
