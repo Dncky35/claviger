@@ -263,6 +263,8 @@ func RunStart() {
 	mux.HandleFunc("/api/gateway/extensions/custom", api.HubAccessMiddleware(db, api.HandleAddCustomApp(db)))
 	mux.HandleFunc("/api/gateway/extensions/custom/remove", api.HubAccessMiddleware(db, api.HandleRemoveCustomApp(db)))
 
+	mux.HandleFunc("/api/hardware/ai-profile", api.HubAccessMiddleware(db, api.HandleAIHardware))
+
 	// --- PROTECTED GATEWAY ROUTES ---
 	mux.HandleFunc("/api/gateway/status", api.HubAccessMiddleware(db, api.HandleGatewayStatus()))
 
@@ -302,6 +304,11 @@ func RunStart() {
 	})
 
 	// --- PROTECTED DOCKER API ROUTES ---
+
+	mux.HandleFunc("/api/llms/containers", api.HubAccessMiddleware(db, api.HandleLLMContainers(dockerEngine)))
+	mux.HandleFunc("/api/llms/install", api.HubAccessMiddleware(db, api.HandleLLMInstall))
+	mux.HandleFunc("/api/llms/uninstall", api.HubAccessMiddleware(db, api.HandleLLMUninstall))
+
 	mux.HandleFunc("/api/containers", api.HubAccessMiddleware(db, api.HandleContainers(dockerEngine)))
 	mux.HandleFunc("/api/containers/action", api.HubAccessMiddleware(db, api.HandleContainerAction(dockerEngine)))
 	mux.HandleFunc("/api/containers/logs", api.HubAccessMiddleware(db, api.HandleContainerLogs(dockerEngine)))

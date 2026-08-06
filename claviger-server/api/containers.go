@@ -336,3 +336,83 @@ func HandleContainerStats(engine *docker.Engine) http.HandlerFunc {
 		})
 	}
 }
+
+// LLMAppStatus represents the status packet for AI components
+type LLMAppStatus struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Category      string `json:"category"` // "llm_engine" or "llm_frontend"
+	Description   string `json:"description"`
+	Icon          string `json:"icon"`
+	Status        string `json:"status"` // "running", "stopped", "not_installed"
+	SetupComplete bool   `json:"setup_complete"`
+	ActionPort    int    `json:"action_port"`
+	ActionText    string `json:"action_text"`
+}
+
+// HandleLLMContainers merges Docker container states with the compiled LLMCatalog
+// api/llms/containers
+func HandleLLMContainers(engine *docker.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		var llmList []LLMAppStatus
+
+		db := storage.InitDB()
+		defer db.Close()
+
+		// 1. Fetch Docker state
+		containerMap := make(map[string]string)
+		if engine != nil && engine.Client != nil {
+			if containers, err := engine.ListContainers(r.Context()); err == nil {
+				for _, c := range containers {
+					// Account for leading slash in container names
+					name := c.Name
+					if len(name) > 0 && name[0] == '/' {
+						name = name[1:]
+					}
+					containerMap[name] = c.State
+				}
+			}
+		}
+
+		// 2. Iterate through static LLMCatalog
+		for id, manifest := range apps.LLMCatalog {
+			status := "not_installed"
+
+			if liveState, exists := containerMap[id]; exists {
+				status = liveState
+			}
+
+			actionPort := 0
+			actionText := "Open UI ↗"
+			if manifest.Category == "llm_engine" {
+				actionText = "Docs ↗"
+			}
+
+			// Read LLM dynamic port from DB key: "llm_<appID>_port"
+			if manifest.NeedsDynamicPort {
+				portStr := storage.GetConfig(db, fmt.Sprintf("llm_%s_port", id))
+				if portStr != "" {
+					actionPort, _ = strconv.Atoi(portStr)
+				}
+			}
+
+			llmList = append(llmList, LLMAppStatus{
+				ID:            id,
+				Name:          manifest.Name,
+				Category:      manifest.Category,
+				Description:   manifest.Description,
+				Icon:          manifest.Icon,
+				Status:        status,
+				SetupComplete: true,
+				ActionPort:    actionPort,
+				ActionText:    actionText,
+			})
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"llm_apps": llmList,
+		})
+	}
+}

@@ -2,6 +2,7 @@ package apps
 
 import (
 	"bytes"
+	"claviger-server/internal/hardware"
 	"claviger-server/storage"
 	"database/sql"
 	"fmt"
@@ -275,6 +276,209 @@ networks:
 	},
 }
 
+// LLMCatalog is the dedicated App Registry for the AI Studio
+var LLMCatalog = map[string]AppManifest{
+
+	// --- AI ENGINES (The Backends) ---
+	"ollama": {
+		Name:             "Ollama",
+		Category:         "llm_engine",
+		Description:      "The standard engine for local LLMs. Fast, reliable, and highly compatible.",
+		Icon:             "🦙",
+		HasCustomSetup:   false,
+		NeedsDynamicPort: false, // Standard port 11434. Proxy not needed for background engines.
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.8'
+services:
+  ollama:
+    image: ollama/ollama:{{.Version}}
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama-data:/root/.ollama
+    {{if .HasAMD}}
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
+    {{end}}
+    {{if .HasNvidia}}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    {{end}}
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=ollama"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
+
+	"vllm": {
+		Name:             "vLLM",
+		Category:         "llm_engine",
+		Description:      "High-throughput engine for production workloads. (NVIDIA Required)",
+		Icon:             "🚀",
+		HasCustomSetup:   false,
+		NeedsDynamicPort: true, // Exposes an OpenAI-compatible API that NPM can proxy
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.8'
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm
+    restart: unless-stopped
+    environment:
+      - HUGGING_FACE_HUB_TOKEN={{.CustomToken}} # Needed for pulling restricted models
+    ports:
+      - "{{.DynamicPort}}:8000"
+    volumes:
+      - ./vllm-data:/root/.cache/huggingface
+    {{if .HasNvidia}}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    {{end}}
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=vllm"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
+
+	"localai": {
+		Name:             "LocalAI",
+		Category:         "llm_engine",
+		Description:      "Complete OpenAI-compatible API replacement (LLMs, Vision, Audio).",
+		Icon:             "🧠",
+		HasCustomSetup:   false,
+		NeedsDynamicPort: true, // Has a built-in gallery and API that needs 1808X mapping
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.8'
+services:
+  localai:
+    image: localai/localai:{{.Version}}
+    container_name: localai
+    restart: unless-stopped
+    environment:
+      - MODELS_PATH=/models
+      - CORS=true
+    ports:
+      - "{{.DynamicPort}}:8080"
+    volumes:
+      - ./localai-models:/models
+    {{if .HasNvidia}}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    {{end}}
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=localai"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
+
+	// --- AI FRONTENDS (The Interfaces) ---
+	"open-webui": {
+		Name:             "Open WebUI",
+		Category:         "llm_frontend",
+		Description:      "A polished, ChatGPT-style interface for your local AI models.",
+		Icon:             "💬",
+		HasCustomSetup:   false, // Users need to create their first admin account on setup
+		NeedsDynamicPort: true,  // Needs a dynamic port (1808X) for Nginx Proxy Manager
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.8'
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    environment:
+      # Automatically connects to the Ollama container over the internal Docker network
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY={{.CustomToken}} 
+    ports:
+      - "{{.DynamicPort}}:8080"
+    volumes:
+      - ./open-webui-data:/app/backend/data
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=open-webui"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
+
+	"librechat": {
+		Name:             "LibreChat",
+		Category:         "llm_frontend",
+		Description:      "Premium chat UI capable of blending local models with cloud APIs.",
+		Icon:             "✨",
+		HasCustomSetup:   false,
+		NeedsDynamicPort: true,
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.8'
+services:
+  librechat:
+    image: ghcr.io/danny-avila/librechat:latest
+    container_name: librechat
+    restart: unless-stopped
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3080
+      - ENDPOINTS=ollama
+      - OLLAMA_BASE_URL=http://ollama:11434
+    ports:
+      - "{{.DynamicPort}}:3080"
+    volumes:
+      - ./librechat-data:/app/client/public/images
+      - ./librechat-env:/app/.env
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=librechat"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
+}
+
 // Install runs docker-compose for a specific app
 // TemplateData holds the variables we will inject into the YAML
 type TemplateData struct {
@@ -454,5 +658,174 @@ func Uninstall(appID string) error {
 		return fmt.Errorf("failed to wipe app data directory: %v", err)
 	}
 
+	return nil
+}
+
+// LLMTemplateData holds the variables injected into the docker-compose.yml
+type LLMTemplateData struct {
+	DynamicPort int
+	CustomToken string
+	Version     string
+	HasAMD      bool
+	HasNvidia   bool
+}
+
+// InstallLLM deploys an AI engine or frontend, handling GPU passthrough and dynamic ports.
+func InstallLLM(db *sql.DB, appID string, targetVersion string) error {
+	manifest, exists := LLMCatalog[appID]
+	if !exists {
+		return fmt.Errorf("LLM app [%s] is not in the system catalog", appID)
+	}
+
+	// 1. Fetch the Anchor Port from DB (Fallback to 18080)
+	hubPortStr := storage.GetConfig(db, "hub_port")
+	hubPort, err := strconv.Atoi(hubPortStr)
+	if err != nil || hubPort == 0 {
+		hubPort = 18080
+	}
+
+	// Use a slightly different port range for LLM Apps to avoid colliding with regular apps
+	startRange := hubPort + 101
+	endRange := hubPort + 200
+
+	// Keep LLM apps in a separate directory from standard web apps
+	appDir := filepath.Join("/var/lib/claviger/llms", appID)
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return fmt.Errorf("failed to create llm directory: %v", err)
+	}
+
+	// Default version to latest if none specified
+	if targetVersion == "" {
+		targetVersion = "latest"
+	}
+
+	// 2. Prepare the Template Data
+	data := LLMTemplateData{
+		Version:   targetVersion,
+		HasAMD:    false,
+		HasNvidia: false,
+	}
+
+	// 3. HARDWARE PROFILER INTEGRATION (The Magic Step)
+	// We scan the system *right now* to see what GPU to mount
+	profile, err := hardware.RunProfiler()
+	if err == nil && profile.GPU.HasGPU {
+		switch profile.GPU.Vendor {
+		case "amd":
+			data.HasAMD = true
+			fmt.Println("🚀 AMD GPU Detected: Injecting /dev/kfd and /dev/dri into container.")
+		case "nvidia":
+			data.HasNvidia = true
+			fmt.Println("🚀 NVIDIA GPU Detected: Injecting CUDA capabilities into container.")
+		}
+	}
+
+	// 4. DYNAMIC PORT ALLOCATION
+	if manifest.NeedsDynamicPort {
+		assignedPort, err := GetNextAvailablePort(startRange, endRange)
+		if err != nil {
+			return fmt.Errorf("failed to allocate internal port in range %d-%d: %v", startRange, endRange, err)
+		}
+
+		data.DynamicPort = assignedPort
+
+		// Save the specific app's port so NPM or the UI knows where to route
+		dbKey := fmt.Sprintf("llm_%s_port", appID)
+		if err := storage.SetConfig(db, dbKey, strconv.Itoa(assignedPort)); err != nil {
+			return fmt.Errorf("failed to save assigned port to DB: %v", err)
+		}
+		fmt.Printf("🔌 LLM App %s anchored to Port %d\n", manifest.Name, assignedPort)
+	}
+
+	// 5. SECRETS & TOKENS
+	if appID == "vllm" {
+		data.CustomToken = storage.GetConfig(db, "hf_hub_token") // HuggingFace Token
+	}
+	if appID == "open-webui" {
+		token := storage.GetConfig(db, "webui_secret_key")
+		if token == "" {
+			// Generate a basic random token if the user hasn't set one, so the container doesn't crash
+			token = fmt.Sprintf("claviger-secure-%d", time.Now().UnixNano())
+			storage.SetConfig(db, "webui_secret_key", token)
+		}
+		data.CustomToken = token
+	}
+
+	// 6. COMPILE THE TEMPLATE
+	tmpl, err := template.New("compose").Parse(manifest.ComposeYAML)
+	if err != nil {
+		return fmt.Errorf("failed to parse YAML template: %v", err)
+	}
+
+	var renderedYAML bytes.Buffer
+	if err := tmpl.Execute(&renderedYAML, data); err != nil {
+		return fmt.Errorf("failed to inject template data: %v", err)
+	}
+
+	finalYAML := renderedYAML.String()
+
+	// 7. WRITE AND DEPLOY
+	composePath := filepath.Join(appDir, "docker-compose.yml")
+	if err := os.WriteFile(composePath, []byte(finalYAML), 0644); err != nil {
+		return fmt.Errorf("failed to write compose file: %v", err)
+	}
+
+	cmd := exec.Command("docker", "compose", "up", "-d")
+	cmd.Dir = appDir
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("docker compose failed: %s\nError: %v", string(output), err)
+	}
+
+	// 8. POST-INSTALL HEALTH CHECK & ROLLBACK
+	fmt.Printf("⏳ Waiting 4 seconds to verify '%s' stability...\n", manifest.Name)
+	time.Sleep(4 * time.Second)
+
+	checkCmd := exec.Command("docker", "compose", "ps", "--status", "exited", "--status", "restarting", "-q")
+	checkCmd.Dir = appDir
+	checkOut, _ := checkCmd.Output()
+
+	if len(strings.TrimSpace(string(checkOut))) > 0 {
+		logsCmd := exec.Command("docker", "compose", "logs", "--tail=10")
+		logsCmd.Dir = appDir
+		logsOut, _ := logsCmd.CombinedOutput()
+
+		fmt.Printf("❌ LLM App '%s' crashed! Rolling back...\n", manifest.Name)
+		exec.Command("docker", "compose", "down").Run()
+
+		return fmt.Errorf("Container crashed immediately. Reason:\n%s", string(logsOut))
+	}
+
+	fmt.Printf("✅ LLM App '%s' successfully deployed!\n", manifest.Name)
+	return nil
+}
+
+// UninstallLLM safely tears down an AI app and network, but leaves the data folder intact (so users don't lose 40GB of downloaded models).
+func UninstallLLM(db *sql.DB, appID string) error {
+	appDir := filepath.Join("/var/lib/claviger/llms", appID)
+
+	// Check if directory actually exists
+	if _, err := os.Stat(appDir); os.IsNotExist(err) {
+		return fmt.Errorf("app directory does not exist: %s", appID)
+	}
+
+	fmt.Printf("🛑 Tearing down LLM App: %s\n", appID)
+	cmd := exec.Command("docker", "compose", "down")
+	cmd.Dir = appDir
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to uninstall LLM app: %s\nError: %v", string(output), err)
+	}
+
+	// // Remove port from database so it can be reused
+	// storage.DeleteConfig(db, fmt.Sprintf("llm_%s_port", appID))
+
+	// Optionally, we remove the compose file, but keep the folder because of ./data mounts.
+	// You don't want a user clicking "Uninstall" to accidentally delete a 15GB Llama3 model file!
+	os.Remove(filepath.Join(appDir, "docker-compose.yml"))
+
+	fmt.Printf("🗑️ App '%s' successfully removed. Model data preserved.\n", appID)
 	return nil
 }

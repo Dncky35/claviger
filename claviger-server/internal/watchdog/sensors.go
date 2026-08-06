@@ -187,7 +187,7 @@ func checkDockerHealth() {
 
 	log.Println("🔍 [Debug] checkDockerHealth() is executing...")
 
-	cmd := exec.Command("docker", "ps", "-a", "--filter", "status=exited", "--format", "{{.Names}} (code {{.ExitCode}})")
+	cmd := exec.Command("docker", "ps", "-a", "--filter", "status=exited", "--format", "{{.Names}} - {{.Status}}")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
