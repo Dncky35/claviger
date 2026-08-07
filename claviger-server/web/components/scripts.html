@@ -43,6 +43,7 @@
                 // Wait 1 second so the user sees the success checkmark, then sync the UI
                 setTimeout(() => {
                     syncAppStates(); 
+                    checkDockerForNetworkTab(); // Refresh network tab in background
                     if (appId === 'adguard') loadContainers(); // Refresh containers tab in background
                 }, 1000);
             } else {

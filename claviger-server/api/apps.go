@@ -295,7 +295,7 @@ func HandleLLMInstall(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
 
-// HandleLLMUninstall safely tears down an AI container but preserves the downloaded models
+// HandleLLMUninstall safely tears down an AI container with an optional data wipe
 func HandleLLMUninstall(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"status": "error", "message": "Method not allowed"}`, http.StatusMethodNotAllowed)
@@ -303,8 +303,10 @@ func HandleLLMUninstall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		AppID string `json:"app_id"`
+		AppID   string `json:"app_id"`
+		IsWiped bool   `json:"is_wiped"` // 🎯 New field mapping to JSON
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"status": "error", "message": "Invalid request payload"}`, http.StatusBadRequest)
 		return
@@ -335,8 +337,8 @@ func HandleLLMUninstall(w http.ResponseWriter, r *http.Request) {
 	db := storage.InitDB()
 	defer db.Close()
 
-	// 3. EXECUTE TEARDOWN
-	err := apps.UninstallLLM(db, req.AppID)
+	// 3. EXECUTE TEARDOWN (Passing the isWiped flag)
+	err := apps.UninstallLLM(db, req.AppID, req.IsWiped)
 
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -345,7 +347,6 @@ func HandleLLMUninstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. SUCCESS RESPONSE
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }

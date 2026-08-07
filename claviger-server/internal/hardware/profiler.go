@@ -1,7 +1,6 @@
 package hardware
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,18 +13,18 @@ import (
 )
 
 type GPUInfo struct {
-	HasGPU      bool   `json:"has_gpu"`
-	Vendor      string `json:"vendor"`        // "nvidia", "amd", "intel", "apple", or "cpu-only"
-	Model       string `json:"model"`         // e.g., "Radeon RX 7700 XT", "GeForce RTX 4090", "Apple M3 Pro"
-	TotalVRAMGB int    `json:"total_vram_gb"` // Total dedicated or unified memory in GB
+	HasGPU       bool   `json:"has_gpu"`
+	Vendor       string `json:"vendor"`        // "nvidia", "amd", "intel", "apple", or "cpu-only"
+	Model        string `json:"model"`         // e.g., "Radeon RX 7700 XT", "GeForce RTX 4090", "Apple M3 Pro"
+	TotalVRAMGB  int    `json:"total_vram_gb"` // Total dedicated or unified memory in GB
+	ToolkitReady bool   `json:"toolkit_ready"` // The Guardrail Lock
 }
 
 type SystemProfile struct {
-	TotalRAMGB    int     `json:"total_ram_gb"`
-	CPUCores      int     `json:"cpu_cores"`
-	CPUName       string  `json:"cpu_name"`
-	GPU           GPUInfo `json:"gpu"`
-	RecommendedAI string  `json:"recommended_ai_engine"`
+	TotalRAMGB int     `json:"total_ram_gb"`
+	CPUCores   int     `json:"cpu_cores"`
+	CPUName    string  `json:"cpu_name"`
+	GPU        GPUInfo `json:"gpu"`
 }
 
 // RunProfiler runs a comprehensive multi-vendor hardware check.
@@ -55,7 +54,7 @@ func RunProfiler() (*SystemProfile, error) {
 	detectGPU(&profile.GPU, profile.TotalRAMGB)
 
 	// 4. Recommendation Engine
-	profile.RecommendedAI = evaluateAIRecommendation(profile)
+	// profile.RecommendedAI = evaluateAIRecommendation(profile)
 
 	return profile, nil
 }
@@ -99,14 +98,25 @@ func checkNvidia(gpu *GPUInfo) bool {
 	if err != nil {
 		return false
 	}
+
 	parts := strings.Split(strings.TrimSpace(string(output)), ",")
 	if len(parts) >= 2 {
 		gpu.HasGPU = true
 		gpu.Vendor = "nvidia"
 		gpu.Model = strings.TrimSpace(parts[0])
+
 		if vramMB, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
 			gpu.TotalVRAMGB = vramMB / 1024
 		}
+
+		// 🚨 THE HARD GUARDRAIL
+		// Check if the Docker-NVIDIA toolkit is installed on the host OS
+		if _, err := exec.LookPath("nvidia-container-cli"); err == nil {
+			gpu.ToolkitReady = true
+		} else {
+			gpu.ToolkitReady = false
+		}
+
 		return true
 	}
 	return false
@@ -203,30 +213,30 @@ func parseAMDVram(_ string) int {
 
 // --- EVALUATION ENGINE ---
 
-func evaluateAIRecommendation(p *SystemProfile) string {
-	if p.GPU.HasGPU {
-		vram := p.GPU.TotalVRAMGB
-		switch p.GPU.Vendor {
-		case "nvidia":
-			if vram >= 16 {
-				return "ollama-gpu-high (CUDA)"
-			}
-			return "ollama-gpu-standard (CUDA)"
-		case "amd":
-			return fmt.Sprintf("ollama-gpu-rocm (%dGB VRAM)", vram)
-		case "apple":
-			return "ollama-metal-unified"
-		case "intel":
-			return "ollama-sycl-intel"
-		}
-	}
+// func evaluateAIRecommendation(p *SystemProfile) string {
+// 	if p.GPU.HasGPU {
+// 		vram := p.GPU.TotalVRAMGB
+// 		switch p.GPU.Vendor {
+// 		case "nvidia":
+// 			if vram >= 16 {
+// 				return "ollama-gpu-high (CUDA)"
+// 			}
+// 			return "ollama-gpu-standard (CUDA)"
+// 		case "amd":
+// 			return fmt.Sprintf("ollama-gpu-rocm (%dGB VRAM)", vram)
+// 		case "apple":
+// 			return "ollama-metal-unified"
+// 		case "intel":
+// 			return "ollama-sycl-intel"
+// 		}
+// 	}
 
-	// CPU Fallbacks
-	if p.TotalRAMGB >= 16 {
-		return "ollama-cpu-standard (16GB RAM)"
-	} else if p.TotalRAMGB >= 8 {
-		return "ollama-cpu-light (8GB RAM)"
-	}
+// 	// CPU Fallbacks
+// 	if p.TotalRAMGB >= 16 {
+// 		return "ollama-cpu-standard (16GB RAM)"
+// 	} else if p.TotalRAMGB >= 8 {
+// 		return "ollama-cpu-light (8GB RAM)"
+// 	}
 
-	return "unsupported"
-}
+// 	return "unsupported"
+// }

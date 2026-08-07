@@ -339,8 +339,11 @@ services:
     image: vllm/vllm-openai:latest
     container_name: vllm
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - HUGGING_FACE_HUB_TOKEN={{.CustomToken}} # Needed for pulling restricted models
+      - HUGGING_FACE_HUB_TOKEN={{.CustomToken}}
+	command: --model ${VLLM_TARGET_MODEL:-facebook/opt-125m}
     ports:
       - "{{.DynamicPort}}:8000"
     volumes:
@@ -801,8 +804,8 @@ func InstallLLM(db *sql.DB, appID string, targetVersion string) error {
 	return nil
 }
 
-// UninstallLLM safely tears down an AI app and network, but leaves the data folder intact (so users don't lose 40GB of downloaded models).
-func UninstallLLM(db *sql.DB, appID string) error {
+// UninstallLLM tears down an AI app and network, optionally wiping all model data and volumes.
+func UninstallLLM(db *sql.DB, appID string, isWiped bool) error {
 	appDir := filepath.Join("/var/lib/claviger/llms", appID)
 
 	// Check if directory actually exists
@@ -810,22 +813,34 @@ func UninstallLLM(db *sql.DB, appID string) error {
 		return fmt.Errorf("app directory does not exist: %s", appID)
 	}
 
-	fmt.Printf("🛑 Tearing down LLM App: %s\n", appID)
+	fmt.Printf("🛑 Tearing down LLM App: %s (Wipe Data: %v)\n", appID, isWiped)
+
+	// Stop and remove the Docker containers safely
 	cmd := exec.Command("docker", "compose", "down")
 	cmd.Dir = appDir
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to uninstall LLM app: %s\nError: %v", string(output), err)
+		// Even if docker compose encounters an issue (e.g. broken compose file),
+		// we can still proceed with file cleanup if the user requested a hard wipe.
+		fmt.Printf("⚠️ Warning during compose down: %s\n", string(output))
 	}
 
-	// // Remove port from database so it can be reused
+	// Remove port mapping from database so it can be safely reused later
 	// storage.DeleteConfig(db, fmt.Sprintf("llm_%s_port", appID))
 
-	// Optionally, we remove the compose file, but keep the folder because of ./data mounts.
-	// You don't want a user clicking "Uninstall" to accidentally delete a 15GB Llama3 model file!
-	os.Remove(filepath.Join(appDir, "docker-compose.yml"))
+	if isWiped {
+		// 🚨 DANGER: Completely delete the app directory, including all subfolders
+		// like ./ollama-data or ./open-webui-data containing models and chat logs.
+		if err := os.RemoveAll(appDir); err != nil {
+			return fmt.Errorf("failed to completely wipe app directory: %w", err)
+		}
+		fmt.Printf("🗑️ App '%s' and ALL ITS MODEL DATA successfully wiped from disk.\n", appID)
+	} else {
+		// Safe Mode: Remove the compose file, but keep the data directory intact
+		os.Remove(filepath.Join(appDir, "docker-compose.yml"))
+		fmt.Printf("🗑️ App '%s' containers removed. Model data and volumes preserved.\n", appID)
+	}
 
-	fmt.Printf("🗑️ App '%s' successfully removed. Model data preserved.\n", appID)
 	return nil
 }

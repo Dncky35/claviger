@@ -79,6 +79,7 @@
                     
                     setTimeout(() => {
                         // Resync everything. This will automatically remove the row from this list!
+                        checkDockerForNetworkTab(); // Refresh network tab in background
                         syncAppStates(); 
                         if (typeof loadContainers === "function") loadContainers();
                     }, 1500);

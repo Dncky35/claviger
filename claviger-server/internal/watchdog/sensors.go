@@ -185,7 +185,7 @@ var lastAlertedExitedContainers = make(map[string]bool)
 
 func checkDockerHealth() {
 
-	log.Println("🔍 [Debug] checkDockerHealth() is executing...")
+	// log.Println("🔍 [Debug] checkDockerHealth() is executing...")
 
 	cmd := exec.Command("docker", "ps", "-a", "--filter", "status=exited", "--format", "{{.Names}} - {{.Status}}")
 	var out bytes.Buffer
@@ -198,12 +198,12 @@ func checkDockerHealth() {
 		// FIX: Do NOT trigger a critical "Docker Engine Down" email on every permission glitch.
 		// Instead, log it internally to debug, or check if socket exists.
 		// We only alert if the socket file itself is entirely missing from the host.
-		log.Printf("❌ [Debug] Docker command failed! Error: %v | Stderr: %s\n", err, stderr.String())
+		// log.Printf("❌ [Debug] Docker command failed! Error: %v | Stderr: %s\n", err, stderr.String())
 		return
 	}
 
 	exited := strings.TrimSpace(out.String())
-	log.Printf("🐳 [Debug] Raw Docker output: %q\n", exited)
+	// log.Printf("🐳 [Debug] Raw Docker output: %q\n", exited)
 
 	// If no containers are exited, clear our cache so if they exit *later*, we alert fresh
 	if exited == "" {

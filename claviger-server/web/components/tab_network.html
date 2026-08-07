@@ -99,13 +99,8 @@
                 <strong>Requirements:</strong> Ports 80 and 443 must be available on your server. If you have an existing Nginx container, please map it to an internal port before initializing.
             </div>
         </div>
-        <div class="z-10 flex items-center shrink-0">
-            <button id="btn-install-npm" onclick="installApp('npm')" class="hidden px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-blue-500/20">
-                Initialize Gateway
-            </button>
-            <button id="btn-dash-npm" onclick="window.open('http://' + window.location.hostname + ':81', '_blank')" class="hidden px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700">
-                Open Dashboard ↗
-            </button>
+        <div id="npm-buttons" class="z-10 flex items-center shrink-0">
+           
         </div>
     </div>
 
@@ -121,13 +116,8 @@
                 A network-wide software for blocking ads, tracking, and malware. When installed, it acts as the primary DNS resolver.
             </p>
         </div>
-        <div class="z-10 flex flex-col items-end shrink-0 gap-2">
-            <button id="btn-install-adguard" onclick="installApp('adguard')" class="hidden px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
-                Install App
-            </button>
-            <button id="btn-dash-adguard" onclick="window.open('http://' + window.location.hostname + ':3030', '_blank')" class="hidden px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700">
-                Open Dashboard ↗
-            </button>
+        <div id="adguard-buttons" class="z-10 flex flex-col items-end shrink-0 gap-2">
+            
             <p id="helper-adguard-setup" class="hidden text-[10px] text-amber-400/80 max-w-[150px] text-right leading-tight">
                 When setup is complete, ignore AdGuard's final button and just close the tab.
             </p>
@@ -297,7 +287,6 @@
                 const res = await fetch('/api/containers');
                 if (!res.ok) return;
                 const data = await res.json();
-                
                 if (!data.docker_installed) {
                     // Show the global Docker missing banner
                     document.getElementById('network-docker-warning').classList.remove('hidden');
@@ -322,6 +311,59 @@
                         btnAdGuard.innerText = 'Docker Required';
                         // Switch from green styling to disabled gray styling
                         btnAdGuard.className = 'px-4 py-2 bg-slate-800 text-slate-500 text-sm font-medium rounded-lg border border-slate-700 cursor-not-allowed';
+                    }
+                } else {
+                    const npm = data.registry_apps.find(app => app.id === 'npm');
+                    const adguard = data.registry_apps.find(app => app.id === 'adguard');
+
+                    if (npm) {
+                        const buttonNpm = document.getElementById('npm-buttons');
+
+                        if (npm.status === 'running') {
+                            document.getElementById('badge-app-npm').innerText = 'Running';
+                            document.getElementById('badge-app-npm').classList.replace('bg-slate-800', 'bg-emerald-600');
+                            document.getElementById('badge-app-npm').classList.replace('text-slate-400', 'text-emerald-100');
+                            buttonNpm.innerHTML = `<button id="btn-dash-npm" onclick="window.open('http://' + window.location.hostname + ':${npm.action_port}')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700">
+                                Open Dashboard ↗
+                            </button>`;
+                        }
+                        else{
+                            document.getElementById('badge-app-npm').innerText = 'Not Installed';
+                            document.getElementById('badge-app-npm').classList.replace('bg-emerald-600', 'bg-slate-800');
+                            document.getElementById('badge-app-npm').classList.replace('text-emerald-100', 'text-slate-400');
+
+                            buttonNpm.innerHTML = `<button id="btn-install-npm" onclick="installApp('npm')" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-blue-500/20">
+                                Install App
+                            </button>`;
+                        }
+                    }
+
+                    if (adguard){
+                        if (adguard.status === 'running') {
+                            document.getElementById('badge-app-adguard').innerText = 'Running';
+                            document.getElementById('badge-app-adguard').classList.replace('bg-slate-800', 'bg-emerald-600');
+                            document.getElementById('badge-app-adguard').classList.replace('text-slate-400', 'text-emerald-100');
+                            if (adguard.setup_complete){
+                                document.getElementById('adguard-buttons').innerHTML = `<button id="btn-dash-adguard" onclick="window.open('http://' + window.location.hostname + ':${adguard.action_port}', '_blank')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700">
+                                ${adguard.action_text}
+                            </button>`;
+                            } else {
+
+                                document.getElementById('helper-adguard-setup').classList.remove('hidden');
+                                document.getElementById('adguard-buttons').innerHTML = `<button id="btn-dash-adguard" onclick="window.open('http://' + window.location.hostname + ':3030', '_blank')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700">
+                                ${adguard.action_text}
+                            </button>`;
+                            }
+                        }
+                        else{
+                            document.getElementById('badge-app-adguard').innerText = 'Not Installed';
+                            document.getElementById('badge-app-adguard').classList.replace('bg-emerald-600', 'bg-slate-800');
+                            document.getElementById('badge-app-adguard').classList.replace('text-emerald-100', 'text-slate-400');
+
+                            document.getElementById('adguard-buttons').innerHTML = `<button id="btn-install-adguard" onclick="installApp('adguard')" class="px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
+                                Install App
+                            </button>`;
+                        }
                     }
                 }
             } catch (e) {
@@ -497,6 +539,8 @@ async function disableProxyFeature() {
         checkDockerForNetworkTab(); // Initialize the Docker checker
 
         setInterval(fetchSystemSettings, 60000); 
+        setInterval(checkGatewayStatus, 60000);
+        setInterval(checkDockerForNetworkTab, 60000); // Recheck Docker status every minute
     </script>
 </div>
 {{end}}

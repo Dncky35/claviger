@@ -308,6 +308,10 @@ func RunStart() {
 	mux.HandleFunc("/api/llms/containers", api.HubAccessMiddleware(db, api.HandleLLMContainers(dockerEngine)))
 	mux.HandleFunc("/api/llms/install", api.HubAccessMiddleware(db, api.HandleLLMInstall))
 	mux.HandleFunc("/api/llms/uninstall", api.HubAccessMiddleware(db, api.HandleLLMUninstall))
+	mux.HandleFunc("/api/llms/models", api.HubAccessMiddleware(db, api.HandleGetModels(db)))
+	mux.HandleFunc("/api/llms/models/pull", api.HubAccessMiddleware(db, api.HandlePullModel(db)))
+	mux.HandleFunc("/api/llms/models/delete", api.HubAccessMiddleware(db, api.HandleDeleteModel(db)))
+	mux.HandleFunc("/api/hardware/install-toolkit", api.HubAccessMiddleware(db, api.HandleToolkitInstall))
 
 	mux.HandleFunc("/api/containers", api.HubAccessMiddleware(db, api.HandleContainers(dockerEngine)))
 	mux.HandleFunc("/api/containers/action", api.HubAccessMiddleware(db, api.HandleContainerAction(dockerEngine)))
