@@ -27,13 +27,13 @@ type SystemProfile struct {
 	GPU        GPUInfo `json:"gpu"`
 }
 
-// RunProfiler runs a comprehensive multi-vendor hardware check.
+// RunProfiler runs a comprehensive multi-vendor hardware check, filtering out non-accelerated iGPUs.
 func RunProfiler() (*SystemProfile, error) {
 	profile := &SystemProfile{
 		GPU: GPUInfo{
 			HasGPU: false,
 			Vendor: "cpu-only",
-			Model:  "No Dedicated GPU Detected",
+			Model:  "CPU Only",
 		},
 	}
 
@@ -42,21 +42,45 @@ func RunProfiler() (*SystemProfile, error) {
 		profile.TotalRAMGB = int(vMem.Total / (1024 * 1024 * 1024))
 	}
 
-	// 2. CPU Check
+	// 2. CPU Check (Fixed to report total logical threads correctly)
+	profile.CPUCores = runtime.NumCPU()
 	if cpuInfo, err := cpu.Info(); err == nil && len(cpuInfo) > 0 {
 		profile.CPUName = strings.TrimSpace(cpuInfo[0].ModelName)
-		profile.CPUCores = int(cpuInfo[0].Cores)
 	} else {
-		profile.CPUCores = runtime.NumCPU()
+		profile.CPUName = "Generic Processor"
 	}
 
-	// 3. Multi-Vendor GPU Pipeline
-	detectGPU(&profile.GPU, profile.TotalRAMGB)
-
-	// 4. Recommendation Engine
-	// profile.RecommendedAI = evaluateAIRecommendation(profile)
+	// 3. Multi-Vendor GPU Pipeline (Only catches real discrete/accelerated GPUs)
+	detectUsableGPU(&profile.GPU)
 
 	return profile, nil
+}
+
+func detectUsableGPU(gpu *GPUInfo) {
+	// Priority 1: Apple Silicon (macOS unified memory)
+	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		gpu.HasGPU = true
+		gpu.Vendor = "apple"
+		gpu.Model = "Apple Silicon (Unified Memory)"
+		return
+	}
+
+	// Priority 2: Dedicated NVIDIA GPUs (via nvidia-smi)
+	if checkNvidia(gpu) {
+		return
+	}
+
+	// Priority 3: Dedicated AMD GPUs with actual VRAM
+	if checkDiscreteAMD(gpu) {
+		return
+	}
+
+	// Priority 4: Dedicated Intel Arc GPUs (ignoring integrated iGPUs)
+	if checkDiscreteIntel(gpu) {
+		return
+	}
+
+	// If no discrete accelerator is found, it explicitly remains "CPU Only"
 }
 
 func detectGPU(gpu *GPUInfo, systemRAMGB int) {
@@ -209,6 +233,54 @@ func checkLinuxSysFS(gpu *GPUInfo) bool {
 func parseAMDVram(_ string) int {
 	// Default fallback to 8GB if ROCm outputs complex CSV
 	return 8
+}
+
+func checkDiscreteAMD(gpu *GPUInfo) bool {
+	// Fallback to reading Linux SysFS directly for AMD cards, requiring actual VRAM > 2GB
+	cards, _ := filepath.Glob("/sys/class/drm/card*/device/vendor")
+	for _, cardVendorPath := range cards {
+		vendorBytes, err := os.ReadFile(cardVendorPath)
+		if err == nil && strings.TrimSpace(string(vendorBytes)) == "0x1002" {
+			vramPath := filepath.Join(filepath.Dir(cardVendorPath), "mem_info_vram_total")
+			if vramBytes, err := os.ReadFile(vramPath); err == nil {
+				if vram, err := strconv.ParseUint(strings.TrimSpace(string(vramBytes)), 10, 64); err == nil {
+					vramGB := int(vram / (1024 * 1024 * 1024))
+					if vramGB > 2 { // Only accept if it's a discrete card with substantial VRAM
+						gpu.HasGPU = true
+						gpu.Vendor = "amd"
+						gpu.Model = "AMD Radeon Discrete GPU"
+						gpu.TotalVRAMGB = vramGB
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func checkDiscreteIntel(gpu *GPUInfo) bool {
+	// Only flag Intel if it has dedicated VRAM (e.g., Intel Arc discrete cards, ignoring iGPUs)
+	cards, _ := filepath.Glob("/sys/class/drm/card*/device/vendor")
+	for _, cardVendorPath := range cards {
+		vendorBytes, err := os.ReadFile(cardVendorPath)
+		if err == nil && strings.TrimSpace(string(vendorBytes)) == "0x8086" {
+			vramPath := filepath.Join(filepath.Dir(cardVendorPath), "mem_info_vram_total")
+			if vramBytes, err := os.ReadFile(vramPath); err == nil {
+				if vram, err := strconv.ParseUint(strings.TrimSpace(string(vramBytes)), 10, 64); err == nil {
+					vramGB := int(vram / (1024 * 1024 * 1024))
+					if vramGB > 2 { // Dedicated Intel Arc card
+						gpu.HasGPU = true
+						gpu.Vendor = "intel"
+						gpu.Model = "Intel Arc GPU"
+						gpu.TotalVRAMGB = vramGB
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // --- EVALUATION ENGINE ---

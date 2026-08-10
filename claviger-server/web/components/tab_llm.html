@@ -57,16 +57,32 @@
 
     <hr class="border-border my-8">
 
-    <!-- Section 2: AI Engines & Frontends -->
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-bold text-slate-100">App Ecosystem</h3>
-    </div>
+   <!-- Section 2: AI Ecosystem -->
+    <div class="mb-10">
+        <!-- Engines Section -->
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-sm shadow-inner">⚙️</span>
+                Core Engines
+            </h3>
+        </div>
+        <div id="llm-engines-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="col-span-full p-8 text-center text-slate-500 text-sm animate-pulse border border-dashed border-border rounded-xl">
+                Loading Engines...
+            </div>
+        </div>
 
-    <!-- The Grid Container -->
-    <div id="llm-app-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Rendered dynamically via Javascript -->
-        <div class="col-span-full p-8 text-center text-slate-400 text-sm animate-pulse">
-            Loading AI ecosystem...
+        <!-- Interfaces Section -->
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20 flex items-center justify-center text-sm shadow-inner">🖥️</span>
+                User Interfaces
+            </h3>
+        </div>
+        <div id="llm-interfaces-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="col-span-full p-8 text-center text-slate-500 text-sm animate-pulse border border-dashed border-border rounded-xl">
+                Loading Interfaces...
+            </div>
         </div>
     </div>
 
@@ -209,102 +225,120 @@
             }
         }
 
-        function renderLLMGrid(apps) {
-            const gridEl = document.getElementById('llm-app-grid');
-            if (!gridEl) return;
-            gridEl.innerHTML = ''; 
+        function buildLLMCard(app) {
+            const isInstalled = app.status !== 'not_installed';
+            const isRunning = app.status === 'running';
 
-            if (apps.length === 0) {
-                gridEl.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 text-sm">No apps available in catalog.</div>`;
-                return;
+            // Badge Logic
+            let badgeHtml = `<span class="text-[10px] font-mono text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-border">Not Installed</span>`;
+            if (isInstalled) {
+                if (isRunning) {
+                    badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Running</span>`;
+                } else {
+                    badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-rose-400 bg-rose-400/10 px-2 py-0.5 rounded border border-rose-400/20">Stopped</span>`;
+                }
             }
 
-            // Sort so Engines appear before Frontends
-            apps.sort((a, b) => a.category.localeCompare(b.category));
+            // UI Type Pill (Engine vs Frontend)
+            const typePill = app.category === 'llm_engine' 
+                ? `<span class="text-[9px] uppercase font-bold tracking-wider text-indigo-400 bg-indigo-400/10 px-1.5 py-0.5 rounded border border-indigo-500/20">Engine</span>`
+                : `<span class="text-[9px] uppercase font-bold tracking-wider text-fuchsia-400 bg-fuchsia-400/10 px-1.5 py-0.5 rounded border border-fuchsia-500/20">Interface</span>`;
 
-            apps.forEach(app => {
-                const isInstalled = app.status !== 'not_installed';
-                const isRunning = app.status === 'running';
+            // Buttons visibility
+            let installBtnClass = isInstalled ? 'hidden' : '';
+            let dashBtnClass = isInstalled ? '' : 'hidden';
+            let uninstallBtnClass = isInstalled ? '' : 'hidden';
 
-                // Badge Logic
-                let badgeHtml = `<span class="text-[10px] font-mono text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-border">Not Installed</span>`;
-                if (isInstalled) {
-                    if (isRunning) {
-                        badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Running</span>`;
-                    } else {
-                        badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-rose-400 bg-rose-400/10 px-2 py-0.5 rounded border border-rose-400/20">Stopped</span>`;
-                    }
-                }
+            let isDefault = app.action_port > 0;
+            let defaultAction = 'disabled';
+            
+            // Action Link (Handle proxy URLs or standard config prompts)
+            if (app.id === "ollama") defaultAction = `onclick="window.open('https://github.com/ollama/ollama/tree/main/docs', '_blank')"`;
+            if (app.id === "vllm") defaultAction = `onclick="window.open('https://docs.vllm.ai/', '_blank')"`;
+            if (app.id === "localai") defaultAction = `onclick="window.open('https://localai.io/', '_blank')"`;
+            
+            let dashOnClick = isDefault ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
+            
+            // Style disabled dashboard buttons gracefully
+            let dashBtnStyle = (isDefault || defaultAction !== 'disabled') 
+                ? 'bg-slate-800 hover:bg-slate-700 text-white border-border cursor-pointer' 
+                : 'bg-slate-800/40 text-slate-500 border-transparent cursor-not-allowed';
 
-                // UI Type Pill (Engine vs Frontend)
-                const typePill = app.category === 'llm_engine' 
-                    ? `<span class="text-[9px] uppercase font-bold tracking-wider text-indigo-400 bg-indigo-400/10 px-1.5 py-0.5 rounded border border-indigo-500/20">Engine</span>`
-                    : `<span class="text-[9px] uppercase font-bold tracking-wider text-fuchsia-400 bg-fuchsia-400/10 px-1.5 py-0.5 rounded border border-fuchsia-500/20">Interface</span>`;
-
-                // Buttons visibility
-                let installBtnClass = isInstalled ? 'hidden' : '';
-                let dashBtnClass = isInstalled ? '' : 'hidden';
-                let uninstallBtnClass = isInstalled ? '' : 'hidden';
-
-                let isDefault = app.action_port > 0;
-                // Action Link (Handle proxy URLs or standard config prompts)
-                if (app.id === "ollama") defaultAction = `onclick="window.open('https://github.com/ollama/ollama/tree/main/docs', '_blank')"`;
-                if (app.id === "vllm") defaultAction = `onclick="window.open('https://docs.vllm.ai/', '_blank')"`;
-                if (app.id === "localai") defaultAction = `onclick="window.open('https://localai.io/', '_blank')"`;
-                
-                let dashOnClick = isDefault ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
-
-                const cardHtml = `
-                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-all duration-300" id="llm-card-${app.id}">
-                    <div>
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-slate-800 border border-border flex items-center justify-center text-xl shadow-inner flex-shrink-0">
-                                    ${app.icon}
-                                </div>
-                                <div>
-                                    <h4 class="text-md font-bold text-slate-200 flex items-center gap-2">
-                                        ${app.name} 
-                                    </h4>
-                                    <div class="mt-1">${typePill}</div>
-                                </div>
+            return `
+            <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-all duration-300 group" id="llm-card-${app.id}">
+                <div>
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-slate-800 border border-border flex items-center justify-center text-xl shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform">
+                                ${app.icon}
                             </div>
-                            ${badgeHtml}
+                            <div>
+                                <h4 class="text-md font-bold text-slate-200 flex items-center gap-2">
+                                    ${app.name} 
+                                </h4>
+                                <div class="mt-1">${typePill}</div>
+                            </div>
                         </div>
-                        <p class="text-xs text-slate-400 leading-relaxed">${app.description}</p>
+                        ${badgeHtml}
                     </div>
-                    
-                    <div class="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
-                        <button 
-                            id="btn-install-llm-${app.id}" 
-                            onclick="installLLMApp('${app.id}')" 
-                            class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm w-full flex items-center justify-center gap-2"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            Install
-                        </button>
-
-                        <button 
-                            id="btn-dash-llm-${app.id}" 
-                            ${dashOnClick} 
-                            class="${dashBtnClass} px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors border border-border flex-1"
-                        >
-                            ${app.action_text}
-                        </button>
-
-                        <button 
-                            id="btn-uninstall-llm-${app.id}" 
-                            onclick="uninstallLLMApp('${app.id}')" 
-                            class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 flex-shrink-0"
-                            title="Uninstall & Wipe Container"
-                        >
-                            🗑️
-                        </button>
-                    </div>
-                </div>`;
+                    <p class="text-xs text-slate-400 leading-relaxed">${app.description}</p>
+                </div>
                 
-                gridEl.insertAdjacentHTML('beforeend', cardHtml);
-            });
+                <div class="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
+                    <button 
+                        id="btn-install-llm-${app.id}" 
+                        onclick="installLLMApp('${app.id}')" 
+                        class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm w-full flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Install
+                    </button>
+
+                    <button 
+                        id="btn-dash-llm-${app.id}" 
+                        ${dashOnClick} 
+                        class="${dashBtnClass} ${dashBtnStyle} px-4 py-2 text-xs font-bold rounded-lg transition-colors border flex-1"
+                    >
+                        ${app.action_text}
+                    </button>
+
+                    <button 
+                        id="btn-uninstall-llm-${app.id}" 
+                        onclick="uninstallLLMApp('${app.id}')" 
+                        class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 flex-shrink-0"
+                        title="Uninstall & Wipe Container"
+                    >
+                        🗑️
+                    </button>
+                </div>
+            </div>`;
+        }
+
+        function renderLLMGrid(apps) {
+            const enginesGrid = document.getElementById('llm-engines-grid');
+            const interfacesGrid = document.getElementById('llm-interfaces-grid');
+            
+            if (!enginesGrid || !interfacesGrid) return;
+            
+            enginesGrid.innerHTML = ''; 
+            interfacesGrid.innerHTML = '';
+
+            const engines = apps.filter(app => app.category === 'llm_engine');
+            const interfaces = apps.filter(app => app.category !== 'llm_engine');
+
+            // Render Engines
+            if (engines.length === 0) {
+                enginesGrid.innerHTML = `<div class="col-span-full p-8 text-center text-slate-500 text-sm border border-dashed border-border rounded-xl">No engines available in catalog.</div>`;
+            } else {
+                engines.forEach(app => enginesGrid.insertAdjacentHTML('beforeend', buildLLMCard(app)));
+            }
+
+            // Render Interfaces
+            if (interfaces.length === 0) {
+                interfacesGrid.innerHTML = `<div class="col-span-full p-8 text-center text-slate-500 text-sm border border-dashed border-border rounded-xl">No interfaces available in catalog.</div>`;
+            } else {
+                interfaces.forEach(app => interfacesGrid.insertAdjacentHTML('beforeend', buildLLMCard(app)));
+            }
         }
 
         // --- 3. Installer Workflows (Placeholders) ---
@@ -332,7 +366,6 @@
             installBtn.innerHTML = '⏳ Pulling Image...';
 
             try {
-                // Assuming we map the Go handler to this route
                 const res = await fetch('/api/llms/install', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
