@@ -1086,7 +1086,11 @@
             const engine = document.getElementById('fleet-pull-target-engine').value;
             const modelId = document.getElementById('fleet-pull-model-id').value.trim();
             const btn = document.getElementById('btn-fleet-execute-pull');
-            const nodeId = currentActiveFleetNode; // Using the global state
+            // const nodeId = currentActiveFleetNode; // Using the global state
+
+            const select = document.getElementById('fleet-node-select');
+            const selectedOption = select.options[select.selectedIndex];
+            const node = JSON.parse(selectedOption.dataset.nodeInfo);
 
             if (!engine || !modelId) {
                 alert("Please select an engine and enter a model tag.");
@@ -1103,7 +1107,7 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-Node-ID': nodeId
+                        'X-Node-ID': node.id
                     },
                     body: JSON.stringify({ engine: engine, model_id: modelId })
                 });
