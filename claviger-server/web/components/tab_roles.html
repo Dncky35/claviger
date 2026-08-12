@@ -3,12 +3,12 @@
     
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Role Management</h2>
-            <p class="text-muted-foreground text-sm mt-1">Define network access policies and micro-segmentation rules.</p>
+            <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "roles.title" }}</h2>
+            <p class="text-muted-foreground text-sm mt-1">{{ T "roles.subtitle" }}</p>
         </div>
         <button onclick="openRoleModal()" class="bg-primary hover:bg-primary/90 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)] px-5 py-2.5 rounded-xl font-semibold transition-all text-sm flex items-center gap-2 active:scale-95 shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-            Create Custom Role
+            {{ T "roles.btn_create" }}
         </button>
     </div>
 
@@ -17,9 +17,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
         </div>
         <div>
-            <h4 class="text-primary font-bold text-sm mb-1">How Zero Trust Roles Work</h4>
+            <h4 class="text-primary font-bold text-sm mb-1">{{ T "roles.banner_title" }}</h4>
             <p class="text-slate-300 text-sm leading-relaxed max-w-3xl">
-                Roles define exact network boundaries. Use <b>Quick Toggles</b> to grant broad access (Internet, Intranet, or the Hub), and use <b>Granular Filters</b> to restrict traffic to specific <code>IPs</code> or <code>Ports</code>. The Claviger Daemon translates these into live Linux Kernel firewall rules instantly.
+                {{ T "roles.banner_desc" | safeHTML }}
             </p>
         </div>
     </div>
@@ -30,12 +30,14 @@
                 <table class="w-full text-left border-collapse whitespace-nowrap">
                     <thead>
                         <tr class="bg-background border-b border-border text-muted-foreground text-[10px] uppercase tracking-widest font-bold">
-                            <th class="p-5">Role Name & ID</th>
-                            <th class="p-5">Access Rights</th> <th class="p-5">Network Filters (IPs/Ports)</th> <th class="p-5 text-right">Controls</th>
+                            <th class="p-5">{{ T "roles.th_name" }}</th>
+                            <th class="p-5">{{ T "roles.th_access" }}</th> 
+                            <th class="p-5">{{ T "roles.th_filters" }}</th> 
+                            <th class="p-5 text-right">{{ T "roles.th_controls" }}</th>
                         </tr>
                     </thead>
                     <tbody id="list-roles" class="divide-y divide-border/50 text-sm text-slate-300">
-                        <tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="4">Loading roles...</td></tr>
+                        <tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="4">{{ T "roles.loading" }}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -47,7 +49,7 @@
     <div class="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-200" id="modal-role-content">
         
         <div class="px-6 py-4 border-b border-border flex justify-between items-center bg-background/50">
-            <h3 class="text-lg font-bold text-slate-100" id="modal-role-title">Create Custom Role</h3>
+            <h3 class="text-lg font-bold text-slate-100" id="modal-role-title">{{ T "roles.modal_create_title" }}</h3>
             <button onclick="closeRoleModal()" class="text-muted-foreground hover:text-white transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
@@ -57,59 +59,72 @@
             <input type="hidden" id="role-input-id">
 
             <div>
-                <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Role Name</label>
-                <input type="text" id="role-input-name" placeholder="e.g., Web Developer" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 transition-all">
+                <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "roles.label_name" }}</label>
+                <input type="text" id="role-input-name" placeholder="" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 transition-all">
             </div>
 
             <div class="space-y-3">
-                <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Broad Access (Quick Toggles)</label>
+                <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">{{ T "roles.quick_toggles" }}</label>
                 
                 <label class="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-background/50 hover:bg-background cursor-pointer transition-colors">
                     <input type="checkbox" id="role-toggle-internet" class="w-4 h-4 rounded border-border bg-surface text-primary focus:ring-primary focus:ring-offset-background">
                     <div class="flex-1">
-                        <div class="text-sm font-bold text-slate-200">Global Internet Routing</div>
-                        <div class="text-[11px] text-muted-foreground">Allow traffic to the public internet (Google, YouTube, etc).</div>
+                        <div class="text-sm font-bold text-slate-200">{{ T "roles.toggle_internet_title" }}</div>
+                        <div class="text-[11px] text-muted-foreground">{{ T "roles.toggle_internet_desc" }}</div>
                     </div>
                 </label>
 
                 <label class="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-background/50 hover:bg-background cursor-pointer transition-colors">
                     <input type="checkbox" id="role-toggle-intranet" class="w-4 h-4 rounded border-border bg-surface text-primary focus:ring-primary focus:ring-offset-background">
                     <div class="flex-1">
-                        <div class="text-sm font-bold text-slate-200">Local Intranet (LAN)</div>
-                        <div class="text-[11px] text-muted-foreground">Allow traffic to other devices securely connected to this server.</div>
+                        <div class="text-sm font-bold text-slate-200">{{ T "roles.toggle_intranet_title" }}</div>
+                        <div class="text-[11px] text-muted-foreground">{{ T "roles.toggle_intranet_desc" }}</div>
                     </div>
                 </label>
 
                 <label class="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-background/50 hover:bg-background cursor-pointer transition-colors">
                     <input type="checkbox" id="role-toggle-hub" class="w-4 h-4 rounded border-border bg-surface text-primary focus:ring-primary focus:ring-offset-background">
                     <div class="flex-1">
-                        <div class="text-sm font-bold text-slate-200">Claviger Control Hub</div>
-                        <div class="text-[11px] text-warning/80">Allow access to this admin dashboard. (Warning: Admin level).</div>
+                        <div class="text-sm font-bold text-slate-200">{{ T "roles.toggle_hub_title" }}</div>
+                        <div class="text-[11px] text-warning/80">{{ T "roles.toggle_hub_desc" }}</div>
                     </div>
                 </label>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Allowed IPs</label>
-                    <input type="text" id="role-input-ips" placeholder="e.g., 10.8.0.50 or ALL" value="ALL" class="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono">
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "roles.label_ips" }}</label>
+                    <input type="text" id="role-input-ips" placeholder="" value="ALL" class="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Allowed Ports</label>
-                    <input type="text" id="role-input-ports" placeholder="e.g., 80,443 or ALL" value="ALL" class="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono">
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "roles.label_ports" }}</label>
+                    <input type="text" id="role-input-ports" placeholder="" value="ALL" class="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono">
                 </div>
             </div>
         </div>
 
         <div class="px-6 py-4 border-t border-border flex justify-end gap-3 bg-background/50">
-            <button onclick="closeRoleModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-surface transition-colors">Cancel</button>
-            <button onclick="saveRole()" class="px-5 py-2 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-sm transition-all active:scale-95">Save Role</button>
+            <button onclick="closeRoleModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-surface transition-colors">{{ T "roles.btn_cancel" }}</button>
+            <button onclick="saveRole()" class="px-5 py-2 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-sm transition-all active:scale-95">{{ T "roles.btn_save" }}</button>
         </div>
 
     </div>
 
     <script>
+        // Set dynamic placeholders on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const nameInput = document.getElementById('role-input-name');
+            const ipsInput = document.getElementById('role-input-ips');
+            const portsInput = document.getElementById('role-input-ports');
+            if (window.I18N && window.I18N.roles) {
+                if(nameInput) nameInput.placeholder = window.I18N.roles.placeholder_name;
+                if(ipsInput) ipsInput.placeholder = window.I18N.roles.placeholder_ips;
+                if(portsInput) portsInput.placeholder = window.I18N.roles.placeholder_ports;
+            }
+        });
+
         async function fetchRolesData() {
+            const i18nRoles = window.I18N.roles;
             try {
                 const res = await fetch('/api/roles');
                 if (res.ok) {
@@ -121,21 +136,18 @@
                     roles.forEach(r => {
                         const isSystemRole = (r.id === 'admin' || r.id === 'standard');
                         
-                        // 1. Build the Access Rights Badges (Checkboxes)
                         let accessBadges = '';
-                        if (r.allow_global_internet) accessBadges += `<span class="inline-block bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">Internet</span>`;
-                        if (r.allow_intranet) accessBadges += `<span class="inline-block bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">Intranet</span>`;
-                        if (r.allow_hub) accessBadges += `<span class="inline-block bg-warning/10 text-warning border border-warning/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">Hub Admin</span>`;
-                        if (accessBadges === '') accessBadges = `<span class="text-muted-foreground text-xs italic">Isolated</span>`;
+                        if (r.allow_global_internet) accessBadges += `<span class="inline-block bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">${i18nRoles.badge_internet}</span>`;
+                        if (r.allow_intranet) accessBadges += `<span class="inline-block bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">${i18nRoles.badge_intranet}</span>`;
+                        if (r.allow_hub) accessBadges += `<span class="inline-block bg-warning/10 text-warning border border-warning/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1.5 mb-1">${i18nRoles.badge_hub}</span>`;
+                        if (accessBadges === '') accessBadges = `<span class="text-muted-foreground text-xs italic">${i18nRoles.badge_isolated}</span>`;
 
-                        // 2. Build the Action Buttons
                         const deleteBtn = isSystemRole 
-                            ? `<span class="text-muted-foreground/50 text-xs italic px-3">System</span>` 
-                            : `<button onclick="deleteRole('${r.id}', '${r.name}')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors ml-2">Delete</button>`;
+                            ? `<span class="text-muted-foreground/50 text-xs italic px-3">${i18nRoles.label_system}</span>` 
+                            : `<button onclick="deleteRole('${r.id}', '${r.name}')" class="text-destructive hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors ml-2">${i18nRoles.btn_delete}</button>`;
 
-                        // Safely pass the entire Role object to the modal for editing
                         const roleJsonStr = encodeURIComponent(JSON.stringify(r));
-                        const editBtn = `<button onclick="openRoleModal(JSON.parse(decodeURIComponent('${roleJsonStr}')))" class="text-muted-foreground hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-primary hover:border-primary transition-colors">Edit</button>`;
+                        const editBtn = `<button onclick="openRoleModal(JSON.parse(decodeURIComponent('${roleJsonStr}')))" class="text-muted-foreground hover:text-white text-xs font-medium bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-primary hover:border-primary transition-colors">${i18nRoles.btn_edit}</button>`;
 
                         tbody.innerHTML += `
                             <tr class="hover:bg-background/50 transition-colors">
@@ -159,15 +171,13 @@
             } catch (err) { console.error("Error fetching roles:", err); }
         }
 
-        // --- MODAL CONTROLS ---
-
         function openRoleModal(role = null) {
+            const i18nRoles = window.I18N.roles;
             const modal = document.getElementById('modal-role');
             const content = document.getElementById('modal-role-content');
             
             if (role) {
-                // EDIT MODE: Populate the modal with the existing role data
-                document.getElementById('modal-role-title').innerText = "Edit Role: " + role.name;
+                document.getElementById('modal-role-title').innerText = i18nRoles.modal_edit_title + role.name;
                 document.getElementById('role-input-id').value = role.id;
                 document.getElementById('role-input-name').value = role.name;
                 document.getElementById('role-toggle-internet').checked = role.allow_global_internet;
@@ -176,11 +186,9 @@
                 document.getElementById('role-input-ips').value = role.allowed_ips;
                 document.getElementById('role-input-ports').value = role.allowed_ports;
 
-                // Security: Prevent admins from accidentally renaming the 'admin' role
                 document.getElementById('role-input-name').disabled = (role.id === 'admin');
             } else {
-                // CREATE MODE: Clear all fields to their defaults
-                document.getElementById('modal-role-title').innerText = "Create Custom Role";
+                document.getElementById('modal-role-title').innerText = i18nRoles.modal_create_title;
                 document.getElementById('role-input-id').value = '';
                 document.getElementById('role-input-name').value = '';
                 document.getElementById('role-toggle-internet').checked = false;
@@ -192,7 +200,6 @@
                 document.getElementById('role-input-name').disabled = false;
             }
 
-            // Show Modal with animation
             modal.classList.remove('hidden');
             setTimeout(() => {
                 modal.classList.remove('opacity-0');
@@ -204,7 +211,6 @@
             const modal = document.getElementById('modal-role');
             const content = document.getElementById('modal-role-content');
             
-            // Hide Modal with animation
             modal.classList.add('opacity-0');
             content.classList.add('scale-95');
             setTimeout(() => {
@@ -213,7 +219,7 @@
         }
 
         async function saveRole() {
-            // Read data directly from the modal UI
+            const i18nRoles = window.I18N.roles;
             const id = document.getElementById('role-input-id').value;
             const name = document.getElementById('role-input-name').value;
             const internet = document.getElementById('role-toggle-internet').checked;
@@ -223,13 +229,11 @@
             const ports = document.getElementById('role-input-ports').value || 'ALL';
 
             if (!name) {
-                alert("Role Name is required.");
+                alert(i18nRoles.alert_name_required);
                 return;
             }
 
-            // If ID is empty, we are CREATING (POST). If it has an ID, we are EDITING (PUT).
             const method = id ? 'PUT' : 'POST';
-            
             const payload = {
                 id: id,
                 name: name,
@@ -250,15 +254,17 @@
                 const data = await res.json();
                 if (res.ok) {
                     closeRoleModal();
-                    fetchRolesData(); // Instantly refresh the UI!
+                    fetchRolesData();
                 } else {
                     alert(`Error: ${data.message}`);
                 }
-            } catch (err) { alert("Failed to save role."); }
+            } catch (err) { alert(i18nRoles.alert_save_fail); }
         }
 
         async function deleteRole(id, name) {
-            if (!confirm(`🚨 Are you sure you want to delete the '${name}' role?\n\nThis will fail if users are currently assigned to it.`)) return;
+            const i18nRoles = window.I18N.roles;
+            const msg = i18nRoles.confirm_delete.replace('%s', name);
+            if (!confirm(msg)) return;
 
             try {
                 const res = await fetch('/api/roles', {
@@ -268,12 +274,14 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    fetchRolesData(); // Instantly refresh UI!
+                    fetchRolesData();
                 } else {
                     alert(`Error: ${data.message}`);
                 }
-            } catch (err) { alert("Failed to delete role."); }
+            } catch (err) { alert(i18nRoles.alert_delete_fail); }
         }
+
+        fetchRolesData();
     </script>
 </div>
 {{ end }}

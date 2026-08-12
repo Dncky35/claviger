@@ -2,54 +2,54 @@
 <div id="tab-llm" class="space-y-6 block animate-fade-in hidden">
 
     <div>
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">AI & LLM Studio</h2>
-        <p class="text-muted-foreground text-sm mt-1">Deploy and manage local, private AI models.</p>
+        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "llm.title" }}</h2>
+        <p class="text-muted-foreground text-sm mt-1">{{ T "llm.subtitle" }}</p>
     </div>
     
     <!-- Section 1: AI Hardware Profile -->
     <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col gap-4 transition-all duration-500" id="llm-hw-card">
-        <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider">Host Capabilities</h3>
+        <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider">{{ T "llm.host_capabilities" }}</h3>
         
         <div class="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
             <!-- Compute/GPU -->
             <div>
-                <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Compute Target</p>
+                <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">{{ T "llm.compute_target" }}</p>
                 <div class="flex items-center gap-3">
-                    <span id="llm-hw-status" class="text-lg font-bold text-slate-100">Scanning...</span>
+                    <span id="llm-hw-status" class="text-lg font-bold text-slate-100"></span>
                     <span id="llm-hw-badge" class="hidden text-xs font-medium px-2 py-1 rounded border"></span>
                 </div>
             </div>
             
-            <div class="hidden md:block w-px h-8 bg-border"></div> <!-- Divider -->
+            <div class="hidden md:block w-px h-8 bg-border"></div>
             
             <!-- RAM -->
             <div>
-                <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">System Memory</p>
+                <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">{{ T "llm.system_memory" }}</p>
                 <span id="llm-ram-status" class="text-md font-bold text-slate-200">-- GB</span>
             </div>
             
-            <div class="hidden md:block w-px h-8 bg-border"></div> <!-- Divider -->
+            <div class="hidden md:block w-px h-8 bg-border"></div>
             
             <!-- Cores -->
             <div>
-                <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">CPU Cores</p>
+                <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">{{ T "llm.cpu_cores" }}</p>
                 <span id="llm-cpu-status" class="text-md font-bold text-slate-200">-- Cores</span>
             </div>
         </div>
 
-        <!-- The Guardrail Warning Banner (Hidden by default) -->
+        <!-- The Guardrail Warning Banner -->
         <div id="llm-toolkit-warning" class="hidden mt-4 p-5 bg-surface border border-rose-500/30 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
             <div class="flex items-start gap-3">
                 <span class="text-2xl">⚠️</span>
                 <div>
-                    <p class="text-sm font-bold text-rose-400">Hardware Acceleration Blocked</p>
-                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">Your NVIDIA GPU was detected, but the <span class="text-slate-300 font-mono">nvidia-container-toolkit</span> is missing from your host OS. AI deployments are locked to prevent crashes.</p>
+                    <p class="text-sm font-bold text-rose-400">{{ T "llm.hw_warning_title" }}</p>
+                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">{{ T "llm.hw_warning_desc" | safeHTML }}</p>
                 </div>
             </div>
             
             <button id="btn-install-toolkit" onclick="installNvidiaToolkit()" class="px-5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/30 flex items-center justify-center gap-2 whitespace-nowrap flex-shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                Auto-Install Toolkit
+                {{ T "llm.btn_install_toolkit" }}
             </button>
         </div>
 
@@ -57,32 +57,14 @@
 
     <hr class="border-border my-8">
 
-   <!-- Section 2: AI Ecosystem -->
-    <div class="mb-10">
-        <!-- Engines Section -->
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <span class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-sm shadow-inner">⚙️</span>
-                Core Engines
-            </h3>
-        </div>
-        <div id="llm-engines-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            <div class="col-span-full p-8 text-center text-slate-500 text-sm animate-pulse border border-dashed border-border rounded-xl">
-                Loading Engines...
-            </div>
-        </div>
+    <!-- Section 2: AI Engines & Frontends -->
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-100">{{ T "llm.ecosystem_title" }}</h3>
+    </div>
 
-        <!-- Interfaces Section -->
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <span class="w-8 h-8 rounded-lg bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20 flex items-center justify-center text-sm shadow-inner">🖥️</span>
-                User Interfaces
-            </h3>
-        </div>
-        <div id="llm-interfaces-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="col-span-full p-8 text-center text-slate-500 text-sm animate-pulse border border-dashed border-border rounded-xl">
-                Loading Interfaces...
-            </div>
+    <!-- The Grid Container -->
+    <div id="llm-app-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="col-span-full p-8 text-center text-slate-400 text-sm animate-pulse" id="llm-loading-text">
         </div>
     </div>
 
@@ -91,36 +73,31 @@
     <!-- Section 3: Model Library -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
         <div class="flex items-center gap-4">
-            <h3 class="text-lg font-bold text-slate-100">Local Model Library</h3>
+            <h3 class="text-lg font-bold text-slate-100">{{ T "llm.library_title" }}</h3>
             
             <!-- Engine Selector Dropdown -->
             <select id="engine-selector" onchange="switchEngineView(this.value)" class="bg-slate-800 border border-border text-slate-300 text-xs rounded-lg focus:ring-primary focus:border-primary block p-2 transition-colors cursor-pointer">
-                <option value="">Detecting engines...</option>
             </select>
         </div>
 
         <button onclick="openPullModal()" class="bg-primary hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            Pull New Model
+            {{ T "llm.btn_pull" }}
         </button>
     </div>
 
     <!-- Model List Container -->
     <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden mb-8">
         <div class="divide-y divide-border" id="llm-model-list">
-            <div class="p-8 text-center text-slate-500 text-sm font-mono">
-                Select a running engine to view downloaded models.
-            </div>
         </div>
     </div>
 
-    <!-- PULL MODEL MODAL (Hidden by default) -->
+    <!-- PULL MODEL MODAL -->
     <div id="pull-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
         <div class="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300" id="pull-modal-content">
             
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
-                    ☁️ Pull AI Model
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2" id="modal-title-text">
                 </h3>
                 <button onclick="closePullModal()" class="text-slate-400 hover:text-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -129,36 +106,66 @@
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Engine</label>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" id="label-target-engine"></label>
                     <select id="pull-target-engine" class="w-full bg-slate-800 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none">
-                        <!-- Populated dynamically -->
                     </select>
                 </div>
                 
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Model Tag / Registry ID</label>
-                    <input type="text" id="pull-model-id" placeholder="e.g., llama3.1:8b or meta-llama/Llama-3-8b" class="w-full bg-slate-900 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none font-mono placeholder-slate-600">
-                    <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">Downloads can take several minutes based on your internet connection. Do not refresh the page.</p>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" id="label-model-id"></label>
+                    <input type="text" id="pull-model-id" class="w-full bg-slate-900 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none font-mono placeholder-slate-600">
+                    <p class="text-[10px] text-slate-500 mt-2 leading-relaxed" id="hint-model-id"></p>
                 </div>
             </div>
 
             <div class="mt-8 flex justify-end gap-3">
-                <button onclick="closePullModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-lg transition-colors border border-border">Cancel</button>
+                <button onclick="closePullModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-lg transition-colors border border-border" id="btn-cancel-pull"></button>
                 <button id="btn-execute-pull" onclick="executeModelPull()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
-                    Start Download
                 </button>
             </div>
         </div>
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const i18nLlm = window.I18N.llm;
+            if (i18nLlm) {
+                const loadingEl = document.getElementById('llm-loading-text');
+                const modelListEl = document.getElementById('llm-model-list');
+                const engineSelector = document.getElementById('engine-selector');
+                const hwStatusEl = document.getElementById('llm-hw-status');
+                
+                if (loadingEl) loadingEl.innerText = i18nLlm.loading_ecosystem;
+                if (modelListEl) modelListEl.innerHTML = `<div class="p-8 text-center text-slate-500 text-sm font-mono">${i18nLlm.select_engine_prompt}</div>`;
+                if (engineSelector) engineSelector.innerHTML = `<option value="">${i18nLlm.detecting_engines}</option>`;
+                if (hwStatusEl && !hwStatusEl.innerText) hwStatusEl.innerText = i18nLlm.scanning;
+
+                // Modal texts
+                const modalTitle = document.getElementById('modal-title-text');
+                const lblTarget = document.getElementById('label-target-engine');
+                const lblModelId = document.getElementById('label-model-id');
+                const hintModel = document.getElementById('hint-model-id');
+                const btnCancel = document.getElementById('btn-cancel-pull');
+                const btnExecute = document.getElementById('btn-execute-pull');
+
+                if (modalTitle) modalTitle.innerHTML = i18nLlm.modal_pull_title;
+                if (lblTarget) lblTarget.innerText = i18nLlm.target_engine;
+                if (lblModelId) lblModelId.innerText = i18nLlm.model_tag_label;
+                if (hintModel) hintModel.innerText = i18nLlm.model_tag_hint;
+                if (btnCancel) btnCancel.innerText = i18nLlm.btn_cancel;
+                if (btnExecute) btnExecute.innerText = i18nLlm.btn_start_download;
+
+                const inputModelId = document.getElementById('pull-model-id');
+                if (inputModelId) inputModelId.placeholder = i18nLlm.model_tag_placeholder;
+            }
+        });
+
         let activeEngine = ""; 
         let runningEnginesList = [];
-
-        // --- 1. Hardware Profiler ---
         let deploymentLocked = false;
 
         async function fetchAIProfile() {
+            const i18nLlm = window.I18N.llm;
             try {
                 const res = await fetch('/api/hardware/ai-profile');
                 if (!res.ok) throw new Error('Failed to load profile');
@@ -167,7 +174,6 @@
                 const statusEl = document.getElementById('llm-hw-status');
                 const badgeEl = document.getElementById('llm-hw-badge');
                 
-                // Populate standard stats
                 document.getElementById('llm-ram-status').innerText = `${profile.total_ram_gb} GB`;
                 document.getElementById('llm-cpu-status').innerText = `${profile.cpu_cores} Cores`;
 
@@ -186,7 +192,6 @@
                     }
                     badgeEl.className = `text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${vendorStyles}`;
 
-                    // 🚨 ENFORCE THE GUARDRAIL
                     if (profile.gpu.vendor === 'nvidia' && !profile.gpu.toolkit_ready) {
                         deploymentLocked = true;
                         document.getElementById('llm-toolkit-warning').classList.remove('hidden');
@@ -202,21 +207,20 @@
 
             } catch (e) {
                 console.error("Fetch AI Profile Error:", e);
-                document.getElementById('llm-hw-status').innerText = "Hardware Scan Failed";
+                document.getElementById('llm-hw-status').innerText = i18nLlm.fail_profile;
             }
         }
         
-        // --- 2. LLM Ecosystem Apps ---
         async function fetchLLMApps() {
+            const i18nLlm = window.I18N.llm;
             try {
                 const res = await fetch('/api/llms/containers');
-                if (!res.ok) throw new Error('Failed to load LLM apps');
+                if (!res.ok) throw new Error(i18nLlm.fail_load_apps);
                 const data = await res.json();
                 
                 const apps = data.llm_apps || [];
                 renderLLMGrid(apps);
 
-                // Find engines that are currently installed/running
                 runningEnginesList = apps.filter(a => a.category === 'llm_engine' && a.status === 'running');
                 populateEngineSelectors();
 
@@ -225,124 +229,103 @@
             }
         }
 
-        function buildLLMCard(app) {
-            const isInstalled = app.status !== 'not_installed';
-            const isRunning = app.status === 'running';
-
-            // Badge Logic
-            let badgeHtml = `<span class="text-[10px] font-mono text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-border">Not Installed</span>`;
-            if (isInstalled) {
-                if (isRunning) {
-                    badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Running</span>`;
-                } else {
-                    badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-rose-400 bg-rose-400/10 px-2 py-0.5 rounded border border-rose-400/20">Stopped</span>`;
-                }
-            }
-
-            // UI Type Pill (Engine vs Frontend)
-            const typePill = app.category === 'llm_engine' 
-                ? `<span class="text-[9px] uppercase font-bold tracking-wider text-indigo-400 bg-indigo-400/10 px-1.5 py-0.5 rounded border border-indigo-500/20">Engine</span>`
-                : `<span class="text-[9px] uppercase font-bold tracking-wider text-fuchsia-400 bg-fuchsia-400/10 px-1.5 py-0.5 rounded border border-fuchsia-500/20">Interface</span>`;
-
-            // Buttons visibility
-            let installBtnClass = isInstalled ? 'hidden' : '';
-            let dashBtnClass = isInstalled ? '' : 'hidden';
-            let uninstallBtnClass = isInstalled ? '' : 'hidden';
-
-            let isDefault = app.action_port > 0;
-            let defaultAction = 'disabled';
-            
-            // Action Link (Handle proxy URLs or standard config prompts)
-            if (app.id === "ollama") defaultAction = `onclick="window.open('https://github.com/ollama/ollama/tree/main/docs', '_blank')"`;
-            if (app.id === "vllm") defaultAction = `onclick="window.open('https://docs.vllm.ai/', '_blank')"`;
-            if (app.id === "localai") defaultAction = `onclick="window.open('https://localai.io/', '_blank')"`;
-            
-            let dashOnClick = isDefault ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
-            
-            // Style disabled dashboard buttons gracefully
-            let dashBtnStyle = (isDefault || defaultAction !== 'disabled') 
-                ? 'bg-slate-800 hover:bg-slate-700 text-white border-border cursor-pointer' 
-                : 'bg-slate-800/40 text-slate-500 border-transparent cursor-not-allowed';
-
-            return `
-            <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-all duration-300 group" id="llm-card-${app.id}">
-                <div>
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-slate-800 border border-border flex items-center justify-center text-xl shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform">
-                                ${app.icon}
-                            </div>
-                            <div>
-                                <h4 class="text-md font-bold text-slate-200 flex items-center gap-2">
-                                    ${app.name} 
-                                </h4>
-                                <div class="mt-1">${typePill}</div>
-                            </div>
-                        </div>
-                        ${badgeHtml}
-                    </div>
-                    <p class="text-xs text-slate-400 leading-relaxed">${app.description}</p>
-                </div>
-                
-                <div class="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
-                    <button 
-                        id="btn-install-llm-${app.id}" 
-                        onclick="installLLMApp('${app.id}')" 
-                        class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm w-full flex items-center justify-center gap-2"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        Install
-                    </button>
-
-                    <button 
-                        id="btn-dash-llm-${app.id}" 
-                        ${dashOnClick} 
-                        class="${dashBtnClass} ${dashBtnStyle} px-4 py-2 text-xs font-bold rounded-lg transition-colors border flex-1"
-                    >
-                        ${app.action_text}
-                    </button>
-
-                    <button 
-                        id="btn-uninstall-llm-${app.id}" 
-                        onclick="uninstallLLMApp('${app.id}')" 
-                        class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 flex-shrink-0"
-                        title="Uninstall & Wipe Container"
-                    >
-                        🗑️
-                    </button>
-                </div>
-            </div>`;
-        }
-
         function renderLLMGrid(apps) {
-            const enginesGrid = document.getElementById('llm-engines-grid');
-            const interfacesGrid = document.getElementById('llm-interfaces-grid');
-            
-            if (!enginesGrid || !interfacesGrid) return;
-            
-            enginesGrid.innerHTML = ''; 
-            interfacesGrid.innerHTML = '';
+            const i18nLlm = window.I18N.llm;
+            const gridEl = document.getElementById('llm-app-grid');
+            if (!gridEl) return;
+            gridEl.innerHTML = ''; 
 
-            const engines = apps.filter(app => app.category === 'llm_engine');
-            const interfaces = apps.filter(app => app.category !== 'llm_engine');
-
-            // Render Engines
-            if (engines.length === 0) {
-                enginesGrid.innerHTML = `<div class="col-span-full p-8 text-center text-slate-500 text-sm border border-dashed border-border rounded-xl">No engines available in catalog.</div>`;
-            } else {
-                engines.forEach(app => enginesGrid.insertAdjacentHTML('beforeend', buildLLMCard(app)));
+            if (apps.length === 0) {
+                gridEl.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 text-sm">${i18nLlm.no_apps}</div>`;
+                return;
             }
 
-            // Render Interfaces
-            if (interfaces.length === 0) {
-                interfacesGrid.innerHTML = `<div class="col-span-full p-8 text-center text-slate-500 text-sm border border-dashed border-border rounded-xl">No interfaces available in catalog.</div>`;
-            } else {
-                interfaces.forEach(app => interfacesGrid.insertAdjacentHTML('beforeend', buildLLMCard(app)));
-            }
+            apps.sort((a, b) => a.category.localeCompare(b.category));
+
+            apps.forEach(app => {
+                const isInstalled = app.status !== 'not_installed';
+                const isRunning = app.status === 'running';
+
+                let badgeHtml = `<span class="text-[10px] font-mono text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-border">Not Installed</span>`;
+                if (isInstalled) {
+                    if (isRunning) {
+                        badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Running</span>`;
+                    } else {
+                        badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-rose-400 bg-rose-400/10 px-2 py-0.5 rounded border border-rose-400/20">Stopped</span>`;
+                    }
+                }
+
+                const typePill = app.category === 'llm_engine' 
+                    ? `<span class="text-[9px] uppercase font-bold tracking-wider text-indigo-400 bg-indigo-400/10 px-1.5 py-0.5 rounded border border-indigo-500/20">${i18nLlm.type_engine}</span>`
+                    : `<span class="text-[9px] uppercase font-bold tracking-wider text-fuchsia-400 bg-fuchsia-400/10 px-1.5 py-0.5 rounded border border-fuchsia-500/20">${i18nLlm.type_interface}</span>`;
+
+                let installBtnClass = isInstalled ? 'hidden' : '';
+                let dashBtnClass = isInstalled ? '' : 'hidden';
+                let uninstallBtnClass = isInstalled ? '' : 'hidden';
+
+                let isDefault = app.action_port > 0;
+                let defaultAction = '';
+                if (app.id === "ollama") defaultAction = `onclick="window.open('https://github.com/ollama/ollama/tree/main/docs', '_blank')"`;
+                if (app.id === "vllm") defaultAction = `onclick="window.open('https://docs.vllm.ai/', '_blank')"`;
+                if (app.id === "localai") defaultAction = `onclick="window.open('https://localai.io/', '_blank')"`;
+                
+                let dashOnClick = isDefault ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
+
+                const cardHtml = `
+                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between hover:border-primary/50 transition-all duration-300" id="llm-card-${app.id}">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-slate-800 border border-border flex items-center justify-center text-xl shadow-inner flex-shrink-0">
+                                    ${app.icon}
+                                </div>
+                                <div>
+                                    <h4 class="text-md font-bold text-slate-200 flex items-center gap-2">
+                                        ${app.name} 
+                                    </h4>
+                                    <div class="mt-1">${typePill}</div>
+                                </div>
+                            </div>
+                            ${badgeHtml}
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">${app.description}</p>
+                    </div>
+                    
+                    <div class="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
+                        <button 
+                            id="btn-install-llm-${app.id}" 
+                            onclick="installLLMApp('${app.id}')" 
+                            class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm w-full flex items-center justify-center gap-2"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            ${i18nLlm.btn_install}
+                        </button>
+
+                        <button 
+                            id="btn-dash-llm-${app.id}" 
+                            ${dashOnClick} 
+                            class="${dashBtnClass} px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors border border-border flex-1"
+                        >
+                            ${app.action_text}
+                        </button>
+
+                        <button 
+                            id="btn-uninstall-llm-${app.id}" 
+                            onclick="uninstallLLMApp('${app.id}')" 
+                            class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 flex-shrink-0"
+                            title="${i18nLlm.btn_uninstall}"
+                        >
+                            🗑️
+                        </button>
+                    </div>
+                </div>`;
+                
+                gridEl.insertAdjacentHTML('beforeend', cardHtml);
+            });
         }
 
-        // --- 3. Installer Workflows (Placeholders) ---
         async function installLLMApp(appId) {
+            const i18nLlm = window.I18N.llm;
             if (deploymentLocked) {
                 alert("Installation is locked. Please resolve the hardware warnings (NVIDIA Toolkit) before deploying AI engines.");
                 return;
@@ -351,36 +334,26 @@
             if (!confirm(`Are you sure you want to deploy ${appId}? Depending on your internet speed, downloading the AI engine image may take a few minutes.`)) return;
 
             const installBtn = document.getElementById(`btn-install-llm-${appId}`);
-            
-            if (!installBtn) {
-                console.error(`[AI Orchestrator] DOM target btn-install-llm-${appId} not found.`);
-                return;
-            }
+            if (!installBtn) return;
 
-            const originalHtml = installBtn.innerHTML;
-
-            // 1. LOADING STATE
             installBtn.disabled = true;
             installBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
             installBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
-            installBtn.innerHTML = '⏳ Pulling Image...';
+            installBtn.innerHTML = i18nLlm.installing;
 
             try {
                 const res = await fetch('/api/llms/install', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    // version: "latest" can be made dynamic later if you add a version dropdown
                     body: JSON.stringify({ app_id: appId, version: "latest" }) 
                 });
                 const data = await res.json();
                 
                 if (res.ok && data.status === 'success') {
-                    // 2. SUCCESS STATE
                     installBtn.classList.remove('animate-pulse');
                     installBtn.classList.add('bg-emerald-600');
-                    installBtn.innerHTML = '✅ Deployed!';
+                    installBtn.innerHTML = i18nLlm.deployed;
                     
-                    // Wait 1.5 seconds so the user sees the success checkmark, then refresh the grid
                     setTimeout(() => {
                         fetchLLMApps(); 
                     }, 1500);
@@ -388,11 +361,10 @@
                     throw new Error(data.message || "Unknown server error");
                 }
             } catch (e) {
-                // 3. FAILURE & RETRY STATE
                 installBtn.disabled = false;
                 installBtn.classList.remove('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
                 installBtn.classList.add('bg-rose-600', 'hover:bg-rose-500'); 
-                installBtn.innerHTML = '❌ Failed. Retry?';
+                installBtn.innerHTML = i18nLlm.btn_retry;
                 
                 setTimeout(() => {
                     alert(`Deployment Failed for ${appId}:\n\n${e.message}\n\nPlease check your Docker daemon logs.`);
@@ -401,21 +373,17 @@
         }
 
         async function uninstallLLMApp(appId) {
+            const i18nLlm = window.I18N.llm;
             if (!confirm(`Are you sure you want to uninstall ${appId}?`)) return;
 
-            // Step 2: Ask if they want to wipe the heavy model data/volumes too
-            const isWiped = confirm(
-                `Do you also want to completely WIPE all stored data and downloaded models for ${appId}?\n\n` +
-                `• OK = Delete everything (Reclaims disk space)\n` +
-                `• Cancel = Preserve models & history on disk`
-            );
+            const promptMsg = i18nLlm.uninstall_wipe_prompt.replace('%s', appId);
+            const isWiped = confirm(promptMsg);
 
             const uninstallBtn = document.getElementById(`btn-uninstall-llm-${appId}`);
             if (!uninstallBtn) return;
 
             const originalHtml = uninstallBtn.innerHTML;
 
-            // 1. LOADING STATE
             uninstallBtn.disabled = true;
             uninstallBtn.classList.remove('bg-rose-600/10', 'hover:bg-rose-600/20', 'text-rose-400');
             uninstallBtn.classList.add('bg-slate-700', 'text-slate-400', 'cursor-not-allowed', 'animate-pulse');
@@ -430,13 +398,11 @@
                 const data = await res.json();
                 
                 if (res.ok && data.status === 'success') {
-                    // Refresh the grid immediately on uninstall
                     fetchLLMApps(); 
                 } else {
                     throw new Error(data.message || "Unknown server error");
                 }
             } catch (e) {
-                // 3. FAILURE STATE
                 uninstallBtn.disabled = false;
                 uninstallBtn.classList.remove('bg-slate-700', 'text-slate-400', 'cursor-not-allowed', 'animate-pulse');
                 uninstallBtn.classList.add('bg-rose-600', 'text-white'); 
@@ -444,7 +410,6 @@
                 
                 setTimeout(() => {
                     alert(`Teardown Failed for ${appId}:\n\n${e.message}`);
-                    // Revert button visually
                     uninstallBtn.innerHTML = originalHtml;
                     uninstallBtn.className = "px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 flex-shrink-0";
                 }, 100);
@@ -452,6 +417,7 @@
         }
 
         function populateEngineSelectors() {
+            const i18nLlm = window.I18N.llm;
             const selector = document.getElementById('engine-selector');
             const pullTarget = document.getElementById('pull-target-engine');
             
@@ -459,7 +425,7 @@
             pullTarget.innerHTML = '';
 
             if (runningEnginesList.length === 0) {
-                selector.innerHTML = '<option value="">No Engines Running</option>';
+                selector.innerHTML = `<option value="">${i18nLlm.no_engines}</option>`;
                 selector.disabled = true;
                 return;
             }
@@ -471,7 +437,6 @@
                 pullTarget.innerHTML += opt;
             });
 
-            // Auto-load the first available engine if none is active
             if (!activeEngine) {
                 activeEngine = runningEnginesList[0].id;
                 selector.value = activeEngine;
@@ -479,7 +444,6 @@
             }
         }
 
-        // --- Model Library Logic ---
         function switchEngineView(engineId) {
             if (!engineId) return;
             activeEngine = engineId;
@@ -487,14 +451,17 @@
         }
 
         async function fetchModelsForEngine(engineId) {
+            const i18nLlm = window.I18N.llm;
             const listEl = document.getElementById('llm-model-list');
-            listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">Querying ${engineId} API...</div>`;
+            const queryMsg = i18nLlm.querying_api.replace('%s', engineId);
+            listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">${queryMsg}</div>`;
             
             try {
                 const res = await fetch(`/api/llms/models?engine=${engineId}`);
                 
                 if (!res.ok) {
-                    listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">Failed to connect to ${engineId}. Is the container running?</div>`;
+                    const failMsg = i18nLlm.connect_fail.replace('%s', engineId);
+                    listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${failMsg}</div>`;
                     return;
                 }
 
@@ -502,16 +469,16 @@
                 const models = data.models || [];
 
                 if (models.length === 0) {
-                    listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">No models found in ${engineId}. Click 'Pull New Model' to add one.</div>`;
+                    const noModelsMsg = i18nLlm.no_models.replace('%s', engineId);
+                    listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">${noModelsMsg}</div>`;
                     return;
                 }
 
-                listEl.innerHTML = ''; // Clear
+                listEl.innerHTML = ''; 
 
                 models.forEach(model => {
-                    // Handle OpenAI/vLLM returning 0 sizes gracefully
-                    const sizeText = model.size_gb > 0 ? `${model.size_gb.toFixed(2)} GB` : 'Size Unknown';
-                    const paramsText = model.params !== "Unknown" ? `${model.params} Params` : 'Params Unknown';
+                    const sizeText = model.size_gb > 0 ? `${model.size_gb.toFixed(2)} GB` : i18nLlm.size_unknown;
+                    const paramsText = model.params !== "Unknown" ? `${model.params} Params` : i18nLlm.params_unknown;
                     
                     const rowHTML = `
                     <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-800/30 transition-colors">
@@ -531,9 +498,8 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-3 border-t border-border pt-4 md:border-0 md:pt-0">
-                            <!-- Delete function left as placeholder to match your backend design -->
                             <button onclick="deleteModel('${activeEngine}', '${model.id}')" class="px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600/20 border border-rose-500/20 rounded text-xs font-medium text-rose-400 transition-colors">
-                                Delete
+                                ${i18nLlm.btn_delete}
                             </button>
                         </div>
                     </div>`;
@@ -542,19 +508,17 @@
                 });
             } catch (e) {
                 console.error("Fetch Models Error:", e);
-                listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">Network error while fetching models.</div>`;
+                listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${i18nLlm.net_error}</div>`;
             }
         }
 
-        // --- Modal Logic ---
         const modal = document.getElementById('pull-modal');
         const modalContent = document.getElementById('pull-modal-content');
 
         function openPullModal() {
             modal.classList.remove('hidden');
-            document.getElementById('pull-target-engine').value = activeEngine; // Default to current view
+            document.getElementById('pull-target-engine').value = activeEngine;
             
-            // Trigger reflow for animation
             void modal.offsetWidth; 
             modal.classList.add('opacity-100');
             modalContent.classList.remove('scale-95');
@@ -568,27 +532,26 @@
             
             setTimeout(() => {
                 modal.classList.add('hidden');
-                document.getElementById('pull-model-id').value = ''; // Reset input
+                document.getElementById('pull-model-id').value = '';
             }, 300);
         }
 
-        // --- Execute Pull Request ---
         async function executeModelPull() {
+            const i18nLlm = window.I18N.llm;
             const engine = document.getElementById('pull-target-engine').value;
             const modelId = document.getElementById('pull-model-id').value.trim();
             const btn = document.getElementById('btn-execute-pull');
 
             if (!engine || !modelId) {
-                alert("Please select an engine and enter a model tag.");
+                alert(i18nLlm.alert_pull_missing);
                 return;
             }
 
-            // Set loading state
             btn.disabled = true;
             btn.classList.add('opacity-75', 'cursor-not-allowed', 'animate-pulse');
             btn.innerHTML = `
                 <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                Downloading...
+                ${i18nLlm.downloading}
             `;
 
             try {
@@ -601,20 +564,17 @@
                 const data = await res.json();
                 
                 if (res.ok && data.status === 'success') {
-                    // Success!
                     btn.classList.remove('animate-pulse');
                     btn.classList.replace('bg-primary', 'bg-emerald-600');
-                    btn.innerHTML = '✅ Download Complete';
+                    btn.innerHTML = i18nLlm.download_complete;
                     
                     setTimeout(() => {
                         closePullModal();
-                        // Reset button state for next time
                         btn.disabled = false;
                         btn.classList.remove('opacity-75', 'cursor-not-allowed');
                         btn.classList.replace('bg-emerald-600', 'bg-primary');
-                        btn.innerHTML = 'Start Download';
+                        btn.innerHTML = i18nLlm.btn_start_download;
                         
-                        // Switch view to the engine we just downloaded to and refresh the list
                         document.getElementById('engine-selector').value = engine;
                         switchEngineView(engine);
                     }, 1500);
@@ -622,16 +582,17 @@
                     throw new Error(data.error || "Unknown server error");
                 }
             } catch (e) {
-                alert(`Pull Failed: ${e.message}`);
-                // Revert button
+                alert(`${i18nLlm.alert_pull_fail}${e.message}`);
                 btn.disabled = false;
                 btn.classList.remove('opacity-75', 'cursor-not-allowed', 'animate-pulse');
-                btn.innerHTML = 'Start Download';
+                btn.innerHTML = i18nLlm.btn_start_download;
             }
         }
 
         async function deleteModel(engineId, modelId) {
-            if (!confirm(`Are you sure you want to delete "${modelId}" from ${engineId}?\n\nThis will permanently remove the model files from disk.`)) return;
+            const i18nLlm = window.I18N.llm;
+            const confirmMsg = i18nLlm.confirm_delete_model.replace('%s', modelId).replace('%s', engineId);
+            if (!confirm(confirmMsg)) return;
 
             try {
                 const res = await fetch('/api/llms/models/delete', {
@@ -643,7 +604,6 @@
                 const data = await res.json();
 
                 if (res.ok && data.status === 'success') {
-                    // Instantly refresh the model list to show the removal
                     fetchModelsForEngine(engineId);
                 } else {
                     throw new Error(data.error || "Unknown server error");
@@ -654,26 +614,24 @@
         }
 
         async function installNvidiaToolkit() {
+            const i18nLlm = window.I18N.llm;
             const btn = document.getElementById('btn-install-toolkit');
-            if (!confirm("This will download the NVIDIA toolkit via apt-get and restart the Docker daemon. Any running Claviger web apps will briefly drop connection for about 5 seconds. Proceed?")) return;
+            if (!confirm(i18nLlm.confirm_toolkit)) return;
 
-            // 1. Loading State
             btn.disabled = true;
             btn.classList.replace('text-rose-400', 'text-slate-300');
             btn.classList.add('bg-slate-800', 'border-slate-700', 'cursor-not-allowed', 'animate-pulse');
-            btn.innerHTML = '⏳ Installing & Restarting Docker...';
+            btn.innerHTML = i18nLlm.toolkit_installing;
 
             try {
                 const res = await fetch('/api/hardware/install-toolkit', { method: 'POST' });
                 const data = await res.json();
 
                 if (res.ok && data.status === 'success') {
-                    // 2. Success State
                     btn.classList.remove('animate-pulse', 'bg-slate-800');
                     btn.classList.add('bg-emerald-600', 'text-white', 'border-emerald-500');
-                    btn.innerHTML = '✅ Success! Refreshing...';
+                    btn.innerHTML = i18nLlm.toolkit_success;
                     
-                    // The backend restarted Docker. Refresh the page to reload the hardware profile!
                     setTimeout(() => {
                         window.location.reload();
                     }, 2000);
@@ -681,19 +639,17 @@
                     throw new Error(data.message || "Unknown server error");
                 }
             } catch (e) {
-                // 3. Failure State
                 btn.disabled = false;
                 btn.classList.remove('animate-pulse', 'bg-slate-800', 'text-slate-300');
                 btn.classList.add('bg-rose-600', 'text-white', 'border-rose-500');
                 btn.innerHTML = '❌ Installation Failed';
                 
                 setTimeout(() => {
-                    alert(`Toolkit Installation Failed:\n\n${e.message}\n\nPlease install manually via SSH.`);
+                    alert(i18nLlm.toolkit_fail.replace('%s', e.message));
                 }, 100);
             }
         }
         
-        // Initialize when tab is shown
         fetchAIProfile();
         fetchLLMApps();
     </script>

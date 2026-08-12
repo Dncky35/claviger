@@ -3,15 +3,15 @@
     
     <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h2 class="text-2xl font-bold tracking-tight text-white">Fleet Nodes</h2>
-            <p class="text-slate-400 text-sm mt-1">Manage and monitor your remote edge servers.</p>
+            <h2 class="text-2xl font-bold tracking-tight text-white">{{ T "fleet.title" }}</h2>
+            <p class="text-slate-400 text-sm mt-1">{{ T "fleet.subtitle" }}</p>
         </div>
         
         <div id="fleet-selector-container" class="hidden flex items-center gap-3">
-            <label for="fleet-node-select" class="text-xs font-bold uppercase tracking-widest text-slate-500">Target Node:</label>
+            <label for="fleet-node-select" class="text-xs font-bold uppercase tracking-widest text-slate-500">{{ T "fleet.target_label" }}</label>
             <div class="relative min-w-[200px]">
                 <select id="fleet-node-select" onchange="onNodeSelected()" class="appearance-none bg-surface border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full py-2 pl-4 pr-10 shadow-sm cursor-pointer outline-none transition-colors">
-                    <option value="">Select a node...</option>
+                    <option value="">{{ T "fleet.select_placeholder" }}</option>
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -25,29 +25,27 @@
         <div class="w-16 h-16 bg-slate-800/50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
         </div>
-        <h3 class="text-lg font-bold text-white mb-2">No Sub-Servers Found</h3>
-        <p class="text-slate-400 max-w-md mx-auto mb-6">You haven't paired any remote nodes yet.</p>
+        <h3 class="text-lg font-bold text-white mb-2">{{ T "fleet.empty_title" }}</h3>
+        <p class="text-slate-400 max-w-md mx-auto mb-6">{{ T "fleet.empty_desc" }}</p>
     </div>
 
     <!-- Node Dashboard Content -->
     <div id="fleet-node-dashboard" class="hidden flex flex-col gap-10">
             
-        <!-- ==========================================
-            SECTION 1: System & Hardware Telemetry
-        =========================================== -->
+        <!-- SECTION 1: System & Hardware Telemetry -->
         <section>
             <div class="flex items-center justify-between mb-5">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">System Telemetry & Status</h3>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">{{ T "fleet.section_telemetry" }}</h3>
             </div>
             
             <!-- Identity Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Node Status</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.node_status" }}</h4>
                     <div id="node-stat-status" class="text-lg font-bold text-slate-200 flex items-center gap-2">-</div>
                 </div>
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">VPN Tunnel IP</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.tunnel_ip" }}</h4>
                     <div id="node-stat-ip" class="text-lg font-mono font-bold text-slate-200">-</div>
                 </div>
             </div>
@@ -56,7 +54,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- CPU -->
                 <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">CPU Usage</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.cpu_usage" }}</h4>
                     <div id="fleet-sys-cpu-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
                     <div class="w-full bg-slate-800 rounded-full h-1.5">
                         <div id="fleet-sys-cpu-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
@@ -65,7 +63,7 @@
                 
                 <!-- RAM -->
                 <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">RAM Usage</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.ram_usage" }}</h4>
                     <div id="fleet-sys-ram-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
                     <div class="w-full bg-slate-800 rounded-full h-1.5">
                         <div id="fleet-sys-ram-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
@@ -75,7 +73,7 @@
                 
                 <!-- Disk -->
                 <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Disk Usage</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.disk_usage" }}</h4>
                     <div id="fleet-sys-disk-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
                     <div class="w-full bg-slate-800 rounded-full h-1.5">
                         <div id="fleet-sys-disk-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
@@ -85,7 +83,7 @@
                 
                 <!-- System Info -->
                 <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">System Info</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.sys_info" }}</h4>
                     <div id="fleet-sys-os" class="text-sm font-bold text-slate-200 truncate">-</div>
                     <div id="fleet-sys-uptime" class="text-[11px] text-slate-400 mt-1">-</div>
                 </div>
@@ -94,39 +92,35 @@
 
         <hr class="border-border border-dashed">
 
-        <!-- ==========================================
-            SECTION 2: Standard Edge Applications 
-        =========================================== -->
+        <!-- SECTION 2: Standard Edge Applications -->
         <section>
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
                 <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">Node Applications & Extensions</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Manage official extensions and custom Docker deployments on this edge server.</p>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">{{ T "fleet.section_apps" }}</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">{{ T "fleet.section_apps_desc" }}</p>
                 </div>
                 <button 
                     id="btn-refresh-fleet-apps"
                     onclick="refetchFleetContainers()" 
                     class="px-4 py-2 bg-surface hover:bg-slate-800 text-xs font-bold text-slate-300 rounded-lg border border-border transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                    Refresh Sync
+                    {{ T "fleet.btn_refresh_apps" }}
                 </button>
             </div>
 
             <!-- Unified List Container -->
             <div class="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm divide-y divide-border min-h-[100px]" id="app-list">
-                <div class="p-8 text-center text-slate-500 text-sm animate-pulse">Loading standard applications...</div>
+                <div class="p-8 text-center text-slate-500 text-sm animate-pulse" id="loading-apps-text">{{ T "fleet.loading_apps" }}</div>
             </div>
         </section>
 
         <hr class="border-border border-dashed">
         
-        <!-- ==========================================
-            SECTION 3: AI & LLM Studio (Edge Node)
-        =========================================== -->
+        <!-- SECTION 3: AI & LLM Studio (Edge Node) -->
         <section>
             <div class="mb-6">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-400">Edge AI & LLM Studio</h3>
-                <p class="text-xs text-slate-500 mt-0.5">Hardware acceleration profile and autonomous AI ecosystem deployments.</p>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-400">{{ T "fleet.section_edge_ai" }}</h3>
+                <p class="text-xs text-slate-500 mt-0.5">{{ T "fleet.section_edge_ai_desc" }}</p>
             </div>
 
             <div class="flex flex-col gap-6">
@@ -134,27 +128,25 @@
                 <!-- Subsection: AI Hardware Profile -->
                 <div>
                     <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                        <span>⚡</span> AI Compute Profile
+                        <span>⚡</span> {{ T "fleet.ai_compute_profile" }}
                     </h4>
                     
-                    <!-- Notice: I changed the ID to be static. In an SPA, you only need one ID to target via JS. -->
                     <div id="fleet-ai-profile-container" class="bg-surface/40 p-4 rounded-xl border border-border shadow-sm min-h-[70px] flex flex-col justify-center transition-all">
                         <div class="text-xs text-slate-500 animate-pulse font-mono flex items-center gap-2">
                             <svg class="animate-spin h-3.5 w-3.5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            Scanning remote hardware...
+                            <span id="scanning-hw-text">{{ T "fleet.scanning_hardware" }}</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Subsection: AI Ecosystem (Engines & Interfaces) -->
+                <!-- Subsection: AI Ecosystem -->
                 <div>
                     <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                        <span>🧠</span> AI Ecosystem Apps
+                        <span>🧠</span> {{ T "fleet.ai_ecosystem_apps" }}
                     </h4>
                     
                     <div class="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm divide-y divide-border min-h-[100px]" id="fleet-llm-list">
-                        <!-- LLM list rows (divided by the JS into Engines & Interfaces) dynamically injected here -->
-                        <div class="p-8 text-center text-slate-500 text-sm animate-pulse">Loading AI components...</div>
+                        <div class="p-8 text-center text-slate-500 text-sm animate-pulse" id="loading-ai-text">{{ T "fleet.loading_ai" }}</div>
                     </div>
                 </div>
 
@@ -162,26 +154,26 @@
                     <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
                         <div class="flex items-center gap-4">
                             <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <span>📚</span> Local Model Library
+                                <span>📚</span> {{ T "fleet.local_model_library" }}
                             </h4>
                             
                             <!-- Fleet Engine Selector Dropdown -->
                             <select id="fleet-engine-selector" onchange="switchFleetEngineView(this.value)" class="bg-slate-800 border border-border text-slate-300 text-xs rounded-lg focus:ring-primary focus:border-primary block p-1.5 transition-colors cursor-pointer outline-none">
-                                <option value="">Detecting edge engines...</option>
+                                <option value="" id="detecting-engines-opt">{{ T "fleet.detecting_edge_engines" }}</option>
                             </select>
                         </div>
 
                         <button onclick="openFleetPullModal()" class="bg-primary hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            Pull New Model
+                            {{ T "fleet.btn_pull_model" }}
                         </button>
                     </div>
 
                     <!-- Model List Container -->
                     <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden mb-2">
                         <div class="divide-y divide-border min-h-[100px]" id="fleet-model-list">
-                            <div class="p-8 text-center text-slate-500 text-sm font-mono">
-                                Select a running edge engine to view downloaded models.
+                            <div class="p-8 text-center text-slate-500 text-sm font-mono" id="select-engine-prompt-text">
+                                {{ T "fleet.select_edge_engine_prompt" }}
                             </div>
                         </div>
                     </div>
@@ -190,15 +182,13 @@
             </div>
         </section>
 
-        <!-- ==========================================
-         FLEET PULL MODEL MODAL
-        =========================================== -->
+        <!-- FLEET PULL MODEL MODAL -->
         <div id="fleet-pull-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
             <div class="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300" id="fleet-pull-modal-content">
                 
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
-                        ☁️ Pull AI Model to Edge Node
+                    <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2" id="modal-title-fleet">
+                        {{ T "fleet.modal_pull_title" }}
                     </h3>
                     <button onclick="closeFleetPullModal()" class="text-slate-400 hover:text-white transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -207,23 +197,23 @@
 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Edge Engine</label>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" id="lbl-target-engine">{{ T "fleet.target_edge_engine" }}</label>
                         <select id="fleet-pull-target-engine" class="w-full bg-slate-800 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none">
                             <!-- Populated dynamically -->
                         </select>
                     </div>
                     
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Model Tag / Registry ID</label>
-                        <input type="text" id="fleet-pull-model-id" placeholder="e.g., llama3.1:8b or meta-llama/Llama-3-8b" class="w-full bg-slate-900 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none font-mono placeholder-slate-600">
-                        <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">Downloads on the remote node can take several minutes. Do not refresh the page.</p>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" id="lbl-model-id">{{ T "fleet.model_tag_label" }}</label>
+                        <input type="text" id="fleet-pull-model-id" class="w-full bg-slate-900 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none font-mono placeholder-slate-600">
+                        <p class="text-[10px] text-slate-500 mt-2 leading-relaxed" id="hint-model-id">{{ T "fleet.model_tag_hint" }}</p>
                     </div>
                 </div>
 
                 <div class="mt-8 flex justify-end gap-3">
-                    <button onclick="closeFleetPullModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-lg transition-colors border border-border">Cancel</button>
+                    <button onclick="closeFleetPullModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-lg transition-colors border border-border" id="btn-cancel-fleet">{{ T "fleet.btn_cancel" }}</button>
                     <button id="btn-fleet-execute-pull" onclick="executeFleetModelPull()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
-                        Start Edge Download
+                        {{ T "fleet.btn_start_edge_download" }}
                     </button>
                 </div>
             </div>
@@ -232,6 +222,14 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const i18nFleet = window.I18N.fleet;
+            if (i18nFleet) {
+                const inputModelId = document.getElementById('fleet-pull-model-id');
+                if (inputModelId) inputModelId.placeholder = i18nFleet.model_tag_placeholder;
+            }
+        });
+
         let fleetPollingInterval = null;
         let fleetContainerPollingInterval = null;
         let fleetLLMContainerPollingInterval = null;
@@ -246,6 +244,7 @@
         }
 
         async function loadFleetNodes() {
+            const i18nFleet = window.I18N.fleet;
             try {
                 const res = await fetch('/api/sub-servers');
                 if (!res.ok) return;
@@ -265,12 +264,12 @@
                 
                 emptyState.classList.add('hidden');
                 selectorContainer.classList.remove('hidden');
-                nodeSelect.innerHTML = '<option value="">Select a node...</option>';
+                nodeSelect.innerHTML = `<option value="">${i18nFleet.select_placeholder}</option>`;
                 
                 nodes.forEach(node => {
                     const opt = document.createElement('option');
                     opt.value = node.id;
-                    opt.textContent = node.status === 'pending' ? node.name + ' (Pending)' : node.name;
+                    opt.textContent = node.status === 'pending' ? node.name + ' (' + i18nFleet.pending_node + ')' : node.name;
                     opt.dataset.nodeInfo = JSON.stringify(node);
                     nodeSelect.appendChild(opt);
                 });
@@ -280,14 +279,13 @@
         }
 
         function onNodeSelected() {
+            const i18nFleet = window.I18N.fleet;
             const select = document.getElementById('fleet-node-select');
             const dashboard = document.getElementById('fleet-node-dashboard');
             
-            // Clear any existing polling loop
             if (fleetPollingInterval) clearInterval(fleetPollingInterval);
             if (fleetContainerPollingInterval) clearInterval(fleetContainerPollingInterval);
             if (fleetLLMContainerPollingInterval) clearInterval(fleetLLMContainerPollingInterval);
-
 
             if (!select.value) {
                 dashboard.classList.add('hidden');
@@ -300,70 +298,60 @@
 
             const statusEl = document.getElementById('node-stat-status');
             if (node.status === 'active') {
-                statusEl.innerHTML = '<div class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_8px_rgba(129,140,248,0.6)]"></div> <span class="text-indigo-400">Active Node</span>';
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_8px_rgba(129,140,248,0.6)]"></div> <span class="text-indigo-400">${i18nFleet.active_node}</span>`;
                 
-                // Immediately fetch hardware stats, then set an interval
                 fetchFleetNodeSystemData(node.id);
                 fetchFleetContainers(node.id, node.ip_address);
                 fetchFleetLLMContainers(node.id, node.ip_address);
                 fetchFleetAIProfile(node.id);
 
                 fleetPollingInterval = setInterval(() => fetchFleetNodeSystemData(node.id), 5000);
-                fleetContainerPollingInterval = setInterval(() => fetchFleetContainers(node.id, node.ip_address), 60000); // Poll containers every 60 seconds
-                fleetLLMContainerPollingInterval = setInterval(() => fetchFleetLLMContainers(node.id, node.ip_address), 60000); // Poll containers every 60 seconds
+                fleetContainerPollingInterval = setInterval(() => fetchFleetContainers(node.id, node.ip_address), 60000);
+                fleetLLMContainerPollingInterval = setInterval(() => fetchFleetLLMContainers(node.id, node.ip_address), 60000);
 
             } else {
-                statusEl.innerHTML = '<div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div> <span class="text-amber-400">Pending Approval</span>';
-                // Reset stats to dashed state if pending
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div> <span class="text-amber-400">${i18nFleet.pending_node}</span>`;
                 resetFleetStats();
             }
 
-            document.getElementById('node-stat-ip').textContent = node.ip_address || 'Unknown';
+            document.getElementById('node-stat-ip').textContent = node.ip_address || i18nFleet.unknown;
         }
 
         let activeFleetEngine = ""; 
         let runningFleetEnginesList = [];
-        let currentActiveFleetNode = ""; // Set this when opening a specific node's dashboard
+        let currentActiveFleetNode = "";
 
         async function fetchFleetLLMContainers(nodeId, ipAddress){
+            const i18nFleet = window.I18N.fleet;
             try {
                 const res = await fetch('/api/fleet/proxy/api/llms/containers', {
-                    headers: {
-                        'X-Node-ID': nodeId
-                    }
+                    headers: { 'X-Node-ID': nodeId }
                 });
 
-                if (!res.ok) throw new Error('Failed to load LLM apps');
+                if (!res.ok) throw new Error(i18nFleet.load_fail);
                 const data = await res.json();
                 
                 const llmApps = data.llm_apps || [];
-                
                 renderFleetLLMAppsList(llmApps, nodeId, ipAddress);
                 
-                // Find engines that are currently installed/running
                 runningFleetEnginesList = llmApps.filter(a => a.category === 'llm_engine' && a.status === 'running');
-                populateFleetEngineSelectors(llmApps, nodeId)
+                populateFleetEngineSelectors(llmApps, nodeId);
 
             } catch (e) {
                 console.error("Fetch LLM Apps Error:", e);
             }
         }
 
-        // The Proxy Fetch Function for Fleet Containers
         async function fetchFleetContainers(nodeId, ipAddress){
+            const i18nFleet = window.I18N.fleet;
             try {
                 const res = await fetch('/api/fleet/proxy/api/containers', {
-                    headers: {
-                        'X-Node-ID': nodeId,
-                    }
+                    headers: { 'X-Node-ID': nodeId }
                 });
 
                 const data = await res.json();
-                
                 const apps = data.registry_apps || [];
                 
-                
-                // Call our new unified list renderer
                 if(apps.length > 0){
                     renderFleetAppsList(apps, nodeId, ipAddress);
                 }
@@ -372,19 +360,15 @@
                 console.error("Failed to sync fleet app states", e);
                 const listApp = document.getElementById('app-list');
                 if (listApp) {
-                    listApp.innerHTML = '<div class="p-8 text-center text-rose-400 text-sm">Failed to load applications from node.</div>';
+                    listApp.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${i18nFleet.load_fail}</div>`;
                 }
             }
         } 
         
-        // The Proxy Fetch Function
         async function fetchFleetNodeSystemData(nodeId) {
             try {
-                // Notice the URL points to our proxy, and we send the Target Node ID in the header
                 const sysRes = await fetch('/api/fleet/proxy/api/system', {
-                    headers: {
-                        'X-Node-ID': nodeId
-                    }
+                    headers: { 'X-Node-ID': nodeId }
                 });
                 
                 if (sysRes.ok) {
@@ -413,6 +397,7 @@
         }
 
         async function fetchFleetAIProfile(nodeId) {
+            const i18nFleet = window.I18N.fleet;
             const container = document.getElementById(`fleet-ai-profile-container`);
             if (!container) return;
 
@@ -423,13 +408,11 @@
                 if (!res.ok) throw new Error('Failed to load profile');
                 const profile = await res.json();
 
-                // Defaults for CPU-only
                 let computeName = profile.cpu_name;
                 let badgeStyles = "bg-slate-800 text-slate-400 border-border";
                 let badgeText = "CPU Only";
                 let warningHtml = "";
 
-                // Override if GPU is present
                 if (profile.gpu && profile.gpu.has_gpu) {
                     computeName = profile.gpu.model;
                     badgeText = `${profile.gpu.total_vram_gb}GB VRAM`;
@@ -442,26 +425,23 @@
                         default:       badgeStyles = "text-primary border-primary/30 bg-primary/10";
                     }
 
-                    // 🚨 COMPACT GUARDRAIL WARNING
                     if (profile.gpu.vendor === 'nvidia' && !profile.gpu.toolkit_ready) {
                         deploymentFleetLocked = true;
-                        // Color the container border red slightly to draw attention
                         container.classList.add('border-rose-500/30');
                         
                         warningHtml = `
                         <div class="mt-3 p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg flex items-center justify-between gap-3">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm">⚠️</span>
-                                <p class="text-[11px] text-rose-400 font-medium">NVIDIA Toolkit missing. AI blocked.</p>
+                                <p class="text-[11px] text-rose-400 font-medium">${i18nFleet.toolkit_missing_warning}</p>
                             </div>
                             <button id="btn-fleet-toolkit-${nodeId}" onclick="installFleetNvidiaToolkit('${nodeId}')" class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-bold rounded transition-colors border border-rose-500/30 whitespace-nowrap">
-                                Fix Issue
+                                ${i18nFleet.btn_fix_issue}
                             </button>
                         </div>`;
                     }
                 }
 
-                // Inject the condensed UI
                 container.innerHTML = `
                     <div class="flex items-center justify-between">
                         <div>
@@ -482,19 +462,19 @@
         }
 
         async function installFleetNvidiaToolkit(nodeId) {
-            if (!confirm(`This will install the NVIDIA toolkit on Node ${nodeId} and restart its Docker daemon. Proceed?`)) return;
+            const i18nFleet = window.I18N.fleet;
+            const confirmMsg = i18nFleet.confirm_toolkit_install.replace('%s', nodeId);
+            if (!confirm(confirmMsg)) return;
             
             const btn = document.getElementById(`btn-fleet-toolkit-${nodeId}`);
             if(!btn) return;
 
-            // Loading state
             btn.disabled = true;
-            btn.innerHTML = '⏳ Fixing...';
+            btn.innerHTML = i18nFleet.toolkit_fixing;
             btn.classList.remove('text-rose-400', 'bg-rose-500/10', 'hover:bg-rose-500/20', 'border-rose-500/30');
             btn.classList.add('animate-pulse', 'bg-slate-800', 'text-slate-400', 'border-slate-700');
 
             try {
-                // Route through your fleet proxy
                 const res = await fetch('/api/fleet/proxy/api/hardware/install-toolkit', {
                     method: 'POST',
                     headers: { 'X-Node-ID': nodeId }
@@ -504,19 +484,18 @@
                 if (res.ok && data.status === 'success') {
                     btn.classList.remove('animate-pulse', 'text-slate-400');
                     btn.classList.add('text-emerald-400', 'border-emerald-500/30', 'bg-emerald-500/10');
-                    btn.innerHTML = '✅ Done';
+                    btn.innerHTML = i18nFleet.toolkit_done;
                     
-                    // Refresh the lite profile card to clear the warning and show the updated status
                     deploymentFleetLocked = false;
                     setTimeout(() => fetchFleetAIProfile(nodeId), 2000);
                 } else {
                     throw new Error(data.message || "Unknown error");
                 }
             } catch(e) {
-                alert(`Toolkit Installation Failed on Node ${nodeId}:\n\n${e.message}`);
-                // Revert button
+                const failMsg = i18nFleet.toolkit_fail.replace('%s', nodeId).replace('%s', e.message);
+                alert(failMsg);
                 btn.disabled = false;
-                btn.innerHTML = 'Fix Issue';
+                btn.innerHTML = i18nFleet.btn_fix_issue;
                 btn.classList.add('text-rose-400', 'bg-rose-500/10', 'hover:bg-rose-500/20', 'border-rose-500/30');
                 btn.classList.remove('animate-pulse', 'bg-slate-800', 'text-slate-400', 'border-slate-700');
             }
@@ -535,15 +514,16 @@
         }
 
         function renderFleetAppsList(apps, nodeId, vpnIp) {
+            const i18nFleet = window.I18N.fleet;
             const listEl = document.getElementById('app-list');
             if (!listEl) return;
-            listEl.innerHTML = ''; // Clear out the container
+            listEl.innerHTML = ''; 
 
             const officialApps = apps.filter(app => app.category === 'optional' && !app.is_custom);
             const customApps = apps.filter(app => app.category === 'optional' && app.is_custom);
         
             if (apps.length === 0) {
-                listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">No apps available on this node.</div>`;
+                listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">${i18nFleet.no_apps}</div>`;
                 return;
             }
 
@@ -551,15 +531,14 @@
                 const isInstalled = app.status !== 'not_installed';
                 const isRunning = app.status === 'running';
 
-                // Badge Logic
-                let badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">Not Installed</span>`;
+                let badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">${i18nFleet.badge_not_installed}</span>`;
                 if (isInstalled) {
                     if (isRunning) {
-                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Running</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${i18nFleet.badge_running}</span>`;
                     } else if (app.status === 'degraded') {
-                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">Degraded</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">${i18nFleet.badge_degraded}</span>`;
                     } else {
-                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">Stopped</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">${i18nFleet.badge_stopped}</span>`;
                     }
                 }
 
@@ -572,7 +551,7 @@
                     `onclick="window.open('https://claviger.cloudrocean.com/documentation/e54a5823-8d66-4999-9d91-70ec7db319a6', '_blank')"` : 'disabled';
                 let dashOnClick = isDefault ? `onclick="window.open('http://${vpnIp}:${app.action_port}', '_blank')"` : defaultAction;
 
-                const customPill = app.is_custom ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-400 uppercase tracking-wider">Custom</span>` : '';
+                const customPill = app.is_custom ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-400 uppercase tracking-wider">${i18nFleet.custom_pill}</span>` : '';
 
                 return `
                 <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface/50 transition-all hover:bg-surface/80" id="row-node-${nodeId}-app-${app.id}">
@@ -595,7 +574,7 @@
                             onclick="installFleetApp('${nodeId}', '${app.id}', ${app.is_custom})" 
                             class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap"
                         >
-                            Install App
+                            ${i18nFleet.btn_install}
                         </button>
 
                         <button 
@@ -610,7 +589,7 @@
                             id="btn-uninstall-node-${nodeId}-${app.id}" 
                             onclick="uninstallFleetApp('${app.id}', '${nodeId}')" 
                             class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 whitespace-nowrap"
-                            title="Uninstall & Wipe Data"
+                            title=""
                         >
                             🗑️
                         </button>
@@ -619,27 +598,27 @@
             };
 
             if (officialApps.length > 0) {
-                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-border">Official Extensions</div>`);
+                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-border">${i18nFleet.official_extensions}</div>`);
                 officialApps.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
             }
 
             if (customApps.length > 0) {
-                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-indigo-400 uppercase tracking-widest border-b border-border mt-2">Custom Deployments</div>`);
+                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-indigo-400 uppercase tracking-widest border-b border-border mt-2">${i18nFleet.custom_deployments}</div>`);
                 customApps.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
             }
         }
 
         function renderFleetLLMAppsList(apps, nodeId, vpnIp) {
+            const i18nFleet = window.I18N.fleet;
             const listEl = document.getElementById('fleet-llm-list');
             if (!listEl) return;
-            listEl.innerHTML = ''; // Clear out the container
+            listEl.innerHTML = ''; 
 
             if (apps.length === 0) {
-                listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">No AI components available on this node.</div>`;
+                listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">${i18nFleet.no_ai_apps}</div>`;
                 return;
             }
 
-            // Divide into categories
             const engines = apps.filter(app => app.category === 'llm_engine');
             const interfaces = apps.filter(app => app.category !== 'llm_engine');
 
@@ -647,22 +626,19 @@
                 const isInstalled = app.status !== 'not_installed';
                 const isRunning = app.status === 'running';
 
-                // Badge Logic
-                let badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">Not Installed</span>`;
+                let badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">${i18nFleet.badge_not_installed}</span>`;
                 if (isInstalled) {
                     if (isRunning) {
-                        badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Running</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${i18nFleet.badge_running}</span>`;
                     } else {
-                        badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">Stopped</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">${i18nFleet.badge_stopped}</span>`;
                     }
                 }
 
-                // UI Type Pill (Engine vs Frontend)
                 const typePill = app.category === 'llm_engine' 
-                    ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-400 uppercase tracking-wider">Engine</span>`
-                    : `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-fuchsia-500/20 text-fuchsia-400 uppercase tracking-wider">Interface</span>`;
+                    ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-400 uppercase tracking-wider">${i18nFleet.type_engine}</span>`
+                    : `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-fuchsia-500/20 text-fuchsia-400 uppercase tracking-wider">${i18nFleet.type_interface}</span>`;
 
-                // Buttons visibility
                 let installBtnClass = isInstalled ? 'hidden' : '';
                 let dashBtnClass = isInstalled ? '' : 'hidden';
                 let uninstallBtnClass = isInstalled ? '' : 'hidden';
@@ -670,14 +646,12 @@
                 let isDefault = app.action_port > 0;
                 let defaultAction = 'disabled';
                 
-                // Documentation Links for Engines
                 if (app.id === "ollama") defaultAction = `onclick="window.open('https://github.com/ollama/ollama/tree/main/docs', '_blank')"`;
                 if (app.id === "vllm") defaultAction = `onclick="window.open('https://docs.vllm.ai/', '_blank')"`;
                 if (app.id === "localai") defaultAction = `onclick="window.open('https://localai.io/', '_blank')"`;
                 
                 let dashOnClick = isDefault ? `onclick="window.open('http://${vpnIp}:${app.action_port}', '_blank')"` : defaultAction;
                 
-                // Style disabled dashboard buttons gracefully
                 let dashBtnStyle = (isDefault || defaultAction !== 'disabled') 
                     ? 'bg-slate-800 hover:bg-slate-700 text-white border-border cursor-pointer' 
                     : 'bg-slate-800/40 text-slate-500 border-transparent cursor-not-allowed';
@@ -703,7 +677,7 @@
                             onclick="installFleetLLMApp('${nodeId}', '${app.id}')" 
                             class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap"
                         >
-                            Install
+                            ${i18nFleet.btn_llm_install}
                         </button>
 
                         <button 
@@ -718,7 +692,7 @@
                             id="btn-uninstall-llm-node-${nodeId}-${app.id}" 
                             onclick="uninstallFleetLLMApp('${nodeId}', '${app.id}')" 
                             class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 whitespace-nowrap"
-                            title="Uninstall & Wipe Container"
+                            title=""
                         >
                             🗑️
                         </button>
@@ -726,7 +700,6 @@
                 </div>`;
             };
 
-            // Render Core Engines Section
             if (engines.length > 0) {
                 listEl.insertAdjacentHTML('beforeend', `
                     <div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-indigo-400 uppercase tracking-widest border-b border-border flex items-center gap-2">
@@ -735,7 +708,6 @@
                 engines.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
             }
 
-            // Render Interfaces Section
             if (interfaces.length > 0) {
                 listEl.insertAdjacentHTML('beforeend', `
                     <div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-fuchsia-400 uppercase tracking-widest border-b border-border flex items-center gap-2 ${engines.length > 0 ? 'mt-2' : ''}">
@@ -746,24 +718,17 @@
         }
 
         async function installFleetApp(nodeId, appId, isCustom = false) {
-            if (!confirm(`Are you sure you want to install ${appId}?`)) return;
+            const i18nFleet = window.I18N.fleet;
+            const confirmMsg = i18nFleet.confirm_install.replace('%s', appId);
+            if (!confirm(confirmMsg)) return;
 
             const installBtn = document.getElementById(`btn-install-node-${nodeId}-${appId}`);
-            // Fail gracefully if the DOM element isn't found
-            if (!installBtn) {
-                console.error(`[Orchestrator] DOM target btn-install-node-${nodeId}-${appId} not found.`);
-                return;
-            }
+            if (!installBtn) return;
 
-            const originalHtml = installBtn.innerHTML;
-
-            // 1. LOADING STATE
             installBtn.disabled = true;
-            // Remove primary blue colors
             installBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
-            // Add gray, disabled, and pulsing animation classes
             installBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
-            installBtn.innerHTML = '⏳ Installing... Please wait';
+            installBtn.innerHTML = i18nFleet.btn_installing;
 
             try {
                 const res = await fetch('/api/fleet/proxy/api/apps/install', {
@@ -778,47 +743,42 @@
                 const data = await res.json();
                 
                 if (res.ok && data.status === 'success') {
-                    // 2. SUCCESS STATE
                     installBtn.classList.remove('animate-pulse');
                     installBtn.classList.add('bg-emerald-600');
-                    installBtn.innerHTML = '✅ Installed!';
+                    installBtn.innerHTML = i18nFleet.btn_installed;
                     
-                    // Wait 1 second so the user sees the success checkmark, then sync the UI
                     setTimeout(() => {
-                        // syncAppStates(); 
-                        // if (appId === 'adguard') loadContainers(); // Refresh containers tab in background
-                        refetchFleetContainers(); // Refresh the app list for this node
+                        refetchFleetContainers();
                     }, 1000);
                 } else {
-                    // Trigger the catch block below
                     throw new Error(data.message || "Unknown server error");
                 }
             } catch (e) {
-                // 3. FAILURE & RETRY STATE
                 installBtn.disabled = false;
                 installBtn.classList.remove('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
-                // Turn the button red to indicate failure
                 installBtn.classList.add('bg-rose-600', 'hover:bg-rose-500'); 
-                installBtn.innerHTML = '❌ Failed. Retry?';
+                installBtn.innerHTML = i18nFleet.btn_retry;
                 
-                // Show the exact reason why it failed (e.g., "Port 53 already in use")
                 setTimeout(() => {
-                    alert(`Installation Failed for ${appId}:\n\n${e.message}\n\nPlease check your server logs.`);
+                    const failMsg = i18nFleet.install_fail.replace('%s', appId).replace('%s', e.message);
+                    alert(failMsg);
                 }, 100);
             }
         }
 
         async function uninstallFleetApp(appId, nodeId) {
-            if (!confirm(`WARNING: This will permanently delete ${appId} and ALL its configuration data. Are you absolutely sure?`)) return;
+            const i18nFleet = window.I18N.fleet;
+            const confirmMsg = i18nFleet.confirm_uninstall.replace('%s', appId);
+            if (!confirm(confirmMsg)) return;
 
             const btn = document.getElementById(`btn-uninstall-node-${nodeId}-${appId}`);
-            const originalHtml = btn.innerHTML;
+            if (!btn) return;
 
             btn.disabled = true;
             btn.classList.replace('bg-rose-600', 'bg-slate-700');
             btn.classList.replace('hover:bg-rose-700', 'cursor-not-allowed');
             btn.classList.add('animate-pulse');
-            btn.innerHTML = '⏳ Destroying...';
+            btn.innerHTML = i18nFleet.btn_destroying;
 
             try {
                 const res = await fetch('/api/fleet/proxy/api/apps/uninstall', {
@@ -834,12 +794,9 @@
                 if (res.ok && data.status === 'success') {
                     btn.classList.remove('animate-pulse');
                     btn.classList.replace('bg-slate-700', 'bg-emerald-600');
-                    btn.innerHTML = '✅ Removed';
+                    btn.innerHTML = i18nFleet.btn_removed;
                     
                     setTimeout(() => {
-                        // Resync everything. This will automatically remove the row from this list!
-                        // syncAppStates(); 
-                        // if (typeof loadContainers === "function") loadContainers();
                         refetchFleetContainers();
                     }, 1500);
                 } else {
@@ -849,62 +806,53 @@
                 btn.disabled = false;
                 btn.classList.replace('bg-slate-700', 'bg-rose-600');
                 btn.classList.remove('cursor-not-allowed', 'animate-pulse');
-                btn.innerHTML = originalHtml;
-                alert(`Uninstall Failed:\n\n${e.message}`);
+                btn.innerHTML = '🗑️';
+                alert(i18nFleet.uninstall_fail.replace('%s', e.message));
             }
         }
 
         async function installFleetLLMApp(nodeId, appId) {
-             if (deploymentFleetLocked) {
+            const i18nFleet = window.I18N.fleet;
+            if (deploymentFleetLocked) {
                 alert("Installation is locked. Please resolve the hardware warnings (NVIDIA Toolkit) before deploying AI engines.");
                 return;
             }
 
-            if (!confirm(`Are you sure you want to deploy ${appId}? Depending on your internet speed, downloading the AI engine image may take a few minutes.`)) return;
+            const confirmMsg = i18nFleet.confirm_llm_deploy.replace('%s', appId);
+            if (!confirm(confirmMsg)) return;
 
-            // btn-install-llm-node-${nodeId}-${app.id}
             const installBtn = document.getElementById(`btn-install-llm-node-${nodeId}-${appId}`);
-            
-            if (!installBtn) {
-                console.error(`[AI Orchestrator] DOM target btn-install-llm-node-${nodeId}-${appId} not found.`);
-                return;
-            }
-
-            const originalHtml = installBtn.innerHTML;
+            if (!installBtn) return;
 
             installBtn.disabled = true;
             installBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
             installBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
-            installBtn.innerHTML = '⏳ Pulling Image...';
+            installBtn.innerHTML = i18nFleet.btn_llm_pulling;
 
             try {
                 const res = await fetch('/api/fleet/proxy/api/llms/install', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Node-ID': nodeId },
-                    // version: "latest" can be made dynamic later if you add a version dropdown
                     body: JSON.stringify({ app_id: appId, version: "latest" }) 
                 });
                 const data = await res.json();
                 
                 if (res.ok && data.status === 'success') {
-                    // 2. SUCCESS STATE
                     installBtn.classList.remove('animate-pulse');
                     installBtn.classList.add('bg-emerald-600');
-                    installBtn.innerHTML = '✅ Deployed!';
+                    installBtn.innerHTML = i18nFleet.btn_llm_deployed;
                     
-                    // Wait 1.5 seconds so the user sees the success checkmark, then refresh the grid
                     setTimeout(() => {
-                        fetchLLMApps(); 
+                        fetchFleetLLMContainers(nodeId, ''); 
                     }, 1500);
                 } else {
                     throw new Error(data.message || "Unknown server error");
                 }
             } catch (e) {
-                // 3. FAILURE & RETRY STATE
                 installBtn.disabled = false;
                 installBtn.classList.remove('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
                 installBtn.classList.add('bg-rose-600', 'hover:bg-rose-500'); 
-                installBtn.innerHTML = '❌ Failed. Retry?';
+                installBtn.innerHTML = i18nFleet.btn_retry;
                 
                 setTimeout(() => {
                     alert(`Deployment Failed for ${appId}:\n\n${e.message}\n\nPlease check your Docker daemon logs.`);
@@ -912,22 +860,18 @@
             }
         }
 
-        async function uninstallFleetLLMApp(appId, nodeId) {
+        async function uninstallFleetLLMApp(nodeId, appId) {
+            const i18nFleet = window.I18N.fleet;
             if (!confirm(`Are you sure you want to uninstall ${appId}?`)) return;
 
-            // Step 2: Ask if they want to wipe the heavy model data/volumes too
-            const isWiped = confirm(
-                `Do you also want to completely WIPE all stored data and downloaded models for ${appId}?\n\n` +
-                `• OK = Delete everything (Reclaims disk space)\n` +
-                `• Cancel = Preserve models & history on disk`
-            );
+            const promptMsg = i18nFleet.confirm_llm_wipe.replace('%s', appId);
+            const isWiped = confirm(promptMsg);
 
             const uninstallBtn = document.getElementById(`btn-uninstall-llm-node-${nodeId}-${appId}`);
             if (!uninstallBtn) return;
 
             const originalHtml = uninstallBtn.innerHTML;
 
-            // 1. LOADING STATE
             uninstallBtn.disabled = true;
             uninstallBtn.classList.remove('bg-rose-600/10', 'hover:bg-rose-600/20', 'text-rose-400');
             uninstallBtn.classList.add('bg-slate-700', 'text-slate-400', 'cursor-not-allowed', 'animate-pulse');
@@ -942,13 +886,11 @@
                 const data = await res.json();
                 
                 if (res.ok && data.status === 'success') {
-                    // Refresh the grid immediately on uninstall
-                    fetchLLMApps(); 
+                    fetchFleetLLMContainers(nodeId, ''); 
                 } else {
                     throw new Error(data.message || "Unknown server error");
                 }
             } catch (e) {
-                // 3. FAILURE STATE
                 uninstallBtn.disabled = false;
                 uninstallBtn.classList.remove('bg-slate-700', 'text-slate-400', 'cursor-not-allowed', 'animate-pulse');
                 uninstallBtn.classList.add('bg-rose-600', 'text-white'); 
@@ -956,7 +898,6 @@
                 
                 setTimeout(() => {
                     alert(`Teardown Failed for ${appId}:\n\n${e.message}`);
-                    // Revert button visually
                     uninstallBtn.innerHTML = originalHtml;
                     uninstallBtn.className = "px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 flex-shrink-0";
                 }, 100);
@@ -987,25 +928,29 @@
             }, 300);
         }
 
-        // --- Fleet Model Library Logic ---
         function switchFleetEngineView(engineId) {
             if (!engineId) return;
             activeFleetEngine = engineId;
-            fetchFleetModelsForEngine(activeFleetEngine, currentActiveFleetNode);
+            const select = document.getElementById('fleet-node-select');
+            const selectedOption = select.options[select.selectedIndex];
+            const node = JSON.parse(selectedOption.dataset.nodeInfo);
+            fetchFleetModelsForEngine(activeFleetEngine, node.id);
         }
 
         async function fetchFleetModelsForEngine(engineId, nodeId) {
+            const i18nFleet = window.I18N.fleet;
             const listEl = document.getElementById('fleet-model-list');
-            listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">Querying ${engineId} API on Edge Node...</div>`;
+            const queryMsg = i18nFleet.querying_edge_api.replace('%s', engineId);
+            listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">${queryMsg}</div>`;
             
             try {
-                // 🎯 ROUTED THROUGH FLEET PROXY
                 const res = await fetch(`/api/fleet/proxy/api/llms/models?engine=${engineId}`, {
                     headers: { 'X-Node-ID': nodeId }
                 });
                 
                 if (!res.ok) {
-                    listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">Failed to connect to ${engineId} on edge node.</div>`;
+                    const failMsg = i18nFleet.edge_connect_fail.replace('%s', engineId);
+                    listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${failMsg}</div>`;
                     return;
                 }
 
@@ -1013,15 +958,16 @@
                 const models = data.models || [];
 
                 if (models.length === 0) {
-                    listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">No models found in ${engineId}. Click 'Pull New Model' to add one.</div>`;
+                    const noModelsMsg = i18nFleet.no_edge_models.replace('%s', engineId);
+                    listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">${noModelsMsg}</div>`;
                     return;
                 }
 
                 listEl.innerHTML = ''; 
 
                 models.forEach(model => {
-                    const sizeText = model.size_gb > 0 ? `${model.size_gb.toFixed(2)} GB` : 'Size Unknown';
-                    const paramsText = model.params !== "Unknown" ? `${model.params} Params` : 'Params Unknown';
+                    const sizeText = model.size_gb > 0 ? `${model.size_gb.toFixed(2)} GB` : i18nFleet.size_unknown || 'Size Unknown';
+                    const paramsText = model.params !== "Unknown" ? `${model.params} Params` : i18nFleet.params_unknown || 'Params Unknown';
                     
                     const rowHTML = `
                     <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-800/30 transition-colors">
@@ -1041,9 +987,8 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-3 border-t border-border pt-4 md:border-0 md:pt-0">
-                            <!-- 🎯 TARGETS FLEET DELETE FUNCTION -->
                             <button onclick="deleteFleetModel('${engineId}', '${model.id}', '${nodeId}')" class="px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600/20 border border-rose-500/20 rounded text-xs font-medium text-rose-400 transition-colors">
-                                Delete
+                                ${i18nFleet.btn_delete || 'Delete'}
                             </button>
                         </div>
                     </div>`;
@@ -1052,15 +997,16 @@
                 });
             } catch (e) {
                 console.error("Fetch Fleet Models Error:", e);
-                listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">Network error while fetching remote models.</div>`;
+                listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${i18nFleet.edge_net_error}</div>`;
             }
         }
 
         async function deleteFleetModel(engineId, modelId, nodeId) {
-            if (!confirm(`Are you sure you want to delete "${modelId}" from Edge Node ${nodeId}?\n\nThis will permanently remove the files from the remote disk.`)) return;
+            const i18nFleet = window.I18N.fleet;
+            const confirmMsg = i18nFleet.confirm_delete_edge_model.replace('%s', modelId).replace('%s', nodeId);
+            if (!confirm(confirmMsg)) return;
 
             try {
-                // 🎯 ROUTED THROUGH FLEET PROXY
                 const res = await fetch('/api/fleet/proxy/api/llms/models/delete', {
                     method: 'POST',
                     headers: { 
@@ -1083,26 +1029,25 @@
         }
 
         async function executeFleetModelPull() {
+            const i18nFleet = window.I18N.fleet;
             const engine = document.getElementById('fleet-pull-target-engine').value;
             const modelId = document.getElementById('fleet-pull-model-id').value.trim();
             const btn = document.getElementById('btn-fleet-execute-pull');
-            // const nodeId = currentActiveFleetNode; // Using the global state
 
             const select = document.getElementById('fleet-node-select');
             const selectedOption = select.options[select.selectedIndex];
             const node = JSON.parse(selectedOption.dataset.nodeInfo);
 
             if (!engine || !modelId) {
-                alert("Please select an engine and enter a model tag.");
+                alert(i18nFleet.alert_pull_missing);
                 return;
             }
 
             btn.disabled = true;
             btn.classList.add('opacity-75', 'cursor-not-allowed', 'animate-pulse');
-            btn.innerHTML = `⏳ Downloading to Edge Node...`;
+            btn.innerHTML = i18nFleet.downloading_edge;
 
             try {
-                // 🎯 ROUTED THROUGH FLEET PROXY
                 const res = await fetch('/api/fleet/proxy/api/llms/models/pull', {
                     method: 'POST',
                     headers: { 
@@ -1117,14 +1062,14 @@
                 if (res.ok && data.status === 'success') {
                     btn.classList.remove('animate-pulse');
                     btn.classList.replace('bg-primary', 'bg-emerald-600');
-                    btn.innerHTML = '✅ Download Complete';
+                    btn.innerHTML = i18nFleet.download_complete;
                     
                     setTimeout(() => {
                         closeFleetPullModal();
                         btn.disabled = false;
                         btn.classList.remove('opacity-75', 'cursor-not-allowed');
                         btn.classList.replace('bg-emerald-600', 'bg-primary');
-                        btn.innerHTML = 'Start Edge Download';
+                        btn.innerHTML = i18nFleet.btn_start_edge_download;
                         
                         document.getElementById('fleet-engine-selector').value = engine;
                         switchFleetEngineView(engine);
@@ -1133,25 +1078,25 @@
                     throw new Error(data.error || "Unknown server error");
                 }
             } catch (e) {
-                alert(`Edge Pull Failed: ${e.message}`);
+                alert(`${i18nFleet.alert_pull_fail}${e.message}`);
                 btn.disabled = false;
                 btn.classList.remove('opacity-75', 'cursor-not-allowed', 'animate-pulse');
-                btn.innerHTML = 'Start Edge Download';
+                btn.innerHTML = i18nFleet.btn_start_edge_download;
             }
         }
 
         function populateFleetEngineSelectors(llmApps, nodeId) {
+            const i18nFleet = window.I18N.fleet;
             const selector = document.getElementById('fleet-engine-selector');
             const pullTarget = document.getElementById('fleet-pull-target-engine');
             
-            // Extract only the running engines
             runningFleetEnginesList = llmApps.filter(a => a.category === 'llm_engine' && a.status === 'running');
             
             selector.innerHTML = '';
             pullTarget.innerHTML = '';
 
             if (runningFleetEnginesList.length === 0) {
-                selector.innerHTML = '<option value="">No Edge Engines Running</option>';
+                selector.innerHTML = `<option value="">${i18nFleet.no_edge_engines}</option>`;
                 selector.disabled = true;
                 return;
             }
@@ -1163,7 +1108,6 @@
                 pullTarget.innerHTML += opt;
             });
 
-            // If no active engine is set, or the active one was uninstalled, default to the first one
             if (!activeFleetEngine || !runningFleetEnginesList.find(e => e.id === activeFleetEngine)) {
                 activeFleetEngine = runningFleetEnginesList[0].id;
             }

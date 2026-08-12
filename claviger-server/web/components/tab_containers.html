@@ -2,18 +2,18 @@
 <div id="tab-containers" class="hidden space-y-6">
     
     <div class="flex justify-between items-center">
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Container Management</h2>
+        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "containers.title" }}</h2>
         <button onclick="loadContainers()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg transition-colors border border-slate-700 shadow-sm flex items-center gap-2">
-            <span>🔄</span> Refresh
+            <span>🔄</span> {{ T "containers.btn_refresh" }}
         </button>
     </div>
 
     <div id="docker-missing-state" class="hidden bg-amber-500/10 border border-amber-500/20 text-amber-200 p-6 rounded-xl shadow-sm">
-        <h3 class="text-lg font-semibold mb-2 flex items-center gap-2"><span>⚠️</span> Docker Engine is Required</h3>
-        <p class="text-sm text-amber-200/80 mb-4">To enable 1-Click Apps and container management, you need to install Docker on this server.</p>
-        <p class="text-sm mb-2 text-amber-200/90">Run this command in your server's terminal:</p>
+        <h3 class="text-lg font-semibold mb-2 flex items-center gap-2"><span>⚠️</span> {{ T "containers.docker_req_title" }}</h3>
+        <p class="text-sm text-amber-200/80 mb-4">{{ T "containers.docker_req_desc" }}</p>
+        <p class="text-sm mb-2 text-amber-200/90">{{ T "containers.docker_req_cmd_label" }}</p>
         <code class="block bg-black/40 text-amber-100 p-4 rounded-lg text-sm font-mono border border-amber-500/20">curl -fsSL https://get.docker.com | sudo sh</code>
-        <p class="text-sm mt-4 text-amber-200/80">Once installed, click the Refresh button above.</p>
+        <p class="text-sm mt-4 text-amber-200/80">{{ T "containers.docker_req_footer" }}</p>
     </div>
 
     <div id="docker-active-state" class="hidden">
@@ -21,11 +21,11 @@
             <table class="w-full text-left border-collapse">
                 <thead class="bg-slate-900/50 border-b border-slate-800 text-sm text-slate-400">
                     <tr>
-                        <th class="p-4 font-medium">App Name</th>
-                        <th class="p-4 font-medium">Image</th>
-                        <th class="p-4 font-medium">Status</th>
-                        <th class="p-4 font-medium">Ports</th>
-                        <th class="p-4 font-medium text-right">Actions</th>
+                        <th class="p-4 font-medium">{{ T "containers.th_name" }}</th>
+                        <th class="p-4 font-medium">{{ T "containers.th_image" }}</th>
+                        <th class="p-4 font-medium">{{ T "containers.th_status" }}</th>
+                        <th class="p-4 font-medium">{{ T "containers.th_ports" }}</th>
+                        <th class="p-4 font-medium text-right">{{ T "containers.th_actions" }}</th>
                     </tr>
                 </thead>
                 <tbody id="containers-table-body" class="text-sm divide-y divide-slate-800/50">
@@ -36,8 +36,8 @@
 
     <dialog id="logs-modal" class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-0 w-[90%] max-w-4xl backdrop:bg-black/60 text-slate-200">
         <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-            <h3 class="font-semibold text-white">Terminal Logs</h3>
-            <button onclick="document.getElementById('logs-modal').close()" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">✕ Close</button>
+            <h3 class="font-semibold text-white">{{ T "containers.logs_title" }}</h3>
+            <button onclick="document.getElementById('logs-modal').close()" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">{{ T "containers.logs_close" }}</button>
         </div>
         <div class="p-4">
             <pre id="logs-output" class="bg-[#0c0c0c] text-emerald-400 p-4 rounded-lg overflow-y-auto max-h-[500px] font-mono text-xs leading-relaxed border border-slate-800"></pre>
@@ -45,16 +45,12 @@
     </dialog>
 
     <script>
-        // ==========================================
-        // CONTAINER HUB LOGIC
-        // ==========================================
-
         async function loadContainers() {
+            const i18nContainers = window.I18N.containers;
             try {
                 const res = await fetch('/api/containers');
                 const data = await res.json();
 
-                // Toggle Tailwind classes for visibility
                 if (!data.docker_installed) {
                     document.getElementById('docker-missing-state').classList.remove('hidden');
                     document.getElementById('docker-missing-state').classList.add('block');
@@ -72,26 +68,25 @@
                 tbody.innerHTML = ''; 
 
                if (!data.raw_containers || !Array.isArray(data.raw_containers) || data.raw_containers.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">No containers running. Ready to deploy some apps!</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500">${i18nContainers.no_containers}</td></tr>`;
                     return;
                 }
 
                 data.raw_containers.forEach(c => {
-                    // Tailwind Status Badges
                     let statusBadge = '';
                     if (c.state === 'running') {
-                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">● Running</span>`;
+                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${i18nContainers.status_running}</span>`;
                     } else if (c.state === 'exited') {
-                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">● Stopped</span>`;
+                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">${i18nContainers.status_stopped}</span>`;
                     } else {
                         statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">● ${c.state}</span>`;
                     }
 
-                    let portString = '<span class="text-slate-600">None</span>';
-                    let rawPorts = "None";
+                    let portString = `<span class="text-slate-600">${i18nContainers.none}</span>`;
+                    let rawPorts = i18nContainers.none;
                     if (c.ports && c.ports.length > 0) {
                         const uniquePorts = [...new Set(c.ports)];
-                        rawPorts = uniquePorts.join(', '); // Used for the hover tooltip
+                        rawPorts = uniquePorts.join(', ');
                         portString = rawPorts;
                     }
 
@@ -118,9 +113,9 @@
             }
         }
 
-        // --- ACTIONS ---
         async function containerAction(id, action) {
-            if (action === 'delete' && !confirm("Are you sure you want to completely delete this container?")) return;
+            const i18nContainers = window.I18N.containers;
+            if (action === 'delete' && !confirm(i18nContainers.confirm_delete)) return;
 
             try {
                 const res = await fetch('/api/containers/action', {
@@ -131,30 +126,30 @@
                 const data = await res.json();
                 
                 if (data.status === 'success') {
-                    setTimeout(loadContainers, 500); // Wait for Docker to process
+                    setTimeout(loadContainers, 500);
                 } else {
-                    alert("Error: " + data.message);
+                    alert(i18nContainers.error_prefix + data.message);
                 }
             } catch (e) {
-                alert("Connection error executing action.");
+                alert(i18nContainers.action_conn_error);
             }
         }
 
-        // --- VIEW LOGS ---
         async function viewLogs(id) {
-            document.getElementById('logs-output').innerText = "Loading logs...";
+            const i18nContainers = window.I18N.containers;
+            document.getElementById('logs-output').innerText = i18nContainers.logs_loading;
             document.getElementById('logs-modal').showModal();
 
             try {
                 const res = await fetch(`/api/containers/logs?id=${id}`);
                 const data = await res.json();
                 if (data.status === 'success') {
-                    document.getElementById('logs-output').innerText = data.logs || "No logs available.";
+                    document.getElementById('logs-output').innerText = data.logs || i18nContainers.logs_empty;
                 } else {
-                    document.getElementById('logs-output').innerText = "Error fetching logs: " + data.message;
+                    document.getElementById('logs-output').innerText = i18nContainers.logs_error + data.message;
                 }
             } catch (e) {
-                document.getElementById('logs-output').innerText = "Connection error.";
+                document.getElementById('logs-output').innerText = i18nContainers.logs_conn_error;
             }
         }
     </script>

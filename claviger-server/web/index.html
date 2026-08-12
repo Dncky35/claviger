@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Claviger Local Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script type="application/json" id="i18n-data">
+        {{ .I18nJSON }}
+    </script>
     <script>
+        window.I18N = JSON.parse(document.getElementById('i18n-data').textContent);
         tailwind.config = { 
             darkMode: 'class', 
             theme: { 

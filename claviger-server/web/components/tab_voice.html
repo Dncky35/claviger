@@ -6,11 +6,11 @@
         <!-- HEADER (Title + Save Button) -->
         <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div>
-                <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Alerts & Watchdog</h2>
-                <p class="text-muted-foreground text-sm mt-1">Configure outbound channels and system monitoring thresholds.</p>
+                <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "voice.title" }}</h2>
+                <p class="text-muted-foreground text-sm mt-1">{{ T "voice.subtitle" }}</p>
             </div>
             <button type="submit" id="btn-save-voice" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors border border-blue-500 shadow-sm shadow-blue-500/20 whitespace-nowrap shrink-0">
-                💾 Save Settings
+                {{ T "voice.btn_save" }}
             </button>
         </div>
 
@@ -19,8 +19,8 @@
         <!-- ========================================== -->
         <div class="space-y-5">
             <div class="border-b border-border pb-2">
-                <h3 class="text-lg font-bold text-slate-200">1. Delivery Channels</h3>
-                <p class="text-xs text-slate-400">Configure where the system should send your alerts.</p>
+                <h3 class="text-lg font-bold text-slate-200">{{ T "voice.section_channels" }}</h3>
+                <p class="text-xs text-slate-400">{{ T "voice.section_channels_desc" }}</p>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -28,7 +28,7 @@
                 <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div class="p-4 bg-slate-800/40 border-b border-border flex items-center justify-between">
                         <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
-                            <span>📱</span> Telegram Push
+                            <span>📱</span> {{ T "voice.telegram_title" }}
                         </h3>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="telegram_enabled" class="sr-only peer">
@@ -37,19 +37,19 @@
                     </div>
                     <div class="p-5 space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Bot Token</label>
-                            <input type="password" id="telegram_bot_token" placeholder="123456789:ABCdefGHI..." class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ T "voice.label_bot_token" }}</label>
+                            <input type="password" id="telegram_bot_token" placeholder="" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Chat ID</label>
-                            <input type="text" id="telegram_chat_id" placeholder="-100123456789" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ T "voice.label_chat_id" }}</label>
+                            <input type="text" id="telegram_chat_id" placeholder="" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-2">Alert Levels</label>
+                            <label class="block text-xs font-semibold text-slate-400 mb-2">{{ T "voice.label_alert_levels" }}</label>
                             <div class="flex items-center gap-4 text-xs text-slate-300">
-                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="telegram_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> Info</label>
-                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="telegram_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> Warning</label>
-                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="telegram_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> Critical</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="telegram_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> {{ T "voice.level_info" }}</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="telegram_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> {{ T "voice.level_warning" }}</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="telegram_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> {{ T "voice.level_critical" }}</label>
                             </div>
                         </div>
                     </div>
@@ -59,7 +59,7 @@
                 <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div class="p-4 bg-slate-800/40 border-b border-border flex items-center justify-between">
                         <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
-                            <span>✉️</span> Resend Email
+                            <span>✉️</span> {{ T "voice.resend_title" }}
                         </h3>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="resend_enabled" class="sr-only peer">
@@ -68,25 +68,25 @@
                     </div>
                     <div class="p-5 space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">API Key</label>
-                            <input type="password" id="resend_api_key" placeholder="re_123456789..." class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ T "voice.label_api_key" }}</label>
+                            <input type="password" id="resend_api_key" placeholder="" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-400 mb-1">From Email</label>
-                                <input type="email" id="resend_from_email" placeholder="alerts@domain.com" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">{{ T "voice.label_from_email" }}</label>
+                                <input type="email" id="resend_from_email" placeholder="" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-slate-400 mb-1">To Email</label>
-                                <input type="email" id="resend_to_email" placeholder="admin@domain.com" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">{{ T "voice.label_to_email" }}</label>
+                                <input type="email" id="resend_to_email" placeholder="" class="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors" />
                             </div>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-2">Alert Levels</label>
+                            <label class="block text-xs font-semibold text-slate-400 mb-2">{{ T "voice.label_alert_levels" }}</label>
                             <div class="flex items-center gap-4 text-xs text-slate-300">
-                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="resend_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> Info</label>
-                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="resend_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> Warning</label>
-                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="resend_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> Critical</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="resend_notify_info" class="rounded border-border text-blue-600 focus:ring-0"> {{ T "voice.level_info" }}</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="resend_notify_warning" class="rounded border-border text-amber-500 focus:ring-0"> {{ T "voice.level_warning" }}</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="resend_notify_critical" class="rounded border-border text-rose-500 focus:ring-0"> {{ T "voice.level_critical" }}</label>
                             </div>
                         </div>
                     </div>
@@ -96,7 +96,7 @@
             <!-- Test Alert Row -->
             <div class="flex justify-end mt-2">
                 <button type="button" onclick="sendTestAlert()" id="btn-test-alert" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors border border-border shadow-sm flex items-center justify-center gap-2">
-                    <span>🔔</span> Send Test Notification
+                    {{ T "voice.btn_test_alert" }}
                 </button>
             </div>
         </div>
@@ -106,8 +106,8 @@
         <!-- ========================================== -->
         <div class="space-y-5">
             <div class="border-b border-border pb-2">
-                <h3 class="text-lg font-bold text-slate-200">2. Watchdog Rules</h3>
-                <p class="text-xs text-slate-400">Define which system conditions and security events trigger an alert.</p>
+                <h3 class="text-lg font-bold text-slate-200">{{ T "voice.section_rules" }}</h3>
+                <p class="text-xs text-slate-400">{{ T "voice.section_rules_desc" }}</p>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -116,7 +116,7 @@
                 <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div class="p-4 bg-slate-800/40 border-b border-border">
                         <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
-                            Hardware Thresholds
+                            {{ T "voice.hw_thresholds" }}
                         </h3>
                     </div>
                     <div class="p-5 space-y-4">
@@ -124,7 +124,7 @@
                         <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border hover:bg-background/80 transition-colors">
                             <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
                                 <input type="checkbox" id="notify_on_high_disk_usage" class="rounded border-border text-blue-600 focus:ring-0">
-                                Low Disk Space Warning
+                                {{ T "voice.disk_warning" }}
                             </label>
                             <div class="flex items-center gap-1">
                                 <input type="number" id="disk_warning_threshold" min="50" max="99" class="w-16 px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono text-center text-slate-200 focus:outline-none focus:border-blue-500" />
@@ -136,7 +136,7 @@
                         <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border hover:bg-background/80 transition-colors">
                             <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
                                 <input type="checkbox" id="notify_on_high_ram_usage" class="rounded border-border text-blue-600 focus:ring-0">
-                                High RAM Usage Warning
+                                {{ T "voice.ram_warning" }}
                             </label>
                             <div class="flex items-center gap-1">
                                 <input type="number" id="ram_warning_threshold" min="50" max="99" class="w-16 px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono text-center text-slate-200 focus:outline-none focus:border-blue-500" />
@@ -148,7 +148,7 @@
                         <div class="flex items-center justify-between gap-4 p-3 bg-background/50 rounded-xl border border-border hover:bg-background/80 transition-colors">
                             <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
                                 <input type="checkbox" id="notify_on_high_cpu_usage" class="rounded border-border text-blue-600 focus:ring-0">
-                                High CPU Spike Warning
+                                {{ T "voice.cpu_warning" }}
                             </label>
                             <div class="flex items-center gap-1">
                                 <input type="number" id="cpu_warning_threshold" min="50" max="99" class="w-16 px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono text-center text-slate-200 focus:outline-none focus:border-blue-500" />
@@ -162,29 +162,29 @@
                 <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div class="p-4 bg-slate-800/40 border-b border-border">
                         <h3 class="text-slate-200 font-bold text-sm flex items-center gap-2">
-                            Security & Apps
+                            {{ T "voice.sec_apps" }}
                         </h3>
                     </div>
                     <div class="p-5 space-y-3">
                         <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
                             <input type="checkbox" id="notify_on_firewall_drop" class="rounded border-border text-rose-500 focus:ring-0">
-                            Alert if UFW Firewall drops or disables
+                            {{ T "voice.alert_firewall" }}
                         </label>
                         <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
                             <input type="checkbox" id="notify_on_wg_interface_down" class="rounded border-border text-rose-500 focus:ring-0">
-                            Alert if WireGuard interface (wg0) disappears
+                            {{ T "voice.alert_wg" }}
                         </label>
                         <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
                             <input type="checkbox" id="notify_on_ssh_brute_force" class="rounded border-border text-amber-500 focus:ring-0">
-                            Alert on SSH Brute Force attempts (Fail2Ban)
+                            {{ T "voice.alert_brute" }}
                         </label>
                         <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
                             <input type="checkbox" id="notify_on_docker_crash" class="rounded border-border text-amber-500 focus:ring-0">
-                            Alert on managed Docker Container crashes
+                            {{ T "voice.alert_docker" }}
                         </label>
                         <label class="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border text-xs font-medium text-slate-300 cursor-pointer hover:bg-background/80 transition-colors">
                             <input type="checkbox" id="notify_on_daemon_restart" class="rounded border-border text-blue-500 focus:ring-0">
-                            Alert when Claviger daemon restarts
+                            {{ T "voice.alert_daemon" }}
                         </label>
                     </div>
                 </div>
@@ -195,14 +195,12 @@
     </form>
 
     <script>
-        // Load data on page init
         document.addEventListener('DOMContentLoaded', () => {
             loadVoiceSettings();
         });
 
         async function loadVoiceSettings() {
             try {
-                // Fetch Notification Config & Watchdog Config concurrently
                 const [notifRes, watchdogRes] = await Promise.all([
                     fetch('/api/notifications/config'),
                     fetch('/api/watchdog/config')
@@ -248,10 +246,11 @@
 
         async function saveVoiceSettings(e) {
             e.preventDefault();
+            const i18nVoice = window.I18N.voice;
             const btn = document.getElementById('btn-save-voice');
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '⏳ Saving...';
+            btn.innerHTML = i18nVoice.saving;
 
             const notifPayload = {
                 telegram_enabled: document.getElementById('telegram_enabled').checked,
@@ -300,10 +299,10 @@
                 ]);
 
                 if (r1.ok && r2.ok) {
-                    btn.innerHTML = '✅ Saved!';
+                    btn.innerHTML = i18nVoice.saved;
                     setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
                 } else {
-                    throw new Error("Failed to update one or more configurations.");
+                    throw new Error(i18nVoice.err_save);
                 }
             } catch (err) {
                 btn.disabled = false;
@@ -313,16 +312,17 @@
         }
 
         async function sendTestAlert() {
+            const i18nVoice = window.I18N.voice;
             const btn = document.getElementById('btn-test-alert');
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '⏳ Dispatching...';
+            btn.innerHTML = i18nVoice.dispatching;
             try {
                 const res = await fetch('/api/notifications/test', { method: 'POST' });
                 if (res.ok) {
-                    btn.innerHTML = '✅ Dispatched!';
+                    btn.innerHTML = i18nVoice.dispatched;
                 } else {
-                    throw new Error('Test request failed.');
+                    throw new Error(i18nVoice.err_test);
                 }
             } catch (err) {
                 alert(`Test failed: ${err.message}`);

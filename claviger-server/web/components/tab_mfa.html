@@ -1,8 +1,8 @@
 {{ define "tab_mfa" }}
 <div id="tab-mfa" class="space-y-6 hidden animate-fade-in">
     <div>
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Two-Factor Authentication</h2>
-        <p class="text-muted-foreground text-sm mt-1">Manage your Zero Trust session and global gateway security.</p>
+        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "mfa.title" }}</h2>
+        <p class="text-muted-foreground text-sm mt-1">{{ T "mfa.subtitle" }}</p>
     </div>
 
     <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden p-6 relative" id="mfa-main-card">
@@ -10,7 +10,7 @@
         <!-- LOADING SPINNER -->
         <div id="mfa-loading" class="py-12 flex flex-col items-center justify-center space-y-4">
             <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-sm text-slate-400 font-medium">Checking security state...</p>
+            <p class="text-sm text-slate-400 font-medium">{{ T "mfa.checking" }}</p>
         </div>
 
         <!-- ========================================== -->
@@ -20,32 +20,30 @@
             <!-- STEP 1: INTRO & GENERATE -->
             <div id="mfa-step-1" class="space-y-4 text-center py-6">
                 <div class="w-16 h-16 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-4">🛡️</div>
-                <h3 class="text-lg font-bold text-slate-200">Enhance Your Security</h3>
+                <h3 class="text-lg font-bold text-slate-200">{{ T "mfa.enhance_title" }}</h3>
                 <p class="text-sm text-slate-400 max-w-md mx-auto">
-                    Add an extra layer of protection. Even if your device is compromised, unauthorized users cannot access the Hub without your phone.
+                    {{ T "mfa.enhance_desc" }}
                 </p>
                 <button id="btn-mfa-start" onclick="startMfaSetup()" class="mt-4 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm shadow-blue-500/20">
-                    Setup Authenticator
+                    {{ T "mfa.btn_setup" }}
                 </button>
             </div>
 
             <!-- STEP 2: SCAN & VERIFY -->
             <div id="mfa-step-2" class="hidden space-y-6 py-4">
-                <h3 class="text-lg font-bold text-slate-200 border-b border-border pb-2">Scan QR Code</h3>
+                <h3 class="text-lg font-bold text-slate-200 border-b border-border pb-2">{{ T "mfa.scan_title" }}</h3>
                 <div class="flex flex-col md:flex-row gap-8 items-center">
                     <div class="bg-white p-4 rounded-xl shadow-inner">
                         <img id="mfa-qr-img" src="" alt="MFA QR Code" class="w-48 h-48" />
                     </div>
                     <div class="space-y-4 flex-1 w-full">
                         <p class="text-sm text-slate-400">
-                            1. Open your authenticator app.<br>
-                            2. Scan the QR code.<br>
-                            3. Enter the 6-digit code below to verify.
+                            {{ T "mfa.scan_steps" | safeHTML }}
                         </p>
                         <div class="flex gap-3">
                             <input type="text" id="mfa-code-input" maxlength="6" placeholder="000000" class="w-32 bg-background border border-border rounded-lg px-4 py-2 text-slate-200 font-mono text-center tracking-widest focus:outline-none focus:border-blue-500">
                             <button id="btn-mfa-verify" onclick="verifyMfaSetup()" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors">
-                                Verify Code
+                                {{ T "mfa.btn_verify" }}
                             </button>
                         </div>
                         <p id="mfa-error-msg" class="text-rose-500 text-xs hidden font-medium"></p>
@@ -56,13 +54,13 @@
             <!-- STEP 3: RECOVERY KEYS -->
             <div id="mfa-step-3" class="hidden space-y-6 py-4 text-center">
                 <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-4">✅</div>
-                <h3 class="text-xl font-bold text-slate-200">MFA Successfully Enabled</h3>
+                <h3 class="text-xl font-bold text-slate-200">{{ T "mfa.success_title" }}</h3>
                 <p class="text-sm text-amber-400/90 font-medium bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg inline-block">
-                    ⚠️ Save these backup codes! They will only be shown once.
+                    {{ T "mfa.warning_codes" }}
                 </p>
                 <div id="mfa-recovery-keys" class="grid grid-cols-2 gap-3 max-w-sm mx-auto mt-6 bg-background p-4 rounded-lg border border-border text-sm font-mono text-slate-300"></div>
                 <button onclick="finishMfaSetup()" class="mt-6 px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-lg transition-colors">
-                    I have saved my keys
+                    {{ T "mfa.btn_finish" }}
                 </button>
             </div>
         </div>
@@ -76,16 +74,16 @@
             <div class="flex items-center gap-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                 <div class="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-xl">🛡️</div>
                 <div>
-                    <h3 class="text-sm font-bold text-emerald-400">Your Account is Secured</h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Two-Factor Authentication is currently active for your device.</p>
+                    <h3 class="text-sm font-bold text-emerald-400">{{ T "mfa.secured_title" }}</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">{{ T "mfa.secured_desc" }}</p>
                 </div>
             </div>
 
             <!-- Global Server Toggle -->
             <div class="p-5 bg-background rounded-xl border border-border flex items-center justify-between">
                 <div>
-                    <h3 class="text-sm font-bold text-slate-200">Global MFA Policy</h3>
-                    <p class="text-xs text-slate-400 mt-1 max-w-sm">Require all connected devices to verify an authenticator code before accessing the Hub.</p>
+                    <h3 class="text-sm font-bold text-slate-200">{{ T "mfa.global_policy_title" }}</h3>
+                    <p class="text-xs text-slate-400 mt-1 max-w-sm">{{ T "mfa.global_policy_desc" }}</p>
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="global-mfa-toggle" onchange="toggleGlobalMfa(this)" class="sr-only peer">
@@ -95,11 +93,11 @@
 
             <!-- Danger Zone -->
             <div class="pt-4 border-t border-border">
-                <h3 class="text-rose-400 font-bold text-xs uppercase tracking-wider mb-3">Danger Zone</h3>
+                <h3 class="text-rose-400 font-bold text-xs uppercase tracking-wider mb-3">{{ T "mfa.danger_zone" }}</h3>
                 <div class="flex items-center justify-between">
-                    <p class="text-sm text-slate-400">Remove authenticator from your account. This will downgrade your security.</p>
+                    <p class="text-sm text-slate-400">{{ T "mfa.danger_desc" }}</p>
                     <button id="btn-mfa-remove" onclick="removePersonalMfa()" class="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 text-sm font-bold rounded-lg transition-colors whitespace-nowrap">
-                        Remove My MFA
+                        {{ T "mfa.btn_remove" }}
                     </button>
                 </div>
             </div>
@@ -108,9 +106,8 @@
     </div>
 
     <script>
-        // --- API: Load Initial State ---
         async function loadMfaStatus() {
-            // Show loading
+            const i18nMfa = window.I18N.mfa;
             document.getElementById('mfa-loading').classList.remove('hidden');
             document.getElementById('mfa-setup-container').classList.add('hidden');
             document.getElementById('mfa-management-container').classList.add('hidden');
@@ -122,37 +119,35 @@
                 document.getElementById('mfa-loading').classList.add('hidden');
 
                 if (data.is_configured) {
-                    // Show Management
                     document.getElementById('mfa-management-container').classList.remove('hidden');
                     document.getElementById('global-mfa-toggle').checked = data.global_enabled;
                 } else {
-                    // Show Setup Wizard
                     document.getElementById('mfa-setup-container').classList.remove('hidden');
-                    // Reset wizard to step 1
                     document.getElementById('mfa-step-1').classList.remove('hidden');
                     document.getElementById('mfa-step-2').classList.add('hidden');
                     document.getElementById('mfa-step-3').classList.add('hidden');
                 }
             } catch (e) {
                 console.error("Failed to load MFA status:", e);
-                document.getElementById('mfa-loading').innerHTML = `<p class="text-rose-500">Failed to load status. Check server logs.</p>`;
+                document.getElementById('mfa-loading').innerHTML = `<p class="text-rose-500">${i18nMfa.err_load_status}</p>`;
             }
         }
 
-        // --- Hook this into your sidebar tab switcher ---
-        // Assuming your main JS has a switchTab(tabId) function, you can hook it here:
         const originalSwitchTabMfa = window.switchTab;
         window.switchTab = function(tabId) {
             if (originalSwitchTabMfa) originalSwitchTabMfa(tabId);
             if (tabId === 'mfa') {
-                loadMfaStatus(); // Fetch fresh state every time they click the tab
+                loadMfaStatus();
             }
         }
 
-        // --- Setup Wizard Logic (Same as before) ---
         async function startMfaSetup() {
+            const i18nMfa = window.I18N.mfa;
             const btn = document.getElementById('btn-mfa-start');
-            btn.innerHTML = '⏳ Generating...'; btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = i18nMfa.btn_generating; 
+            btn.disabled = true;
+
             try {
                 const res = await fetch('/api/mfa/generate', { method: 'POST' });
                 const data = await res.json();
@@ -161,17 +156,23 @@
                     document.getElementById('mfa-step-2').classList.remove('hidden');
                     document.getElementById('mfa-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qr_url)}`;
                 } else { throw new Error(data.message); }
-            } catch (e) { alert(`Setup failed: ${e.message}`); }
-            btn.innerHTML = 'Setup Authenticator'; btn.disabled = false;
+            } catch (e) { alert(`${i18nMfa.err_setup_fail}${e.message}`); }
+            
+            btn.innerHTML = originalText; 
+            btn.disabled = false;
         }
 
         async function verifyMfaSetup() {
+            const i18nMfa = window.I18N.mfa;
             const code = document.getElementById('mfa-code-input').value.trim();
             const errorEl = document.getElementById('mfa-error-msg');
             const btn = document.getElementById('btn-mfa-verify');
 
             if (code.length !== 6) return;
-            errorEl.classList.add('hidden'); btn.innerHTML = '⏳...'; btn.disabled = true;
+            errorEl.classList.add('hidden'); 
+            const originalText = btn.innerHTML;
+            btn.innerHTML = i18nMfa.btn_verifying; 
+            btn.disabled = true;
 
             try {
                 const res = await fetch('/api/mfa/verify-setup', {
@@ -188,53 +189,56 @@
                     data.recovery_keys.forEach(key => keysContainer.insertAdjacentHTML('beforeend', `<div>${key}</div>`));
                 } else { throw new Error(data.message); }
             } catch (e) { errorEl.textContent = e.message; errorEl.classList.remove('hidden'); }
-            btn.innerHTML = 'Verify Code'; btn.disabled = false;
+            
+            btn.innerHTML = originalText; 
+            btn.disabled = false;
         }
 
         function finishMfaSetup() {
-            // Once they save keys, reload the state to switch to the Management UI!
             loadMfaStatus(); 
         }
 
-        // --- Management Logic (New APIs needed in Go) ---
         async function toggleGlobalMfa(checkbox) {
+            const i18nMfa = window.I18N.mfa;
             const enabled = checkbox.checked;
             try {
-                // Assuming you have a generic config update endpoint, or make a specific one.
                 const res = await fetch('/api/config/mfa_enabled', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ value: enabled ? "true" : "false" })
                 });
-                if (!res.ok) throw new Error("Failed to save config");
+                if (!res.ok) throw new Error(i18nMfa.err_save_config);
             } catch (e) {
                 alert(e.message);
-                checkbox.checked = !enabled; // Revert switch if failed
+                checkbox.checked = !enabled;
             }
         }
 
         async function removePersonalMfa() {
-            if (!confirm("Are you sure? Removing MFA will log you out of your elevated session immediately.")) return;
+            const i18nMfa = window.I18N.mfa;
+            if (!confirm(i18nMfa.confirm_remove)) return;
             
             const btn = document.getElementById('btn-mfa-remove');
-            btn.innerHTML = '⏳ Removing...'; btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = i18nMfa.btn_removing; 
+            btn.disabled = true;
 
             try {
                 const res = await fetch('/api/mfa/remove', { method: 'POST' });
                 if (res.ok) {
-                    // Delete successful, reload state to show setup wizard again
                     loadMfaStatus(); 
                 } else {
                     const data = await res.json();
                     throw new Error(data.message);
                 }
             } catch (e) {
-                alert(`Error removing MFA: ${e.message}`);
-                btn.innerHTML = 'Remove My MFA'; btn.disabled = false;
+                alert(`${i18nMfa.err_remove_fail}${e.message}`);
+                btn.innerHTML = originalText; 
+                btn.disabled = false;
             }
         }
 
-        loadMfaStatus()
+        loadMfaStatus();
     </script>
 </div>
 {{ end }}

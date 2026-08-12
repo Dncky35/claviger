@@ -196,6 +196,8 @@ func RunStart() {
 	// ---------------------------------------------------------
 	// 4. SETUP THE WEB HUB & ERROR CHANNEL
 	// ---------------------------------------------------------
+	web.InitI18n()
+
 	mux := http.NewServeMux()
 
 	// --- UNPROTECTED ROUTES ---
@@ -319,20 +321,51 @@ func RunStart() {
 	mux.HandleFunc("/api/containers/stats", api.HubAccessMiddleware(db, api.HandleContainerStats(dockerEngine)))
 
 	// --- SERVE THE MAIN UI DASHBOARD ---
-	tmpl, err := template.ParseFS(web.TemplatesFS, "index.html", "components/*.html")
-	if err != nil {
-		log.Fatalf("❌ Failed to parse HTML templates: %v", err)
-	}
-
-	// Wrap the UI in the same middleware so only authorized VPN IPs can see it
 	mux.HandleFunc("/", api.HubAccessBasicMiddleware(db, func(w http.ResponseWriter, r *http.Request) {
-		// Strictly enforce the root path. Ignore /favicon.ico or random browser requests
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
+
+		// 1. Default to English
+		userLang := "en"
+
+		// 2. Check for the language cookie
+		if cookie, err := r.Cookie("claviger_lang"); err == nil {
+			// Validate the input to ensure it's a supported language
+			if cookie.Value == "tr" || cookie.Value == "en" {
+				userLang = cookie.Value
+			}
+		}
+
+		// 3. Create the FuncMap
+		funcMap := template.FuncMap{
+			"T": func(key string) string {
+				return web.Translate(userLang, key)
+			},
+			"safeHTML": func(s string) template.HTML {
+				return template.HTML(s)
+			},
+		}
+
+		// 4. Parse templates
+		tmpl, err := template.New("index.html").
+			Funcs(funcMap).
+			ParseFS(web.TemplatesFS, "index.html", "components/*.html")
+
+		if err != nil {
+			http.Error(w, "Template Error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := tmpl.ExecuteTemplate(w, "index.html", nil); err != nil {
+
+		// 5. Pass the JSON dictionary to window.I18N
+		data := map[string]interface{}{
+			"I18nJSON": template.JS(web.GetLanguageJSON(userLang)),
+		}
+
+		if err := tmpl.ExecuteTemplate(w, "index.html", data); err != nil {
 			http.Error(w, "Template Error: "+err.Error(), http.StatusInternalServerError)
 		}
 	}))

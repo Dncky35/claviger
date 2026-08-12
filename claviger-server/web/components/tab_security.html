@@ -3,17 +3,17 @@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
             <h2 class="text-2xl font-bold text-slate-100 flex items-center tracking-tight">
-                Uncomplicated Firewall (UFW)
-                <span id="ufw-badge" class="ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-background text-slate-400 border border-border">Checking...</span>
+                {{ T "security.title" }}
+                <span id="ufw-badge" class="ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-background text-slate-400 border border-border">{{ T "security.checking" }}</span>
             </h2>
-            <p class="text-muted-foreground text-sm mt-1">Manage inbound network traffic rules</p>
+            <p class="text-muted-foreground text-sm mt-1">{{ T "security.subtitle" }}</p>
         </div>
         <div class="flex items-center space-x-3">
             <button onclick="toggleUFW()" id="btn-toggle-ufw" class="bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm">
-                Disable UFW
+                {{ T "security.btn_disable_ufw" }}
             </button>
             <button id="button-add-rule" onclick="addRule()" class="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-xl font-medium transition-colors shadow-sm text-sm">
-                + Add Rule
+                {{ T "security.btn_add_rule" }}
             </button>
         </div>
     </div>
@@ -25,20 +25,20 @@
             <div class="z-10">
                 <div class="flex items-center gap-3 mb-2">
                     <div class="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center text-orange-500 text-xl">☁️</div>
-                    <h3 class="text-lg font-bold text-slate-100">Standart Direct DNS</h3>
-                    <span class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">Manual Sync</span>
+                    <h3 class="text-lg font-bold text-slate-100">{{ T "security.std_dns_title" }}</h3>
+                    <span class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">{{ T "security.std_dns_badge" }}</span>
                 </div>
                 <p class="text-muted-foreground text-sm max-w-2xl">
-                    Enable/Disable traffic on ports 80 and 443.
+                    {{ T "security.std_dns_desc" }}
                 </p>
             </div>
             <div id="cloudflare-controls" class="z-10 flex items-center shrink-0 gap-2">
                 <button id="btn-enable-dns" onclick="triggerEnablePorts()" class="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-orange-500/20">
-                    Enable Ports 80/443
+                    {{ T "security.btn_enable_ports" }}
                 </button>
 
                 <button id="btn-disable-dns" onclick="triggerDisablePorts()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-slate-700 transition-colors">
-                    Disable Ports
+                    {{ T "security.btn_disable_ports" }}
                 </button>
             </div>
         </div>
@@ -49,20 +49,20 @@
             <div class="z-10">
                 <div class="flex items-center gap-3 mb-2">
                     <div class="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center text-orange-500 text-xl">☁️</div>
-                    <h3 class="text-lg font-bold text-slate-100">Cloudflare Strict Mode</h3>
-                    <span class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">Manual Sync</span>
+                    <h3 class="text-lg font-bold text-slate-100">{{ T "security.cf_title" }}</h3>
+                    <span class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">{{ T "security.cf_badge" }}</span>
                 </div>
                 <p class="text-muted-foreground text-sm max-w-2xl">
-                    Fetches the latest Cloudflare Edge IP ranges, configures Nginx to unmask visitor IPs, and configures UFW to block all non-Cloudflare traffic on ports 80 and 443.
+                    {{ T "security.cf_desc" }}
                 </p>
             </div>
             <div id="cloudflare-controls" class="z-10 flex items-center shrink-0 gap-2">
                 <button id="btn-sync-cloudflare" onclick="triggerCloudflareLockdown()" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-orange-500/20">
-                    Sync & Lockdown 80/443
+                    {{ T "security.btn_sync_cf" }}
                 </button>
 
                 <button id="btn-unlock-ports" onclick="triggerRevertLockdown()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-slate-700 transition-colors">
-                    Unlock Ports
+                    {{ T "security.btn_unlock_ports" }}
                 </button>
             </div>
         </div>
@@ -75,26 +75,26 @@
             <table class="w-full text-left border-collapse whitespace-nowrap">
                 <thead>
                     <tr class="bg-background/50 border-b border-border text-muted-foreground text-[10px] uppercase tracking-widest font-bold">
-                        <th class="p-5">To (Port)</th>
-                        <th class="p-5">Action</th>
-                        <th class="p-5">From (IP)</th>
-                        <th class="p-5 text-right">Controls</th>
+                        <th class="p-5">{{ T "security.th_port" }}</th>
+                        <th class="p-5">{{ T "security.th_action" }}</th>
+                        <th class="p-5">{{ T "security.th_from" }}</th>
+                        <th class="p-5 text-right">{{ T "security.th_controls" }}</th>
                     </tr>
                 </thead>
                 <tbody id="security-rules-list" class="divide-y divide-border/50 text-sm text-slate-300">
-                    <tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="4">Loading firewall rules...</td></tr>
+                    <tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="4">{{ T "security.loading_rules" }}</td></tr>
                 </tbody>
             </table>
         </div>
         <div class="bg-background/50 p-3 border-t border-border text-center text-xs font-medium text-muted-foreground" id="security-rules-count">
-            Waiting for data...
+            {{ T "security.rules_waiting" }}
         </div>
     </div>
 
     <hr class="border-border my-8">
     
     <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-slate-100">Intrusion Prevention</h3>
+        <h3 class="text-lg font-bold text-slate-100">{{ T "security.intr_title" }}</h3>
     </div>
 
     <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col gap-4 relative overflow-hidden">
@@ -102,21 +102,21 @@
             <div class="z-10">
                 <div class="flex items-center gap-3 mb-2">
                     <div class="w-10 h-10 bg-rose-500/10 rounded-lg flex items-center justify-center text-rose-500 text-xl">🧱</div>
-                    <h3 class="text-lg font-bold text-slate-100">Fail2Ban</h3>
-                    <span id="badge-app-fail2ban" class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">Checking...</span>
+                    <h3 class="text-lg font-bold text-slate-100">{{ T "security.f2b_title" }}</h3>
+                    <span id="badge-app-fail2ban" class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">{{ T "security.checking" }}</span>
                 </div>
                 <p class="text-muted-foreground text-sm max-w-2xl">
-                    Automatically scans log files and bans IP addresses that show malicious signs.
+                    {{ T "security.f2b_desc" }}
                 </p>
             </div>
             <div class="z-10 flex items-center shrink-0 gap-2">
                 <button id="btn-install-fail2ban" onclick="installFail2Ban()" class="hidden px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
-                    Install Engine
+                    {{ T "security.btn_install_f2b" }}
                 </button>
                 
                 <div id="btn-dash-fail2ban" class="hidden flex items-center gap-2">
                     <button onclick="document.getElementById('modal-fail2ban').showModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors border border-slate-700">
-                        ⚙️ Settings
+                        {{ T "security.btn_settings" }}
                     </button>
                 </div>
             </div>
@@ -125,80 +125,77 @@
         <div id="fail2ban-live-stats" class="hidden mt-2 pt-4 border-t border-border/50 flex-col gap-4">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-background/50 border border-border rounded-lg p-3">
-                    <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Currently Banned</div>
+                    <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">{{ T "security.stat_cur_ban" }}</div>
                     <div id="f2b-stat-cur-ban" class="text-xl font-bold text-rose-400">0</div>
                 </div>
                 <div class="bg-background/50 border border-border rounded-lg p-3">
-                    <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Total Banned (All Time)</div>
+                    <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">{{ T "security.stat_tot_ban" }}</div>
                     <div id="f2b-stat-tot-ban" class="text-xl font-bold text-slate-200">0</div>
                 </div>
                 <div class="bg-background/50 border border-border rounded-lg p-3">
-                    <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Currently Failed</div>
+                    <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">{{ T "security.stat_cur_fail" }}</div>
                     <div id="f2b-stat-cur-fail" class="text-xl font-bold text-amber-400">0</div>
                 </div>
                 <div class="bg-background/50 border border-border rounded-lg p-3">
-                    <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Total Failed (All Time)</div>
+                    <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">{{ T "security.stat_tot_fail" }}</div>
                     <div id="f2b-stat-tot-fail" class="text-xl font-bold text-slate-200">0</div>
                 </div>
             </div>
 
             <div class="bg-background border border-border rounded-lg p-4 mt-2">
-                <h4 class="text-xs uppercase font-bold text-slate-500 mb-3 border-b border-border/50 pb-2">Active Inmate IPs</h4>
+                <h4 class="text-xs uppercase font-bold text-slate-500 mb-3 border-b border-border/50 pb-2">{{ T "security.active_inmates" }}</h4>
                 <div id="f2b-banned-list" class="space-y-2 max-h-40 overflow-y-auto pr-2">
-                    </div>
+                </div>
             </div>
         </div>
     </div>
 
 <dialog id="modal-fail2ban" class="bg-surface border border-border rounded-xl shadow-2xl p-0 w-[90%] max-w-md backdrop:bg-black/60 text-slate-200">
     <div class="p-5 border-b border-border flex justify-between items-center bg-surface/50">
-        <h3 class="font-bold text-lg text-white flex items-center gap-2"><span>🧱</span> Configure Fail2Ban</h3>
+        <h3 class="font-bold text-lg text-white flex items-center gap-2"><span>🧱</span> {{ T "security.modal_f2b_title" }}</h3>
         <button onclick="document.getElementById('modal-fail2ban').close()" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">✕</button>
     </div>
     
     <div class="p-6 space-y-5">
         <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">SSH Port Number</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{{ T "security.f2b_port_label" }}</label>
             <input type="number" id="f2b-port" value="22" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-            <p class="text-[11px] text-slate-500 mt-1">The port your SSH daemon listens on.</p>
+            <p class="text-[11px] text-slate-500 mt-1">{{ T "security.f2b_port_desc" }}</p>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Max Retries</label>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{{ T "security.f2b_retries_label" }}</label>
                 <input type="number" id="f2b-retries" value="3" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
             </div>
             <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Window (Mins)</label>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{{ T "security.f2b_findtime_label" }}</label>
                 <input type="number" id="f2b-findtime" value="10" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
             </div>
         </div>
-        <p class="text-[11px] text-slate-500 -mt-2">Ban if there are [Max Retries] failures within [Window] minutes.</p>
+        <p class="text-[11px] text-slate-500 -mt-2">{{ T "security.f2b_retries_desc" }}</p>
 
         <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Ban Duration (Minutes)</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{{ T "security.f2b_bantime_label" }}</label>
             <input type="number" id="f2b-bantime" value="60" class="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-            <p class="text-[11px] text-slate-500 mt-1">Set to -1 for a permanent ban (use with caution!).</p>
+            <p class="text-[11px] text-slate-500 mt-1">{{ T "security.f2b_bantime_desc" }}</p>
         </div>
     </div>
 
     <div class="p-5 border-t border-border flex justify-end gap-3 bg-background/50 rounded-b-xl">
-        <button onclick="document.getElementById('modal-fail2ban').close()" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors">Cancel</button>
+        <button onclick="document.getElementById('modal-fail2ban').close()" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors">{{ T "security.btn_cancel" }}</button>
         <button id="btn-save-f2b" onclick="saveFail2BanConfig()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
-            Save & Apply Rules
+            {{ T "security.btn_save_rules" }}
         </button>
     </div>
 </dialog>
 
 <script>
-
         window.toggleCategory = function(categoryId) {
-            // Find all rule rows that belong to this category
             const rows = document.querySelectorAll(`.${categoryId}-row`);
             const icon = document.getElementById(`icon-${categoryId}`);
             let isHidden = false;
             
-            // Toggle the 'hidden' class on each row
             rows.forEach(row => {
                 row.classList.toggle('hidden');
                 if (row.classList.contains('hidden')) {
@@ -206,15 +203,15 @@
                 }
             });
 
-            // Rotate the chevron icon based on state
             if (isHidden) {
-                icon.classList.add('-rotate-90'); // Point right (collapsed)
+                icon.classList.add('-rotate-90');
             } else {
-                icon.classList.remove('-rotate-90'); // Point down (open)
+                icon.classList.remove('-rotate-90');
             }
         };
 
         async function executeSecurityAction(payload) {
+            const i18nSec = window.I18N.security;
             try {
                 const res = await fetch('/api/security/action', {
                     method: 'POST',
@@ -224,89 +221,90 @@
                 if (res.ok) {
                     fetchSecurityData();
                 } else {
-                    alert("Action failed. Check terminal logs for permissions.");
+                    alert(i18nSec.alert_action_fail);
                 }
             } catch (err) { console.error("Action failed:", err); }
         }
 
         function deleteRule(port, ruleAction) {
-            if(confirm(`🚨 WARNING: Are you sure you want to delete the rule for Port ${port}?\n\nIf this is your WireGuard or SSH port, you might drop your connection.`)) {
+            const i18nSec = window.I18N.security;
+            const msg = i18nSec.confirm_delete.replace('%s', port);
+            if(confirm(msg)) {
                 executeSecurityAction({ action: "delete", port: port, rule_action: ruleAction });
             }
         }
 
         function toggleUFW(currentState) {
+            const i18nSec = window.I18N.security;
             if (currentState === 'active') {
-                if(confirm(`🚨 DANGER: Are you sure you want to DISABLE the firewall? Your server will be fully exposed.`)) {
+                if(confirm(i18nSec.confirm_disable_ufw)) {
                     executeSecurityAction({ action: "disable" });
                 }
             } else {
-                if(confirm(`🛡️ Enabling Firewall: Claviger will automatically inject safety rules for SSH and VPN before applying.`)) {
+                if(confirm(i18nSec.confirm_enable_ufw)) {
                     executeSecurityAction({ action: "enable" });
                 }
             }
         }
 
         function addRule() {
-            const port = prompt("Enter the Port or Service to Allow (e.g., 80, 443, 8080/tcp):");
+            const i18nSec = window.I18N.security;
+            const port = prompt(i18nSec.prompt_port);
             if (port) {
                 executeSecurityAction({ action: "add", port: port });
             }
         }
 
         async function fetchSecurityData() {
+            const i18nSec = window.I18N.security;
             try {
                 const res = await fetch('/api/security');
                 if (res.ok) {
                     const data = await res.json();
                     
-                    // 1. Update Badge & Button
                     const badge = document.getElementById('ufw-badge');
                     const toggleBtn = document.getElementById('btn-toggle-ufw');
                     const ruleBtn = document.getElementById('button-add-rule');
                     const cloudflareControls = document.getElementById('cloudflare-controls');
                     
                     if (badge && toggleBtn) {
-                        // Reset button disabled state in case it was stuck from a previous action
                         toggleBtn.disabled = false; 
 
                         if (data.ufw_status === 'not_installed') {
                             badge.className = 'ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-destructive/10 text-destructive border border-destructive/20';
-                            badge.innerText = 'Not Installed';
+                            badge.innerText = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Yüklü Değil' : 'Not Installed';
                             
-                            // 🎯 NEW: Change button to Install mode
-                            toggleBtn.innerText = 'Install UFW';
+                            toggleBtn.innerText = i18nSec.btn_install_ufw;
                             toggleBtn.className = 'bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
                             toggleBtn.onclick = () => installUFW();
-                            cloudflareControls.classList.add('hidden'); // Hide Cloudflare controls if firewall isn't installed
-                            ruleBtn.disabled = true; // Disable adding rules when UFW is not installed
-                            ruleBtn.classList.add('cursor-not-allowed', 'opacity-50'); // Disable adding rules when UFW is not installed
+                            if(cloudflareControls) cloudflareControls.classList.add('hidden');
+                            ruleBtn.disabled = true;
+                            ruleBtn.classList.add('cursor-not-allowed', 'opacity-50');
 
                         } else if (data.ufw_status === 'active') {
                             badge.className = 'ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-success/10 text-success border border-success/20';
-                            badge.innerText = 'Active';
+                            badge.innerText = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Aktif' : 'Active';
                             
-                            toggleBtn.innerText = 'Disable UFW';
+                            toggleBtn.innerText = i18nSec.btn_disable_ufw;
                             toggleBtn.className = 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border border-destructive/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
                             toggleBtn.onclick = () => toggleUFW('active');
-                            cloudflareControls.classList.remove('hidden'); // Show Cloudflare controls if firewall is active
-                            ruleBtn.disabled = false; // Disable adding rules when UFW is active to prevent lockouts
+                            if(cloudflareControls) cloudflareControls.classList.remove('hidden');
+                            ruleBtn.disabled = false;
                             ruleBtn.classList.remove('cursor-not-allowed', 'opacity-50');
 
                         } else {
                             badge.className = 'ml-4 px-3 py-1 text-[10px] uppercase tracking-widest font-bold rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20';
-                            badge.innerText = 'Inactive';
+                            badge.innerText = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Pasif' : 'Inactive';
                             
-                            toggleBtn.innerText = 'Enable UFW';
+                            toggleBtn.innerText = i18nSec.btn_enable_ufw;
                             toggleBtn.className = 'bg-success/10 text-success hover:bg-success hover:text-white border border-success/20 px-4 py-2 rounded-xl font-medium transition-colors text-sm';
                             toggleBtn.onclick = () => toggleUFW('inactive');
-                            cloudflareControls.classList.add('hidden'); // Hide Cloudflare controls if firewall is inactive
+                            if(cloudflareControls) cloudflareControls.classList.add('hidden');
                             ruleBtn.disabled = true;
-                            ruleBtn.classList.add('cursor-not-allowed', 'opacity-50'); // Disable adding rules when UFW is inactive
+                            ruleBtn.classList.add('cursor-not-allowed', 'opacity-50');
                         }
                     }
 
-                    // 2. Render Insights
                     const insightsContainer = document.getElementById('security-insights-container');
                     if (insightsContainer) {
                         insightsContainer.innerHTML = ''; 
@@ -333,40 +331,38 @@
                         }
                     }
 
-                    // 3. Render Table
                     const tbody = document.getElementById('security-rules-list');
                     const countDiv = document.getElementById('security-rules-count');
 
                     if (tbody && countDiv) {
                         if (!data.rules || data.rules.length === 0) {
-                            tbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="4">No active firewall rules found.</td></tr>';
-                            countDiv.innerText = "0 rules applied.";
+                            tbody.innerHTML = `<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="4">${i18nSec.no_rules}</td></tr>`;
+                            countDiv.innerText = i18nSec.checking === 'Kontrol Ediliyor...' ? '0 kural uygulandı.' : '0 rules applied.';
                             return;
                         }
 
                         const categories = {
-                            "SSH (Port 22)": [],
-                            "Web / Cloudflare (Ports 80, 443)": [],
-                            "WireGuard VPN": [],
-                            "Custom / Other Rules": []
+                            [i18nSec.cat_ssh]: [],
+                            [i18nSec.cat_web]: [],
+                            [i18nSec.cat_wireguard]: [],
+                            [i18nSec.cat_custom]: []
                         };
 
-                        // Sort rules
+                        const keys = Object.keys(categories);
+
                         data.rules.forEach(rule => {
                             const toPort = rule.to.toString();
-                            if (toPort.includes('22')) categories["SSH (Port 22)"].push(rule);
-                            else if (toPort.includes('80') || toPort.includes('443')) categories["Web / Cloudflare (Ports 80, 443)"].push(rule);
-                            else if (toPort.includes('51820')) categories["WireGuard VPN"].push(rule);
-                            else categories["Custom / Other Rules"].push(rule);
+                            if (toPort.includes('22')) categories[keys[0]].push(rule);
+                            else if (toPort.includes('80') || toPort.includes('443')) categories[keys[1]].push(rule);
+                            else if (toPort.includes('51820')) categories[keys[2]].push(rule);
+                            else categories[keys[3]].push(rule);
                         });
 
-                        // 🎯 THE FIX: Save current toggle states BEFORE clearing the table
                         const categoryState = {};
                         if (tbody.children.length > 0) {
                             const icons = tbody.querySelectorAll('svg[id^="icon-"]');
                             icons.forEach(icon => {
                                 const catId = icon.id.replace('icon-', '');
-                                // If the icon is rotated, it means the category is collapsed
                                 categoryState[catId] = icon.classList.contains('-rotate-90');
                             });
                         }
@@ -376,19 +372,16 @@
                         for (const [categoryName, rules] of Object.entries(categories)) {
                             if (rules.length === 0) continue;
 
-                            // Create a URL-safe ID for the category
                             const categoryId = categoryName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
                             
-                            // 🎯 THE FIX: Check history. If no history, fallback to your default Cloudflare rule
-                            let isCollapsed = categoryName.includes('Cloudflare'); // Default behavior
+                            let isCollapsed = categoryName.includes('Cloudflare') || categoryName.includes('Web');
                             if (categoryState[categoryId] !== undefined) {
-                                isCollapsed = categoryState[categoryId]; // Override with user's current view
+                                isCollapsed = categoryState[categoryId];
                             }
 
                             const iconRotation = isCollapsed ? '-rotate-90' : '';
                             const rowVisibility = isCollapsed ? 'hidden' : '';
 
-                            // 1. Render the Category Header (Now clickable)
                             const headerTr = document.createElement('tr');
                             headerTr.className = 'bg-background/80 border-y border-border/50 cursor-pointer hover:bg-white/5 transition-colors group';
                             headerTr.setAttribute('onclick', `toggleCategory('${categoryId}')`);
@@ -409,13 +402,9 @@
                             `;
                             tbody.appendChild(headerTr);
 
-                            // 2. Render the rules under this category
                             rules.forEach(rule => {
                                 const tr = document.createElement('tr');
-                                
-                                // 🎯 THE FIX: Apply the row visibility state dynamically
                                 tr.className = `${categoryId}-row hover:bg-background/50 transition-colors group ${rowVisibility}`;
-                                
                                 let actionColor = rule.action.includes('ALLOW') ? 'text-success' : 'text-destructive';
 
                                 tr.innerHTML = `
@@ -425,7 +414,7 @@
                                     <td class="p-4 text-right">
                                         <button onclick="event.stopPropagation(); deleteRule('${rule.to}', '${rule.action}')" 
                                             class="opacity-50 hover:opacity-100 text-muted-foreground hover:text-white hover:bg-destructive hover:border-destructive transition-all text-[10px] font-bold uppercase tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border">
-                                            Delete
+                                            ${i18nSec.btn_delete}
                                         </button>
                                     </td>
                                 `;
@@ -433,41 +422,40 @@
                             });
                         }
 
-                        countDiv.innerText = `Showing ${data.rules.length} active rules`;
+                        countDiv.innerText = i18nSec.rules_showing.replace('%d', data.rules.length);
                     }
-                    
                 }
             } catch (err) { console.error("Error fetching security:", err); }
         }
 
-        // 🎯 NEW: The UI trigger function
         async function installUFW() {
-            if (!confirm("This will install the UFW firewall on your server via APT. Do you want to proceed?")) return;
+            const i18nSec = window.I18N.security;
+            if (!confirm(i18nSec.confirm_install_ufw)) return;
 
             const toggleBtn = document.getElementById('btn-toggle-ufw');
             if (toggleBtn) {
-                toggleBtn.innerText = 'Installing...';
-                toggleBtn.disabled = true; // Prevent double clicks
+                toggleBtn.innerText = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Yükleniyor...' : 'Installing...';
+                toggleBtn.disabled = true;
                 toggleBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
 
             try {
                 const res = await fetch('/api/security/install', { method: 'POST' });
                 if (res.ok) {
-                    alert("✅ UFW installed successfully! The page will now refresh.");
+                    alert(i18nSec.success_install_ufw);
                 } else {
-                    alert("❌ Failed to install UFW. Please check the server logs.");
+                    alert(i18nSec.fail_install_ufw);
                 }
             } catch (error) {
                 console.error("Install error:", error);
-                alert("❌ A network error occurred.");
+                alert(i18nSec.network_error);
             } finally {
-                fetchSecurityData(); // Refresh the UI state regardless of outcome
+                fetchSecurityData();
             }
         }
 
-        // 🎯 NEW: Fetch Fail2Ban Status and update the UI buttons/badges
         async function fetchFail2BanStatus() {
+            const i18nSec = window.I18N.security;
             try {
                 const res = await fetch('/api/security/fail2ban/status');
                 if (!res.ok) return;
@@ -476,10 +464,10 @@
                 const badge = document.getElementById('badge-app-fail2ban');
                 const btnInstall = document.getElementById('btn-install-fail2ban');
                 const btnDash = document.getElementById('btn-dash-fail2ban');
-                const statsDash = document.getElementById('fail2ban-live-stats'); // 🎯 NEW
+                const statsDash = document.getElementById('fail2ban-live-stats');
 
                 if (!data.installed) {
-                    badge.innerText = 'Not Installed';
+                    badge.innerText = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Yüklü Değil' : 'Not Installed';
                     badge.className = 'px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700';
                     btnInstall.classList.remove('hidden');
                     btnDash.classList.add('hidden');
@@ -491,10 +479,9 @@
                     btnDash.classList.add('flex');
 
                     if (data.running) {
-                        badge.innerText = 'Active';
+                        badge.innerText = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Aktif' : 'Active';
                         badge.className = 'px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
                         
-                        // 🎯 NEW: Populate Stats UI
                         if (data.stats) {
                             statsDash.classList.remove('hidden');
                             statsDash.classList.add('flex');
@@ -509,16 +496,16 @@
                                 listContainer.innerHTML = data.stats.banned_ips.map(ip => `
                                     <div class="flex justify-between items-center bg-surface p-2 rounded border border-border/50">
                                         <span class="font-mono text-sm text-rose-400 font-bold">${ip}</span>
-                                        <button onclick="unbanIP('${ip}')" class="text-[10px] uppercase font-bold tracking-wider px-3 py-1 bg-background hover:bg-slate-700 text-slate-400 hover:text-white rounded border border-border transition-colors">Unban</button>
+                                        <button onclick="unbanIP('${ip}')" class="text-[10px] uppercase font-bold tracking-wider px-3 py-1 bg-background hover:bg-slate-700 text-slate-400 hover:text-white rounded border border-border transition-colors">${i18nSec.btn_unban}</button>
                                     </div>
                                 `).join('');
                             } else {
-                                listContainer.innerHTML = '<p class="text-sm text-slate-500 italic">No IPs are currently banned.</p>';
+                                listContainer.innerHTML = `<p class="text-sm text-slate-500 italic">${i18nSec.no_banned_ips}</p>`;
                             }
                         }
 
                     } else {
-                        badge.innerText = 'Stopped';
+                        badge.innerText = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Durduruldu' : 'Stopped';
                         badge.className = 'px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-bold rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20';
                         statsDash.classList.add('hidden');
                         statsDash.classList.remove('flex');
@@ -529,9 +516,10 @@
             }
         }
 
-        // 🎯 NEW: Unban JS Function
         async function unbanIP(ip) {
-            if(!confirm(`Are you sure you want to pardon and unban ${ip}?`)) return;
+            const i18nSec = window.I18N.security;
+            const msg = i18nSec.confirm_unban.replace('%s', ip);
+            if(!confirm(msg)) return;
 
             try {
                 const res = await fetch('/api/security/fail2ban/unban', {
@@ -540,21 +528,21 @@
                     body: JSON.stringify({ ip: ip })
                 });
                 if(res.ok) {
-                    fetchFail2BanStatus(); // Instantly refresh the UI to remove them from the list
+                    fetchFail2BanStatus();
                 } else {
-                    alert("Failed to unban IP. Check server logs.");
+                    alert(i18nSec.alert_action_fail);
                 }
             } catch (e) {
-                alert("Network error.");
+                alert(i18nSec.network_error);
             }
         }
 
-        // 🎯 NEW: Trigger the backend installation process
         async function installFail2Ban() {
-            if (!confirm("This will install Fail2Ban on your server via APT. Do you want to proceed?")) return;
+            const i18nSec = window.I18N.security;
+            if (!confirm(i18nSec.confirm_install_f2b)) return;
 
             const btn = document.getElementById('btn-install-fail2ban');
-            btn.innerText = 'Installing... ⏳';
+            btn.innerText = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Yükleniyor... ⏳' : 'Installing... ⏳';
             btn.disabled = true;
             btn.classList.add('opacity-50', 'cursor-not-allowed');
 
@@ -563,25 +551,26 @@
                 const data = await res.json();
 
                 if (res.ok) {
-                    alert("✅ Fail2Ban installed and started successfully!");
+                    alert(i18nSec.success_install_f2b);
                 } else {
-                    alert("❌ Installation failed: " + data.message);
+                    alert(i18nSec.fail_install_f2b + data.message);
                 }
             } catch (error) {
                 console.error("Install error:", error);
-                alert("❌ A network error occurred while installing.");
+                alert(i18nSec.network_error);
             } finally {
-                btn.innerText = 'Install Engine';
+                btn.innerText = i18nSec.btn_install_f2b;
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                fetchFail2BanStatus(); // Instantly refresh the UI
+                fetchFail2BanStatus();
             }
         }
 
         async function saveFail2BanConfig() {
+            const i18nSec = window.I18N.security;
             const btn = document.getElementById('btn-save-f2b');
             btn.disabled = true;
-            btn.innerHTML = 'Saving...';
+            btn.innerHTML = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Kaydediliyor...' : 'Saving...';
 
             const payload = {
                 port: parseInt(document.getElementById('f2b-port').value),
@@ -600,19 +589,20 @@
 
                 if (res.ok) {
                     document.getElementById('modal-fail2ban').close();
-                    alert('Fail2Ban rules updated and service restarted successfully!');
+                    alert(i18nSec.success_f2b_save);
                 } else {
-                    alert('Error saving rules: ' + data.message);
+                    alert(i18nSec.fail_f2b_save + data.message);
                 }
             } catch (e) {
-                alert('Network error while saving config.');
+                alert(i18nSec.network_error);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = 'Save & Apply Rules';
+                btn.innerHTML = i18nSec.btn_save_rules;
             }
         }
 
         async function triggerEnablePorts(){
+            const i18nSec = window.I18N.security;
             const btnEnable = document.getElementById('btn-enable-dns');
             const btnDisable = document.getElementById('btn-disable-dns');
             
@@ -621,23 +611,22 @@
             btnDisable.disabled = true;
             btnDisable.classList.add('opacity-50', 'cursor-not-allowed');
 
-            const originalText =  btnEnable.innerHTML;
-            btnEnable.innerHTML = 'Enabling... ⏳';
+            const originalText = btnEnable.innerHTML;
+            btnEnable.innerHTML = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Etkinleştiriliyor... ⏳' : 'Enabling... ⏳';
             
             try {
                 const res = await fetch('/api/security/standard/enable', { method: 'POST' });
-                const data = await res.json(); // Safely parse the response (even if it's an error)
+                const data = await res.json();
 
                 if (res.ok) {
-                    alert("✅ Success: " + data.message);
-                    fetchSecurityData(); // Refresh the UFW table so they see the new CF IPs!
+                    alert(i18nSec.success_generic + data.message);
+                    fetchSecurityData();
                 } else {
-                    // This will catch your "Cloudflare lockdown is only applicable..." error!
-                    alert("❌ Failed: " + (data.message || await res.text()));
+                    alert(i18nSec.fail_generic + (data.message || await res.text()));
                 }
             } catch (err) {
                 console.error("Lockdown error:", err);
-                alert("❌ A network error occurred.");
+                alert(i18nSec.network_error);
             } finally {
                 btnEnable.innerHTML = originalText;
                 btnEnable.disabled = false;
@@ -645,10 +634,10 @@
                 btnDisable.disabled = false;
                 btnDisable.classList.remove('opacity-50', 'cursor-not-allowed');
             }
-
         }
 
         async function triggerDisablePorts(){
+            const i18nSec = window.I18N.security;
             const btnEnable = document.getElementById('btn-enable-dns');
             const btnDisable = document.getElementById('btn-disable-dns');
 
@@ -657,23 +646,22 @@
             btnDisable.disabled = true;
             btnDisable.classList.add('opacity-50', 'cursor-not-allowed');
 
-            const originalText =  btnDisable.innerHTML;
-            btnDisable.innerHTML = 'Disabling... ⏳';
+            const originalText = btnDisable.innerHTML;
+            btnDisable.innerHTML = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Kapatılıyor... ⏳' : 'Disabling... ⏳';
 
             try {
                 const res = await fetch('/api/security/standard/disable', { method: 'POST' });
-                const data = await res.json(); // Safely parse the response (even if it's an error)
+                const data = await res.json();
 
                 if (res.ok) {
-                    alert("✅ Success: " + data.message);
-                    fetchSecurityData(); // Refresh the UFW table so they see the new CF IPs!
+                    alert(i18nSec.success_generic + data.message);
+                    fetchSecurityData();
                 } else {
-                    // This will catch your "Cloudflare lockdown is only applicable..." error!
-                    alert("❌ Failed: " + (data.message || await res.text()));
+                    alert(i18nSec.fail_generic + (data.message || await res.text()));
                 }
             } catch (err) {
                 console.error("Lockdown error:", err);
-                alert("❌ A network error occurred.");
+                alert(i18nSec.network_error);
             } finally {
                 btnEnable.disabled = false;
                 btnEnable.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -681,17 +669,17 @@
                 btnDisable.disabled = false;
                 btnDisable.classList.remove('opacity-50', 'cursor-not-allowed');
             }
-
         }
 
         async function triggerCloudflareLockdown() {
-            if (!confirm("This will configure UFW to drop all internet traffic on ports 80 and 443 unless it originates from Cloudflare. Continue?")) return;
+            const i18nSec = window.I18N.security;
+            if (!confirm(i18nSec.confirm_cf_lockdown)) return;
 
             const btn = document.getElementById('btn-sync-cloudflare');
             const btn_2 = document.getElementById('btn-unlock-ports');
             const originalText = btn.innerHTML;
             
-            btn.innerHTML = 'Syncing... ⏳';
+            btn.innerHTML = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Senkronize Ediliyor... ⏳' : 'Syncing... ⏳';
             btn_2.disabled = true;
             btn_2.classList.add('opacity-50', 'cursor-not-allowed');
             btn.disabled = true;
@@ -699,18 +687,17 @@
 
             try {
                 const res = await fetch('/api/security/cloudflare/lockdown', { method: 'POST' });
-                const data = await res.json(); // Safely parse the response (even if it's an error)
+                const data = await res.json();
 
                 if (res.ok) {
-                    alert("✅ Success: " + data.message);
-                    fetchSecurityData(); // Refresh the UFW table so they see the new CF IPs!
+                    alert(i18nSec.success_generic + data.message);
+                    fetchSecurityData();
                 } else {
-                    // This will catch your "Cloudflare lockdown is only applicable..." error!
-                    alert("❌ Failed: " + (data.message || await res.text()));
+                    alert(i18nSec.fail_generic + (data.message || await res.text()));
                 }
             } catch (err) {
                 console.error("Lockdown error:", err);
-                alert("❌ A network error occurred.");
+                alert(i18nSec.network_error);
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -721,13 +708,14 @@
         }
 
         async function triggerRevertLockdown() {
-            if (!confirm("This will REOPEN ports 80/443 to the entire internet. Are you sure?")) return;
+            const i18nSec = window.I18N.security;
+            if (!confirm(i18nSec.confirm_revert)) return;
 
             const btn = document.getElementById('btn-sync-cloudflare');
             const btn_2 = document.getElementById('btn-unlock-ports');
             const originalText = btn_2.innerHTML;
 
-            btn_2.innerHTML = 'Disabling... ⏳';
+            btn_2.innerHTML = i18nSec.checking === 'Kontrol Ediliyor...' ? 'Kapatılıyor... ⏳' : 'Disabling... ⏳';
             btn_2.disabled = true;
             btn_2.classList.add('opacity-50', 'cursor-not-allowed');
             btn.disabled = true;
@@ -736,20 +724,19 @@
             try {
                 const res = await fetch('/api/security/cloudflare/revert', { method: 'POST' });
                 if (res.ok) {
-                    alert("✅ Ports are now open to all traffic.");
+                    alert(i18nSec.checking === 'Kontrol Ediliyor...' ? '✅ Portlar tüm trafiğe açıldı.' : '✅ Ports are now open to all traffic.');
                     fetchSecurityData();
                 } else {
-                    alert("❌ Failed to revert.");
+                    alert(i18nSec.fail_generic);
                 }
             } catch (e) {
-                alert("Network error.");
-            }
-            finally{
+                alert(i18nSec.network_error);
+            } finally {
                 btn_2.innerHTML = originalText;
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
                 btn_2.disabled = false;
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn_2.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
@@ -779,13 +766,11 @@
             }
         }
 
-        syncProxyUIForSecurity(); // Call this function on page load
-        // Initial Fetch
+        syncProxyUIForSecurity();
         fetchSecurityData();
-        fetchFail2BanStatus(); // <-- ADD THIS
+        fetchFail2BanStatus();
 
-        // Polling Timers
-        setInterval(syncProxyUIForSecurity, 15000); // Check proxy settings every 15 seconds
+        setInterval(syncProxyUIForSecurity, 15000);
         setInterval(fetchSecurityData, 10000); 
         setInterval(fetchFail2BanStatus, 10000);
     </script>

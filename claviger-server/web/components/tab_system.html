@@ -2,14 +2,14 @@
 <div id="tab-system" class="space-y-6 block animate-fade-in">
 
     <div>
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">System Overview</h2>
-        <p class="text-muted-foreground text-sm mt-1">Monitor and manage your system resources.</p>
+        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "system.title" }}</h2>
+        <p class="text-muted-foreground text-sm mt-1">{{ T "system.subtitle" }}</p>
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
         <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
-            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">CPU Usage</h3>
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">{{ T "system.cpu" }}</h3>
             <div>
                 <div class="flex items-end justify-between mb-2">
                     <span id="sys-cpu-val" class="text-3xl font-bold tracking-tight text-slate-100">--%</span>
@@ -22,7 +22,7 @@
         </div>
 
         <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
-            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">Memory</h3>
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">{{ T "system.ram" }}</h3>
             <div>
                 <div class="flex items-end justify-between mb-2">
                     <span id="sys-ram-val" class="text-3xl font-bold tracking-tight text-slate-100">--%</span>
@@ -35,7 +35,7 @@
         </div>
 
         <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
-            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">Storage (/)</h3>
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">{{ T "system.disk" }}</h3>
             <div>
                 <div class="flex items-end justify-between mb-2">
                     <span id="sys-disk-val" class="text-3xl font-bold tracking-tight text-slate-100">--%</span>
@@ -48,7 +48,7 @@
         </div>
 
         <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
-            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">Network Traffic</h3>
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">{{ T "system.network" }}</h3>
             <div class="space-y-3 mt-2">
                 <div class="flex justify-between items-center text-sm bg-background/50 p-2 rounded-lg border border-border/50">
                     <span class="text-muted-foreground font-medium flex items-center gap-2">
@@ -69,21 +69,15 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         
         <div class="bg-surface rounded-2xl border border-border shadow-sm col-span-1 p-6">
-            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-6">Node Info</h3>
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-6">{{ T "system.node_info" }}</h3>
             <div class="space-y-5">
                 <div>
-                    <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Operating System</p>
-                    <p class="text-slate-200 font-semibold tracking-tight" id="sys-os">Loading...</p>
+                    <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">{{ T "system.os" }}</p>
+                    <p class="text-slate-200 font-semibold tracking-tight" id="sys-os">{{ T "system.os_loading" }}</p>
                 </div>
                 <div>
-                    <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">System Uptime</p>
+                    <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">{{ T "system.uptime" }}</p>
                     <p class="text-slate-200 font-semibold tracking-tight" id="sys-uptime">--</p>
-                </div>
-                <div class="pt-5 border-t border-border">
-                    <p class="text-xs font-medium text-muted-foreground flex items-center justify-between">
-                        <span>Daemon Version</span>
-                        <span class="font-mono text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">v1.0.0-edge</span>
-                    </p>
                 </div>
             </div>
         </div>
@@ -92,28 +86,27 @@
     <hr class="border-border my-8">
     
     <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-bold text-slate-100">Automated Tasks</h3>
-        <span class="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">Cron Engine</span>
+        <h3 class="text-lg font-bold text-slate-100">{{ T "system.cron_title" }}</h3>
+        <span class="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">{{ T "system.cron_badge" }}</span>
     </div>
 
     <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
         <div class="divide-y divide-border" id="cron-task-list">
             
             <div class="p-6 text-center text-slate-400 text-sm font-medium animate-pulse">
-                Loading automated tasks...
+                {{ T "system.loading_tasks" }}
             </div>
             
         </div>
     </div>
 
     <script>
-
         // Fetch and render the background tasks
         async function fetchSystemTasks() {
             const listEl = document.getElementById('cron-task-list');
+            const i18nSys = window.I18N.system;
             
             try {
-                // We will build this Go API next!
                 const res = await fetch('/api/system/tasks');
                 if (!res.ok) throw new Error('Failed to load tasks');
                 const tasks = await res.json();
@@ -121,7 +114,7 @@
                 listEl.innerHTML = ''; // Clear loading state
 
                 if (!tasks || tasks.length === 0) {
-                    listEl.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">No tasks configured.</div>`;
+                    listEl.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">${i18nSys.no_tasks}</div>`;
                     return;
                 }
 
@@ -153,7 +146,7 @@
 
                             <div class="flex items-center gap-4 border-t border-border pt-4 md:border-0 md:pt-0">
                                 <button onclick="runTaskNow('${task.id}', this)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-border rounded text-xs font-medium text-slate-300 transition-colors flex items-center justify-center gap-2 w-28">
-                                    ▶ Run Now
+                                    ${i18nSys.btn_run}
                                 </button>
                                 
                                 <label class="relative inline-flex items-center cursor-pointer">
@@ -168,15 +161,14 @@
                 });
             } catch (e) {
                 console.error("Fetch Tasks Error:", e);
-                listEl.innerHTML = `<div class="p-6 text-center text-red-400 text-sm">⚠️ Error loading tasks. Check console.</div>`;
+                listEl.innerHTML = `<div class="p-6 text-center text-red-400 text-sm">${i18nSys.err_tasks}</div>`;
             }
         }
 
         async function runTaskNow(taskId, btnElement) {
-            // 1. Save original state
+            const i18nSys = window.I18N.system;
             const originalHTML = btnElement.innerHTML;
             
-            // 2. Set loading state
             btnElement.disabled = true;
             btnElement.classList.add('opacity-50', 'cursor-not-allowed');
             btnElement.innerHTML = `
@@ -184,30 +176,24 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Running...
+                ${i18nSys.running}
             `;
 
             try {
-                // Send run request to Go
                 const res = await fetch(`/api/system/tasks/${taskId}/run`, { method: 'POST' });
                 
                 if (res.ok) {
-                    // 3. Show Success Inline
-                    btnElement.innerHTML = `✅ Success`;
+                    btnElement.innerHTML = i18nSys.success;
                     btnElement.classList.replace('text-slate-300', 'text-emerald-400');
-                    
-                    // Wait a brief moment so the user sees the success message, then refresh
                     setTimeout(() => fetchSystemTasks(), 1200); 
                 } else {
-                    // 4. Show Failure Inline
-                    btnElement.innerHTML = `❌ Failed`;
+                    btnElement.innerHTML = i18nSys.failed;
                     btnElement.classList.replace('text-slate-300', 'text-red-400');
                 }
             } catch(e) {
-                btnElement.innerHTML = `⚠️ Network Error`;
+                btnElement.innerHTML = i18nSys.net_error;
                 btnElement.classList.replace('text-slate-300', 'text-red-400');
             } finally {
-                // 5. Restore original button state after 2.5 seconds if it didn't refresh
                 setTimeout(() => {
                     btnElement.disabled = false;
                     btnElement.innerHTML = originalHTML;
@@ -217,27 +203,26 @@
         }
 
         async function toggleTask(taskId, isEnabled) {
+            const i18nSys = window.I18N.system;
             try {
                 await fetch(`/api/system/tasks/${taskId}/toggle`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ enabled: isEnabled })
                 });
-                fetchSystemTasks(); // Refresh to update 'Next Run' times
+                fetchSystemTasks();
             } catch(e) {
-                alert("Failed to toggle task.");
+                alert(i18nSys.toggle_failed);
             }
         }
         
         async function fetchSystemData() {
             try {
-                // VPN Status
                 const statusRes = await fetch('/api/status');
                 if (statusRes.ok) {
                     const statusData = await statusRes.json();
                 }
 
-                // Hardware Stats
                 const sysRes = await fetch('/api/system');
                 if (sysRes.ok) {
                     const sys = await sysRes.json();
@@ -282,7 +267,7 @@
 
         fetchSystemTasks();
         fetchSystemData();
-        setInterval(fetchSystemData, 3000); // Fast hardware polling (3s)
+        setInterval(fetchSystemData, 3000);
     </script>
 </div>
 {{ end }}

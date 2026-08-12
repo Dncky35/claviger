@@ -3,39 +3,39 @@
     
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-3xl font-bold text-slate-100 tracking-tight">Network Access Control</h2>
-            <p class="text-muted-foreground text-sm mt-1">Manage Zero Trust devices and role-based routing.</p>
+            <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "peers.title" }}</h2>
+            <p class="text-muted-foreground text-sm mt-1">{{ T "peers.subtitle" }}</p>
         </div>
         <!-- ACTION BUTTONS -->
         <div class="flex items-center gap-3 shrink-0">
             <button onclick="openMobileModal()" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-5 py-2.5 rounded-xl font-semibold transition-all text-sm flex items-center gap-2 active:scale-95">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-                Add Mobile Device
+                {{ T "peers.btn_mobile" }}
             </button>
             <button onclick="openRegistrationModal()" class="bg-primary hover:bg-primary/90 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)] px-5 py-2.5 rounded-xl font-semibold transition-all text-sm flex items-center gap-2 active:scale-95">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                Register Desktop
+                {{ T "peers.btn_desktop" }}
             </button>
         </div>
     </div>
 
     <div>
-        <h3 class="text-lg font-bold text-slate-100 mb-4 tracking-tight">Managed Devices</h3>
+        <h3 class="text-lg font-bold text-slate-100 mb-4 tracking-tight">{{ T "peers.sec_devices" }}</h3>
         <div class="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse whitespace-nowrap">
                     <thead>
                         <tr class="bg-background border-b border-border text-muted-foreground text-[10px] uppercase tracking-widest font-bold">
-                            <th class="p-5">Device Name</th>
-                            <th class="p-5">Assigned IP</th>
-                            <th class="p-5">Role</th>
-                            <th class="p-5 text-center">State</th> 
-                            <th class="p-5 text-center">Node Ops</th> <!-- NEW COLUMN -->
-                            <th class="p-5 text-right">Controls</th>
+                            <th class="p-5">{{ T "peers.th_name" }}</th>
+                            <th class="p-5">{{ T "peers.th_ip" }}</th>
+                            <th class="p-5">{{ T "peers.th_role" }}</th>
+                            <th class="p-5 text-center">{{ T "peers.th_state" }}</th> 
+                            <th class="p-5 text-center">{{ T "peers.th_ops" }}</th>
+                            <th class="p-5 text-right">{{ T "peers.th_controls" }}</th>
                         </tr>
                     </thead>
                     <tbody id="list-active-peers" class="divide-y divide-border/50 text-sm text-slate-300">
-                        <tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="6">Loading devices...</td></tr>
+                        <tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="6">{{ T "peers.loading" }}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -44,13 +44,13 @@
 </div>
 
 <!-- ========================================== -->
-<!-- 1. DESKTOP REGISTRATION MODAL (Unchanged)  -->
+<!-- 1. DESKTOP REGISTRATION MODAL              -->
 <!-- ========================================== -->
 <div id="modal-register" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
     <div class="bg-surface border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300" id="modal-register-content">
         
         <div class="border-b border-border p-5 flex justify-between items-center bg-background/50">
-            <h3 class="text-lg font-bold text-slate-100">Register Desktop</h3>
+            <h3 class="text-lg font-bold text-slate-100">{{ T "peers.modal_desktop_title" }}</h3>
             <button onclick="closeRegistrationModal()" class="text-muted-foreground hover:text-white transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
@@ -58,30 +58,29 @@
 
         <div class="p-6">
             <div id="reg-state-1" class="space-y-4 block">
-                <p class="text-sm text-muted-foreground">Paste the <strong class="text-slate-200">Connection Request Token</strong> provided by the user's Claviger Client app.</p>
-                <textarea id="input-client-request" rows="4" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-300 font-mono focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none placeholder:text-slate-600" placeholder='eyJ0eXBlIjoicmVxdWVzdCIsInB1YmxpY19rZXkiOi... '></textarea>
+                <p class="text-sm text-muted-foreground">{{ T "peers.modal_desktop_desc" | safeHTML }}</p>
+                <textarea id="input-client-request" rows="4" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-300 font-mono focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none placeholder:text-slate-600" placeholder=""></textarea>
                 <p id="reg-error" class="text-xs text-destructive hidden font-medium"></p>
                 <div class="flex justify-end pt-2">
-                    <button onclick="previewRegistration()" id="btn-preview" class="bg-primary hover:bg-primary/90 text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors">Decode & Preview</button>
+                    <button onclick="previewRegistration()" id="btn-preview" class="bg-primary hover:bg-primary/90 text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors">{{ T "peers.btn_decode" }}</button>
                 </div>
             </div>
 
             <div id="reg-state-2" class="space-y-5 hidden">
                 <div class="bg-background rounded-lg p-4 border border-border space-y-2">
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">Device:</span> <span id="preview-hostname" class="font-bold text-slate-200"></span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">Platform:</span> <span id="preview-platform" class="font-bold uppercase tracking-wider text-[10px] text-slate-300"></span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ T "peers.label_device" }}</span> <span id="preview-hostname" class="font-bold text-slate-200"></span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ T "peers.label_platform" }}</span> <span id="preview-platform" class="font-bold uppercase tracking-wider text-[10px] text-slate-300"></span></div>
                 </div>
                 
                 <div>
-                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Assign Network Role</label>
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "peers.label_assign_role" }}</label>
                     <select id="select-role" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-200 focus:border-primary outline-none">
-                        <!-- Populated by JS -->
                     </select>
                 </div>
                 
                 <div class="flex justify-between pt-2">
-                    <button onclick="switchModalState(1)" class="text-muted-foreground hover:text-white px-4 py-2 text-sm font-medium transition-colors">Back</button>
-                    <button onclick="confirmRegistration()" id="btn-confirm" class="bg-success hover:bg-success/90 text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors shadow-[0_0_10px_rgba(34,197,94,0.3)]">Approve & Generate Visa</button>
+                    <button onclick="switchModalState(1)" class="text-muted-foreground hover:text-white px-4 py-2 text-sm font-medium transition-colors">{{ T "peers.btn_back" }}</button>
+                    <button onclick="confirmRegistration()" id="btn-confirm" class="bg-success hover:bg-success/90 text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors shadow-[0_0_10px_rgba(34,197,94,0.3)]">{{ T "peers.btn_approve_visa" }}</button>
                 </div>
             </div>
 
@@ -89,8 +88,8 @@
                 <div class="w-12 h-12 rounded-full bg-success/20 text-success flex items-center justify-center mx-auto mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <h4 class="text-lg font-bold text-slate-100">Device Approved</h4>
-                <p class="text-sm text-muted-foreground pb-2">Copy this <strong class="text-success">Server Approval Token</strong> and send it securely back to the user.</p>
+                <h4 class="text-lg font-bold text-slate-100">{{ T "peers.modal_approved_title" }}</h4>
+                <p class="text-sm text-muted-foreground pb-2">{{ T "peers.modal_approved_desc" | safeHTML }}</p>
                 
                 <div class="relative">
                     <textarea id="output-server-approval" rows="4" readonly class="w-full bg-background/50 border border-success/30 rounded-lg p-3 text-xs text-success/80 font-mono outline-none resize-none"></textarea>
@@ -99,7 +98,7 @@
                 <div class="pt-4">
                     <button onclick="copyAndCloseRegistration()" class="w-full bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        Copy Token & Close
+                        {{ T "peers.btn_copy_close" }}
                     </button>
                 </div>
             </div>
@@ -108,13 +107,13 @@
 </div>
 
 <!-- ========================================== -->
-<!-- 2. MOBILE REGISTRATION MODAL (New)         -->
+<!-- 2. MOBILE REGISTRATION MODAL               -->
 <!-- ========================================== -->
 <div id="modal-mobile" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
     <div class="bg-surface border border-border w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300" id="modal-mobile-content">
         
         <div class="border-b border-border p-5 flex justify-between items-center bg-background/50">
-            <h3 class="text-lg font-bold text-slate-100">Add Mobile Device</h3>
+            <h3 class="text-lg font-bold text-slate-100">{{ T "peers.modal_mobile_title" }}</h3>
             <button onclick="closeMobileModal()" class="text-muted-foreground hover:text-white transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
@@ -122,26 +121,26 @@
 
         <div class="p-6">
             <div id="mobile-state-1" class="space-y-5 block">
-                <p class="text-sm text-muted-foreground leading-relaxed">Enter a name for this device and assign a role. Claviger will securely generate the keys and display a QR code.</p>
+                <p class="text-sm text-muted-foreground leading-relaxed">{{ T "peers.modal_mobile_desc" }}</p>
                 
                 <div>
-                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Device Name</label>
-                    <input type="text" id="input-mobile-name" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-slate-600" placeholder="e.g. John's iPhone">
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "peers.label_device_name" }}</label>
+                    <input type="text" id="input-mobile-name" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-slate-600" placeholder="">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Assign Network Role</label>
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "peers.label_assign_role" }}</label>
                     <select id="select-mobile-role" class="w-full bg-background border border-border rounded-lg p-3 text-sm text-slate-200 focus:border-primary outline-none">
-                        </select>
+                    </select>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Routing Mode</label>
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "peers.label_routing" }}</label>
                     <label class="flex items-start space-x-3 bg-background border border-border rounded-lg p-3 cursor-pointer hover:border-primary/50 transition-colors">
                         <input type="checkbox" id="checkbox-mobile-global" class="mt-1 w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary focus:ring-1 cursor-pointer">
                         <div class="flex flex-col">
-                            <span class="text-sm text-slate-200 font-bold">Global Routing (Full Tunnel)</span>
-                            <span class="text-xs text-muted-foreground mt-0.5 leading-relaxed">Route all internet traffic through the VPN. Leave unchecked (Split Tunnel) to save battery and bypass carrier restrictions.</span>
+                            <span class="text-sm text-slate-200 font-bold">{{ T "peers.routing_global" }}</span>
+                            <span class="text-xs text-muted-foreground mt-0.5 leading-relaxed">{{ T "peers.routing_desc" }}</span>
                         </div>
                     </label>
                 </div>
@@ -151,27 +150,27 @@
                 <div class="pt-2">
                     <button onclick="submitMobileRegistration()" id="btn-mobile-generate" class="w-full bg-primary hover:bg-primary/90 text-white px-5 py-3 rounded-lg font-bold text-sm transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="7" y="7" width="3" height="3"></rect><rect x="14" y="7" width="3" height="3"></rect><rect x="7" y="14" width="3" height="3"></rect><rect x="14" y="14" width="3" height="3"></rect></svg>
-                        Generate QR Code
+                        {{ T "peers.btn_gen_qr" }}
                     </button>
                 </div>
             </div>
 
             <div id="mobile-state-2" class="space-y-4 hidden text-center">
-                <h4 class="text-lg font-bold text-slate-100">Scan to Connect</h4>
-                <p class="text-xs text-muted-foreground pb-2">Open the official WireGuard app on your phone, tap <strong class="text-slate-300">+</strong>, and select <strong class="text-slate-300">"Create from QR code"</strong>.</p>
+                <h4 class="text-lg font-bold text-slate-100">{{ T "peers.modal_scan_title" }}</h4>
+                <p class="text-xs text-muted-foreground pb-2">{{ T "peers.modal_scan_desc" | safeHTML }}</p>
                 
                 <div class="bg-white p-3 rounded-xl inline-block mx-auto">
                     <img id="mobile-qr-image" src="" alt="WireGuard QR Code" class="w-48 h-48 object-contain">
                 </div>
 
                 <div class="bg-background rounded-lg p-3 border border-border text-xs flex justify-between text-muted-foreground mt-2">
-                    <span>Assigned IP:</span>
+                    <span>{{ T "peers.label_assigned_ip" }}</span>
                     <span id="mobile-assigned-ip" class="font-mono text-emerald-400 font-bold"></span>
                 </div>
                 
                 <div class="pt-4">
                     <button onclick="closeMobileModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-lg font-bold text-sm transition-colors">
-                        Done
+                        {{ T "peers.btn_done" }}
                     </button>
                 </div>
             </div>
@@ -180,10 +179,18 @@
 </div>
 
 <script>
-    // Global variable to hold the decoded request temporarily
+    document.addEventListener('DOMContentLoaded', () => {
+        const i18nPeers = window.I18N.peers;
+        if (i18nPeers) {
+            const inputToken = document.getElementById('input-client-request');
+            const inputMobileName = document.getElementById('input-mobile-name');
+            if (inputToken) inputToken.placeholder = i18nPeers.placeholder_token;
+            if (inputMobileName) inputMobileName.placeholder = i18nPeers.placeholder_device_name;
+        }
+    });
+
     let currentClientRequest = null;
 
-    // --- Dynamic Roles Fetcher ---
     async function fetchRolesForDropdown() {
         try {
             const res = await fetch('/api/roles');
@@ -208,9 +215,6 @@
         } catch (err) { console.error("Failed to load roles."); }
     }
 
-    // ==========================================
-    // DESKTOP MODAL LOGIC 
-    // ==========================================
     function openRegistrationModal() {
         document.getElementById('input-client-request').value = '';
         document.getElementById('reg-error').classList.add('hidden');
@@ -248,17 +252,18 @@
     }
 
     async function previewRegistration() {
+        const i18nPeers = window.I18N.peers;
         const token = document.getElementById('input-client-request').value.trim();
         const errText = document.getElementById('reg-error');
         const btn = document.getElementById('btn-preview');
 
         if (!token) {
-            errText.innerText = "Please paste a token first.";
+            errText.innerText = i18nPeers.alert_token_required;
             errText.classList.remove('hidden');
             return;
         }
 
-        btn.innerText = "Decoding..."; btn.disabled = true;
+        btn.innerText = i18nPeers.err_decoding; btn.disabled = true;
 
         try {
             const res = await fetch('/api/register/preview', {
@@ -275,20 +280,22 @@
                 document.getElementById('preview-platform').innerText = data.request.platform;
                 switchModalState(2);
             } else {
-                errText.innerText = data.message || "Invalid Token.";
-                errText.classList.remove('hidden');
+                errText.innerText = data.message || i18nPeers.err_invalid_token;
+                errText.classList.add('hidden');
             }
         } catch (err) {
-            errText.innerText = "Network Error."; errText.classList.remove('hidden');
+            errText.innerText = i18nPeers.err_net; errText.classList.remove('hidden');
         }
-        btn.innerText = "Decode & Preview"; btn.disabled = false;
+        btn.innerText = i18nPeers.btn_decode; btn.disabled = false;
     }
 
     async function confirmRegistration() {
+        const i18nPeers = window.I18N.peers;
         const roleId = document.getElementById('select-role').value;
         const btn = document.getElementById('btn-confirm');
         
-        btn.innerText = "Applying Firewall Rules..."; btn.disabled = true;
+        const originalBtnText = btn.innerText;
+        btn.innerText = i18nPeers.err_applying_rules; btn.disabled = true;
 
         try {
             const res = await fetch('/api/register/confirm', {
@@ -307,29 +314,25 @@
                 switchModalState(1); 
             }
         } catch (err) {
-            alert("Registration failed due to network error.");
+            alert(i18nPeers.err_reg_fail);
             switchModalState(1);
         }
-        btn.innerText = "Approve & Generate Visa"; btn.disabled = false;
+        btn.innerText = originalBtnText; btn.disabled = false;
     }
-1
+
     function copyAndCloseRegistration() {
+        const i18nPeers = window.I18N.peers;
         const token = document.getElementById('output-server-approval').value;
         navigator.clipboard.writeText(token).then(() => {
             closeRegistrationModal();
         }).catch(() => {
-            alert("Copied failed. Please copy the token manually.");
+            alert(i18nPeers.copy_fail);
         });
     }
 
-    // ==========================================
-    // MOBILE MODAL LOGIC 
-    // ==========================================
     function openMobileModal() {
         document.getElementById('input-mobile-name').value = '';
         document.getElementById('mobile-error').classList.add('hidden');
-        
-        // 🎯 NEW: Reset the checkbox to unchecked (Split Tunnel default)
         document.getElementById('checkbox-mobile-global').checked = false; 
 
         document.getElementById('mobile-state-1').classList.remove('hidden');
@@ -355,34 +358,32 @@
         
         setTimeout(() => {
             modal.classList.add('hidden');
-            // Clear the QR image so it's fresh next time
             document.getElementById('mobile-qr-image').src = '';
         }, 300);
     }
 
     async function submitMobileRegistration() {
+        const i18nPeers = window.I18N.peers;
         const nameInput = document.getElementById('input-mobile-name').value.trim();
         const roleId = document.getElementById('select-mobile-role').value;
-        // 🎯 NEW: Grab the boolean value from the checkbox
         const isGlobal = document.getElementById('checkbox-mobile-global').checked; 
         
         const errText = document.getElementById('mobile-error');
         const btn = document.getElementById('btn-mobile-generate');
 
         if (!nameInput) {
-            errText.innerText = "Device name is required.";
+            errText.innerText = i18nPeers.alert_name_required;
             errText.classList.remove('hidden');
             return;
         }
 
-        btn.innerHTML = "Generating Keys... ⏳"; 
+        btn.innerHTML = i18nPeers.gen_keys; 
         btn.disabled = true;
 
         try {
             const res = await fetch('/api/enrollment/mobile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // 🎯 NEW: Inject `use_global_routing` into the payload
                 body: JSON.stringify({ 
                     name: nameInput, 
                     role: roleId,
@@ -393,36 +394,33 @@
 
             if (res.ok) {
                 errText.classList.add('hidden');
-                // Set the QR code image source
                 document.getElementById('mobile-qr-image').src = result.data.qr_code_base64;
                 document.getElementById('mobile-assigned-ip').innerText = result.data.assigned_ip;
                 
-                // Switch view
                 document.getElementById('mobile-state-1').classList.add('hidden');
                 document.getElementById('mobile-state-2').classList.remove('hidden');
                 
-                fetchPeersData(); // Refresh table
+                fetchPeersData();
             } else {
-                errText.innerText = result.message || "Failed to generate keys.";
-                errText.classList.remove('hidden');
+                errText.innerText = result.message || i18nPeers.err_invalid_token;
+                errText.classList.add('hidden');
             }
         } catch (err) {
-            errText.innerText = "Network Error."; 
-            errText.classList.remove('hidden');
+            errText.innerText = i18nPeers.err_net; 
+            errText.classList.add('hidden');
         }
         
         btn.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="7" y="7" width="3" height="3"></rect><rect x="14" y="7" width="3" height="3"></rect><rect x="7" y="14" width="3" height="3"></rect><rect x="14" y="14" width="3" height="3"></rect></svg>
-            Generate QR Code
+            ${i18nPeers.btn_gen_qr}
         `; 
         btn.disabled = false;
     }
 
-    // ==========================================
-    // LIST MANAGEMENT 
-    // ==========================================
     async function revokeClient(clientId, clientName) {
-        if(!confirm(`🚨 DANGER: Are you sure you want to permanently revoke VPN access for ${clientName}? Their connection will drop instantly.`)) return;
+        const i18nPeers = window.I18N.peers;
+        const msg = i18nPeers.confirm_revoke.replace('%s', clientName);
+        if(!confirm(msg)) return;
 
         try {
             const res = await fetch('/api/revoke', {
@@ -436,10 +434,11 @@
             } else {
                 alert(`Error: ${data.message}`);
             }
-        } catch (err) { alert("Revocation failed."); }
+        } catch (err) { alert(i18nPeers.revoke_fail); }
     }
 
     async function fetchPeersData() {
+        const i18nPeers = window.I18N.peers;
         try {
             const clientRes = await fetch('/api/clients');
             if (clientRes.ok) {
@@ -455,45 +454,42 @@
                     if (c.status === 'active') {
                         activeCount++;
                         
-                        // --- 1. Connection State Badge ---
                         let stateBadge = c.is_online ? `
                             <div class="flex flex-col items-center justify-center">
                                 <div class="flex items-center">
                                     <div class="w-2 h-2 rounded-full bg-success mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
-                                    <span class="text-xs font-bold text-success uppercase tracking-wider">Online</span>
+                                    <span class="text-xs font-bold text-success uppercase tracking-wider">${i18nPeers.state_online}</span>
                                 </div>
                             </div>` : `
                             <div class="flex flex-col items-center justify-center">
                                 <div class="flex items-center">
                                     <div class="w-2 h-2 rounded-full bg-muted-foreground/40 mr-2"></div>
-                                    <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Offline</span>
+                                    <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">${i18nPeers.state_offline}</span>
                                 </div>
                             </div>`;
 
-                        // --- 2. Node Ops Column Logic ---
-                        let nodeOpsHtml = `<span class="text-muted-foreground/50">-</span>`; // Default if not a node
+                        let nodeOpsHtml = `<span class="text-muted-foreground/50">-</span>`;
 
                         if (c.is_sub_server) {
                             if (c.sub_server_status === 'pending') {
                                 nodeOpsHtml = `
                                     <div class="flex items-center justify-center gap-2">
-                                        <button onclick="approveNode('${c.id}', '${c.name}')" class="text-success hover:text-white text-[10px] uppercase font-bold tracking-wider bg-success/10 hover:bg-success px-2 py-1 rounded border border-success/20 transition-colors">Approve</button>
-                                        <button onclick="removeNode('${c.id}', '${c.name}')" class="text-amber-500 hover:text-white text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 hover:bg-amber-500 px-2 py-1 rounded border border-amber-500/20 transition-colors">Deny</button>
+                                        <button onclick="approveNode('${c.id}', '${c.name}')" class="text-success hover:text-white text-[10px] uppercase font-bold tracking-wider bg-success/10 hover:bg-success px-2 py-1 rounded border border-success/20 transition-colors">${i18nPeers.btn_approve}</button>
+                                        <button onclick="removeNode('${c.id}', '${c.name}')" class="text-amber-500 hover:text-white text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 hover:bg-amber-500 px-2 py-1 rounded border border-amber-500/20 transition-colors">${i18nPeers.btn_deny}</button>
                                     </div>
                                 `;
                             } else if (c.sub_server_status === 'active') {
                                 nodeOpsHtml = `
                                     <div class="flex items-center justify-center gap-3">
                                         <span class="text-indigo-400 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">
-                                            <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></div> Active
+                                            <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></div> ${i18nPeers.status_active}
                                         </span>
-                                        <button onclick="removeNode('${c.id}', '${c.name}')" class="text-muted-foreground hover:text-destructive text-[10px] uppercase font-bold tracking-wider bg-background px-2 py-1 rounded border border-border hover:border-destructive transition-colors" title="Remove Remote Control">Remove</button>
+                                        <button onclick="removeNode('${c.id}', '${c.name}')" class="text-muted-foreground hover:text-destructive text-[10px] uppercase font-bold tracking-wider bg-background px-2 py-1 rounded border border-border hover:border-destructive transition-colors" title="">${i18nPeers.btn_node_remove}</button>
                                     </div>
                                 `;
                             }
                         }
 
-                        // --- 3. Build Row ---
                         const tr = document.createElement('tr');
                         tr.className = 'hover:bg-background/50 transition-colors';
                         tr.innerHTML = `
@@ -503,20 +499,22 @@
                             <td class="p-4">${stateBadge}</td>
                             <td class="p-4 text-center">${nodeOpsHtml}</td>
                             <td class="p-4 text-right">
-                                <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">Revoke</button>
+                                <button onclick="revokeClient('${c.id}', '${c.name}')" class="text-destructive hover:text-white text-[10px] uppercase font-bold tracking-wider bg-background px-3 py-1.5 rounded-lg border border-border hover:bg-destructive hover:border-destructive transition-colors">${i18nPeers.btn_revoke}</button>
                             </td>
                         `;
                         activeTbody.appendChild(tr);
                     }
                 });
 
-                if(activeCount === 0) activeTbody.innerHTML = '<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="6">No managed devices found.</td></tr>';
+                if(activeCount === 0) activeTbody.innerHTML = `<tr><td class="p-8 text-center text-muted-foreground italic font-medium" colspan="6">${i18nPeers.no_devices}</td></tr>`;
             }
         } catch (err) { console.error("Error fetching clients:", err); }
     }
 
     async function approveNode(clientId, clientName) {
-        if (!confirm(`Approve remote management for node: ${clientName}?`)) return;
+        const i18nPeers = window.I18N.peers;
+        const msg = i18nPeers.confirm_approve_node.replace('%s', clientName);
+        if (!confirm(msg)) return;
 
         try {
             const res = await fetch('/api/sub-servers/approve', {
@@ -525,12 +523,14 @@
                 body: JSON.stringify({ client_id: clientId })
             });
             if (res.ok) fetchPeersData();
-            else alert('Failed to approve node.');
+            else alert(i18nPeers.err_approve_node);
         } catch (err) { console.error(err); }
     }
 
     async function removeNode(clientId, clientName) {
-        if (!confirm(`Remove Node capabilities from ${clientName}?\n(This will NOT revoke their VPN access).`)) return;
+        const i18nPeers = window.I18N.peers;
+        const msg = i18nPeers.confirm_remove_node.replace('%s', clientName);
+        if (!confirm(msg)) return;
 
         try {
             const res = await fetch('/api/sub-servers/remove', {
@@ -539,7 +539,7 @@
                 body: JSON.stringify({ client_id: clientId })
             });
             if (res.ok) fetchPeersData();
-            else alert('Failed to remove node.');
+            else alert(i18nPeers.err_remove_node);
         } catch (err) { console.error(err); }
     }
 

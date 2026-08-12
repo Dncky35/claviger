@@ -5,19 +5,68 @@
             <img src="/static/icon.png" alt="Logo" class="w-full h-full object-contain" />
         </div>
         <h1 class="text-xl font-bold tracking-tight text-slate-200">
-            Claviger-Server
+            {{ T "navbar.title" }}
         </h1>
     </div>
+    
     <div class="flex items-center space-x-4">
         <!-- Badges can go here -->
     </div>
-     <div class="flex items-center">
-    <a href="https://kreosus.com/cloudrocean" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest shadow-sm">
-        <span>❤️</span> Donate
-    </a>
-</div>
     
+    <div class="flex items-center space-x-4">
+        <a href="https://kreosus.com/cloudrocean" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest shadow-sm">
+            <span>❤️</span> {{ T "navbar.donate" }}
+        </a>
+
+        <!-- Language Selector Dropdown -->
+        <div class="relative inline-block text-left" id="lang-menu-container">
+            <button id="btn-lang-toggle" onclick="toggleLangMenu()" class="p-2.5 bg-surface hover:bg-slate-800 border border-border rounded-lg text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shadow-sm" title="Change Language">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </button>
+
+            <!-- Dropdown Panel -->
+            <div id="lang-dropdown" class="hidden absolute right-0 mt-2 w-48 origin-top-right rounded-xl bg-surface border border-border shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 overflow-hidden">
+                <div class="py-1">
+                    <button onclick="switchLanguage('en')" class="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-3">
+                        <span class="text-lg">🇺🇸</span> English
+                    </button>
+                    <button onclick="switchLanguage('tr')" class="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg">🇹🇷</span> Türkçe
+                        </div>
+                        <span class="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">Beta</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </nav>
+
+<script>
+    // Toggle the dropdown visibility
+    function toggleLangMenu() {
+        const dropdown = document.getElementById('lang-dropdown');
+        dropdown.classList.toggle('hidden');
+    }
+
+    // Close dropdown when clicking anywhere outside of it
+    document.addEventListener('click', function(event) {
+        const container = document.getElementById('lang-menu-container');
+        const dropdown = document.getElementById('lang-dropdown');
+        if (container && !container.contains(event.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    // Handle language switching via cookie and reload
+    function switchLanguage(lang) {
+        const maxAge = 60 * 60 * 24 * 365; // 1 year
+        document.cookie = `claviger_lang=${lang}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        window.location.reload();
+    }
+</script>
 {{ end }}
 
 
@@ -26,53 +75,52 @@
     <div class="p-4 space-y-8 mt-4">
         
         <div>
-            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">System Core</h3>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">{{ T "sidebar.cat_system" }}</h3>
             <div class="space-y-1">
-                <button onclick="switchTab('system')" id="btn-system" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">System Overview</button>
-                <button onclick="switchTab('network')" id="btn-network" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Network & Gateway</button>
+                <button onclick="switchTab('system')" id="btn-system" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.system" }}</button>
+                <button onclick="switchTab('network')" id="btn-network" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.network" }}</button>
                 
-                <button onclick="switchTab('security')" id="btn-security" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Security & Firewall</button>
+                <button onclick="switchTab('security')" id="btn-security" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.security" }}</button>
                 <button onclick="switchTab('voice')" id="btn-voice" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors flex items-center justify-between">
-                    Alerts & Watchdog
+                    {{ T "sidebar.alerts" }}
                 </button>
-                <button onclick="switchTab('access')" id="btn-access" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Server SSH Keys</button>
+                <button onclick="switchTab('access')" id="btn-access" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.ssh" }}</button>
             </div>
         </div>
 
         <div>
-            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Identity & Access</h3>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">{{ T "sidebar.cat_identity" }}</h3>
             <div class="space-y-1">
-                <button onclick="switchTab('clients')" id="btn-clients" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">VPN Peers</button>
-                <button onclick="switchTab('roles')" id="btn-roles" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Roles & Permissions</button>
-                <button onclick="switchTab('mfa')" id="btn-mfa" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Two-Factor Auth</button>
+                <button onclick="switchTab('clients')" id="btn-clients" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.peers" }}</button>
+                <button onclick="switchTab('roles')" id="btn-roles" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.roles" }}</button>
+                <button onclick="switchTab('mfa')" id="btn-mfa" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.mfa" }}</button>
             </div>
         </div>
 
         <div>
-            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Private Cloud</h3>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">{{ T "sidebar.cat_cloud" }}</h3>
             <div class="space-y-1">
-                <button onclick="switchTab('extensions')" id="btn-extensions" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Install Apps</button>
-                <button onclick="switchTab('llm')" id="btn-llm" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">AI & LLM Studio</button>
-                <button onclick="switchTab('containers')" id="btn-containers" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">Container Manager</button>
-                <button onclick="switchTab('uninstall')" id="btn-uninstall" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">App Management</button>
+                <button onclick="switchTab('extensions')" id="btn-extensions" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.extensions" }}</button>
+                <button onclick="switchTab('llm')" id="btn-llm" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.llm" }}</button>
+                <button onclick="switchTab('containers')" id="btn-containers" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.containers" }}</button>
+                <button onclick="switchTab('uninstall')" id="btn-uninstall" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">{{ T "sidebar.uninstall" }}</button>
             </div>
         </div>
 
-        <!-- NEW: Dynamic Fleet Nodes Section (Hidden by Default) -->
         <div>
-            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Fleet Nodes</h3>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">{{ T "sidebar.cat_fleet" }}</h3>
             <div class="space-y-1">
                 <button onclick="switchTab('fleet')" id="btn-fleet" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors">
-                    Fleet Management
+                    {{ T "sidebar.fleet" }}
                 </button>
             </div>
         </div>
 
         <div>
-            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Home Server</h3>
+            <h3 class="px-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">{{ T "sidebar.cat_homeserver" }}</h3>
             <div class="space-y-1">
                 <button onclick="switchTab('homeserver')" id="btn-homeserver" class="px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors flex items-center justify-between">
-                    Infrastructure
+                    {{ T "sidebar.infrastructure" }}
                 </button>
             </div>
         </div>
