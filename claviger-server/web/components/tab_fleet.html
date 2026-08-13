@@ -341,12 +341,14 @@
             }
         }
 
-        async function fetchFleetNodeUpdateStatus(nodeId){
+        async function fetchFleetNodeUpdateStatus(nodeId) {
             try {
-                // We call the MASTER API, which will securely proxy the request to the Subserver
+                // Hitting the subserver via the smart proxy
                 const res = await fetch(`/api/fleet/proxy/api/system/update/status`, {
-                     headers: { 'X-Node-ID': nodeId }
+                    method: 'GET',
+                    headers: { 'X-Node-ID': nodeId }
                 });
+                
                 if (!res.ok) throw new Error('Failed to load subserver update status');
                 const data = await res.json();
 
@@ -361,6 +363,7 @@
                 actionsContainer.innerHTML = ''; 
                 let hasUpdate = false;
 
+                // Render Stable Button
                 if (data.stable_update_available) {
                     hasUpdate = true;
                     actionsContainer.innerHTML += `
@@ -371,6 +374,7 @@
                     `;
                 }
 
+                // Render Beta Button
                 if (data.prerelease_update_available) {
                     hasUpdate = true;
                     actionsContainer.innerHTML += `
@@ -400,18 +404,46 @@
             }
         }
 
+        async function forceCheckFleetUpdates(btn) {
+            if (typeof currentSelectedNodeId === 'undefined' || !currentSelectedNodeId) {
+                alert("No subserver selected.");
+                return;
+            }
+            
+            const icon = document.getElementById('icon-fleet-manual-check');
+            const statusText = document.getElementById('fleet-update-status-text');
+            
+            btn.disabled = true;
+            icon.classList.add('animate-spin');
+            statusText.innerHTML = `<span class="text-primary">Asking node to check GitHub...</span>`;
+
+            try {
+                // Refetch the UI status after the check completes
+                await fetchFleetNodeUpdateStatus(currentSelectedNodeId); 
+            } catch (e) {
+                statusText.innerHTML = `<span class="text-red-400">Node failed to check updates.</span>`;
+            } finally {
+                btn.disabled = false;
+                icon.classList.remove('animate-spin');
+            }
+        }
+        
         async function applyFleetUpdate(nodeId, version, btnElement) {
             if (!confirm(`Deploy ${version} to this Subserver?\n\nThe node will momentarily disconnect from the Master gateway during the restart.`)) return;
 
             const originalHTML = btnElement.innerHTML;
-            btnElement.innerHTML = `Updating Node...`;
+            btnElement.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Updating Node...`;
             btnElement.disabled = true;
             btnElement.classList.add('opacity-75', 'cursor-not-allowed');
 
             try {
+                // Send the apply command via smart proxy
                 const res = await fetch(`/api/fleet/proxy/api/system/update`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Node-ID': nodeId },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Node-ID': nodeId 
+                    },
                     body: JSON.stringify({ version: version })
                 });
 
@@ -419,10 +451,11 @@
 
                 document.getElementById('fleet-update-status-text').innerHTML = `<span class="text-primary font-bold animate-pulse">Node is restarting...</span>`;
                 
-                // Wait 8 seconds, then refresh the status
+                // Wait 8 seconds for the node to reboot and reconnect the VPN tunnel, then refresh UI
                 setTimeout(() => fetchFleetNodeUpdateStatus(nodeId), 8000);
 
             } catch (e) {
+                console.error("Apply Update Error:", e);
                 alert("Failed to initiate node update.");
                 btnElement.innerHTML = originalHTML;
                 btnElement.disabled = false;

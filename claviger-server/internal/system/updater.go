@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"time"
 
@@ -114,44 +115,32 @@ func CheckGitHubForUpdates() (bool, string, error) {
 }
 
 // ApplyUpdate triggers the bash installation script for a specific version.
-// This can be called via the UI or a Cron task.
 func ApplyUpdate(targetVersion string) error {
 	db := storage.InitDB()
 	defer db.Close()
 
 	log.Printf("🚀 Initiating system update to version: %s", targetVersion)
 
-	// 1. Update the database state BEFORE the daemon is killed by the update script.
-	// This ensures that when the systemd service boots back up, the UI immediately sees the new version.
+	// 1. Save state
 	err := storage.SetConfig(db, "installed_version", targetVersion)
 	if err != nil {
 		return fmt.Errorf("failed to save new version state: %v", err)
 	}
-
-	// Clear the pending update flag so the UI stops showing the "Update Available" button
 	storage.SetConfig(db, "available_update_version", "")
+	storage.SetConfig(db, "available_prerelease_update_version", "")
 
-	// 2. Construct the CloudROcean Installer URL dynamically
-	// Example: https://api.cloudrocean.com/v1/installers/claviger-server/v0.3.16b7
 	installerURL := fmt.Sprintf("https://api.cloudrocean.com/v1/installers/claviger-server/%s", targetVersion)
 
-	// 3. Execute the Bash Update Script
-	// We use sh -c to pipe the curl output directly into bash.
-	cmdStr := fmt.Sprintf("curl -sSL %s | sudo bash", installerURL)
-	cmd := exec.Command("sh", "-c", cmdStr)
+	// 1. Drop the URL into a staging file that the persistent updater reads
+	os.MkdirAll("/etc/claviger", 0755)
+	os.WriteFile("/etc/claviger/pending_update.url", []byte(installerURL), 0644)
 
-	// Note: We use cmd.Start() instead of cmd.Run()!
-	// The bash script will run `systemctl stop claviger-server`. If we use Run() (which waits for completion),
-	// the script would kill this very Go process before returning, potentially causing a messy exit.
-	// Start() launches it in the background asynchronously.
-	err = cmd.Start()
-	if err != nil {
-		// Rollback DB state if the command fails to even start
-		storage.SetConfig(db, "installed_version", CurrentVersion)
-		return fmt.Errorf("failed to launch update script: %v", err)
+	// 2. Fire the isolated updater service asynchronously
+	cmd := exec.Command("systemctl", "--no-block", "start", "claviger-updater.service")
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to trigger updater service: %v", err)
 	}
 
-	log.Println("✅ Update script launched successfully in the background. The daemon will restart momentarily.")
-
+	log.Println("✅ Independent updater service triggered. Main daemon will restart momentarily.")
 	return nil
 }
