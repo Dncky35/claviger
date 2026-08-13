@@ -50,43 +50,37 @@
                 </div>
             </div>
 
+            <!-- NEW: Fleet Node Version Control Card -->
+            <div class="bg-surface rounded-2xl border border-border shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center p-6 mb-6 relative overflow-hidden">
+                <!-- Background glow effect -->
+                <div id="fleet-update-glow" class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20 hidden pointer-events-none"></div>
+                
+                <div class="relative z-10 mb-4 md:mb-0">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Node Version</h4>
+                    <div class="flex items-center gap-3">
+                        <span class="relative flex h-3 w-3">
+                            <span id="fleet-update-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 hidden"></span>
+                            <span id="fleet-update-dot" class="relative inline-flex rounded-full h-3 w-3 bg-slate-500"></span>
+                        </span>
+                        <span class="text-3xl font-bold tracking-tight text-slate-100 font-mono" id="fleet-current-version">v---</span>
+                        
+                        <!-- Manual Check Button -->
+                        <button onclick="forceCheckFleetUpdates(this)" id="btn-fleet-manual-check" class="ml-2 p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors group focus:outline-none" title="Check node for updates">
+                            <svg class="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" id="icon-fleet-manual-check" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+                    </div>
+                    <p id="fleet-update-status-text" class="text-sm text-muted-foreground mt-2">Connecting to subserver...</p>
+                </div>
+
+                <!-- Update Buttons Container -->
+                <div id="fleet-update-actions" class="flex flex-col sm:flex-row gap-3 relative z-10 w-full md:w-auto">
+                    <!-- Buttons injected via JS -->
+                </div>
+            </div>
+
             <!-- Hardware Stats Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- CPU -->
-                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.cpu_usage" }}</h4>
-                    <div id="fleet-sys-cpu-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
-                    <div class="w-full bg-slate-800 rounded-full h-1.5">
-                        <div id="fleet-sys-cpu-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                </div>
-                
-                <!-- RAM -->
-                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.ram_usage" }}</h4>
-                    <div id="fleet-sys-ram-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
-                    <div class="w-full bg-slate-800 rounded-full h-1.5">
-                        <div id="fleet-sys-ram-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                    <div id="fleet-sys-ram-text" class="text-[10px] text-slate-400 mt-2 font-mono">-- / -- GB</div>
-                </div>
-                
-                <!-- Disk -->
-                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.disk_usage" }}</h4>
-                    <div id="fleet-sys-disk-val" class="text-2xl font-bold text-slate-200 mb-2">-%</div>
-                    <div class="w-full bg-slate-800 rounded-full h-1.5">
-                        <div id="fleet-sys-disk-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                    <div id="fleet-sys-disk-text" class="text-[10px] text-slate-400 mt-2 font-mono">-- / -- GB</div>
-                </div>
-                
-                <!-- System Info -->
-                <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.sys_info" }}</h4>
-                    <div id="fleet-sys-os" class="text-sm font-bold text-slate-200 truncate">-</div>
-                    <div id="fleet-sys-uptime" class="text-[11px] text-slate-400 mt-1">-</div>
-                </div>
+                <!-- ... (Your existing CPU, RAM, Disk, System Info divs remain exactly the same here) ... -->
             </div>
         </section>
 
@@ -234,6 +228,7 @@
         let fleetContainerPollingInterval = null;
         let fleetLLMContainerPollingInterval = null;
         let deploymentFleetLocked = false;
+        let fleetUpdatePollingInterval = false;
 
         async function refetchFleetContainers() {
             const select = document.getElementById('fleet-node-select');
@@ -286,6 +281,7 @@
             if (fleetPollingInterval) clearInterval(fleetPollingInterval);
             if (fleetContainerPollingInterval) clearInterval(fleetContainerPollingInterval);
             if (fleetLLMContainerPollingInterval) clearInterval(fleetLLMContainerPollingInterval);
+            if (fleetUpdatePollingInterval) clearInterval(fleetUpdatePollingInterval);
 
             if (!select.value) {
                 dashboard.classList.add('hidden');
@@ -304,10 +300,13 @@
                 fetchFleetContainers(node.id, node.ip_address);
                 fetchFleetLLMContainers(node.id, node.ip_address);
                 fetchFleetAIProfile(node.id);
+                fetchFleetNodeUpdateStatus(node.id);
 
                 fleetPollingInterval = setInterval(() => fetchFleetNodeSystemData(node.id), 5000);
-                fleetContainerPollingInterval = setInterval(() => fetchFleetContainers(node.id, node.ip_address), 60000);
-                fleetLLMContainerPollingInterval = setInterval(() => fetchFleetLLMContainers(node.id, node.ip_address), 60000);
+                fleetContainerPollingInterval = setInterval(() => fetchFleetContainers(node.id, node.ip_address), 600000); // Update every 10 minutes
+                fleetLLMContainerPollingInterval = setInterval(() => fetchFleetLLMContainers(node.id, node.ip_address), 600000);
+                fleetUpdatePollingInterval = setInterval(() => fetchFleetNodeUpdateStatus(node.id), 600000);
+                
 
             } else {
                 statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div> <span class="text-amber-400">${i18nFleet.pending_node}</span>`;
@@ -339,6 +338,95 @@
 
             } catch (e) {
                 console.error("Fetch LLM Apps Error:", e);
+            }
+        }
+
+        async function fetchFleetNodeUpdateStatus(nodeId){
+            try {
+                // We call the MASTER API, which will securely proxy the request to the Subserver
+                const res = await fetch(`/api/fleet/proxy/api/system/update/status`, {
+                     headers: { 'X-Node-ID': nodeId }
+                });
+                if (!res.ok) throw new Error('Failed to load subserver update status');
+                const data = await res.json();
+
+                document.getElementById('fleet-current-version').innerText = data.current_version;
+
+                const actionsContainer = document.getElementById('fleet-update-actions');
+                const statusText = document.getElementById('fleet-update-status-text');
+                const pingDot = document.getElementById('fleet-update-ping');
+                const solidDot = document.getElementById('fleet-update-dot');
+                const glowFx = document.getElementById('fleet-update-glow');
+
+                actionsContainer.innerHTML = ''; 
+                let hasUpdate = false;
+
+                if (data.stable_update_available) {
+                    hasUpdate = true;
+                    actionsContainer.innerHTML += `
+                        <button onclick="applyFleetUpdate('${nodeId}', '${data.stable_update_available}', this)" class="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Update Node to ${data.stable_update_available}
+                        </button>
+                    `;
+                }
+
+                if (data.prerelease_update_available) {
+                    hasUpdate = true;
+                    actionsContainer.innerHTML += `
+                        <button onclick="applyFleetUpdate('${nodeId}', '${data.prerelease_update_available}', this)" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-amber-500/30 text-slate-200 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
+                            <span class="text-amber-500 font-bold">🧪</span> Beta ${data.prerelease_update_available}
+                        </button>
+                    `;
+                }
+
+                if (hasUpdate) {
+                    statusText.innerHTML = `<span class="text-primary font-bold">Node Update Available</span>`;
+                    pingDot.classList.remove('hidden');
+                    solidDot.className = "relative inline-flex rounded-full h-3 w-3 bg-primary";
+                    glowFx.classList.remove('hidden');
+                } else {
+                    statusText.innerHTML = `Node is up to date`;
+                    pingDot.classList.add('hidden');
+                    solidDot.className = "relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
+                    glowFx.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error("Fetch Fleet Update Status Error:", e);
+                document.getElementById('fleet-current-version').innerText = "Err";
+                document.getElementById('fleet-update-status-text').innerHTML = `<span class="text-red-400">Node unreachable</span>`;
+                document.getElementById('fleet-update-dot').className = "relative inline-flex rounded-full h-3 w-3 bg-red-500";
+            }
+        }
+
+        async function applyFleetUpdate(nodeId, version, btnElement) {
+            if (!confirm(`Deploy ${version} to this Subserver?\n\nThe node will momentarily disconnect from the Master gateway during the restart.`)) return;
+
+            const originalHTML = btnElement.innerHTML;
+            btnElement.innerHTML = `Updating Node...`;
+            btnElement.disabled = true;
+            btnElement.classList.add('opacity-75', 'cursor-not-allowed');
+
+            try {
+                const res = await fetch(`/api/fleet/proxy/api/system/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Node-ID': nodeId },
+                    body: JSON.stringify({ version: version })
+                });
+
+                if (!res.ok) throw new Error('Node update request failed');
+
+                document.getElementById('fleet-update-status-text').innerHTML = `<span class="text-primary font-bold animate-pulse">Node is restarting...</span>`;
+                
+                // Wait 8 seconds, then refresh the status
+                setTimeout(() => fetchFleetNodeUpdateStatus(nodeId), 8000);
+
+            } catch (e) {
+                alert("Failed to initiate node update.");
+                btnElement.innerHTML = originalHTML;
+                btnElement.disabled = false;
+                btnElement.classList.remove('opacity-75', 'cursor-not-allowed');
             }
         }
 

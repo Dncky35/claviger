@@ -2,8 +2,12 @@ package api
 
 import (
 	"claviger-server/internal/scheduler"
+	"claviger-server/internal/system"
+	"claviger-server/storage"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os/exec"
 	"runtime"
@@ -142,4 +146,106 @@ func HandleToggleTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// UpdateRequest represents the JSON payload from the UI
+type UpdateRequest struct {
+	Version string `json:"version"`
+}
+
+// HandleApplyUpdate handles POST requests from the UI to start the update process
+func HandleApplyUpdate(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req UpdateRequest
+		// Ignore the error here, if the body is empty req.Version will just be ""
+		_ = json.NewDecoder(r.Body).Decode(&req)
+
+		// If the UI didn't explicitly send a version, gracefully fallback to what's in the DB
+		if req.Version == "" {
+			// First try to grab the stable update
+			req.Version = storage.GetConfig(db, "available_update_version")
+
+			// If no stable update is found, check if a pre-release update is waiting
+			if req.Version == "" {
+				req.Version = storage.GetConfig(db, "available_prerelease_update_version")
+			}
+
+			// If both are completely empty, return an error
+			if req.Version == "" {
+				http.Error(w, `{"error": "No update version specified or available"}`, http.StatusBadRequest)
+				return
+			}
+		}
+
+		// Trigger the update (this runs asynchronously via cmd.Start())
+		err := system.ApplyUpdate(req.Version)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Failed to initiate update: " + err.Error(),
+			})
+			return
+		}
+
+		// Respond with success (202 Accepted is standard for async operations)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status":  "success",
+			"message": "Update initiated. The system will disconnect and restart momentarily.",
+			"version": req.Version,
+		})
+	}
+}
+
+// GetUpdateStatusResponse defines the JSON structure sent to the UI
+type GetUpdateStatusResponse struct {
+	CurrentVersion            string `json:"current_version"`
+	StableUpdateAvailable     string `json:"stable_update_available"`
+	PrereleaseUpdateAvailable string `json:"prerelease_update_available"`
+}
+
+// HandleGetUpdateStatus returns the current version and any pending updates to the UI
+func HandleGetUpdateStatus(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		_, _, err := system.CheckGitHubForUpdates()
+		if err != nil {
+			// log.Printf("[Cron] ❌ Update check failed: %v", err)
+			log.Printf("[API] ❌ Update check failed: %v", err)
+		}
+
+		// 1. Fetch Current Version
+		currentVersion := storage.GetConfig(db, "installed_version")
+		if currentVersion == "" {
+			currentVersion = system.CurrentVersion // Fallback to hardcoded constant
+		}
+
+		// 2. Fetch Pending Stable Update
+		stableUpdate := storage.GetConfig(db, "available_update_version")
+		log.Printf("stable update: %v", stableUpdate)
+
+		// 3. Fetch Pending Pre-release Update
+		prereleaseUpdate := storage.GetConfig(db, "available_prerelease_update_version")
+		log.Printf("prerelease update: %v", prereleaseUpdate)
+
+		// 4. Construct and send response
+		resp := GetUpdateStatusResponse{
+			CurrentVersion:            currentVersion,
+			StableUpdateAvailable:     stableUpdate,
+			PrereleaseUpdateAvailable: prereleaseUpdate,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}
 }

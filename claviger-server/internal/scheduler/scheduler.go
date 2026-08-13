@@ -63,33 +63,35 @@ func Start(db *sql.DB) {
 		return nil
 	})
 
-	RegisterTask("update-check", "Update Checker", "Pings GitHub for new Claviger releases.", "🔄", "@every 12h", true, func() error {
+	RegisterTask("update-check", "Update Checker", "Pings GitHub for new Claviger releases and auto-applies stable updates.", "🔄", "@every 12h", true, func() error {
 		log.Println("[Cron] 🔄 Checking GitHub for system updates...")
 
-		// 1. Check DB for current version, fallback to binary constant if missing
-		currentVersion := storage.GetConfig(db, "current_version")
-		if currentVersion == "" {
-			currentVersion = system.CurrentVersion
-		}
-
-		// 2. Securely ping GitHub API
-		hasUpdate, latestVersion, err := system.CheckGitHubForUpdates()
+		// 1. Ping GitHub. This updates the DB with both stable and pre-release versions.
+		// It only returns hasStableUpdate=true if a STABLE version is newer than current.
+		hasStableUpdate, targetStableVersion, err := system.CheckGitHubForUpdates()
 		if err != nil {
 			log.Printf("[Cron] ❌ Update check failed: %v", err)
 			return err
 		}
 
-		// 3. Update the database state for the Next.js UI
-		if hasUpdate {
-			log.Printf("[Cron] 🎉 New Update Available: %s (Current: %s)", latestVersion, currentVersion)
+		// 2. Auto-apply ONLY if there is a STABLE update
+		if hasStableUpdate {
+			log.Printf("[Cron] 🎉 New Stable Update Available: %s. Initiating auto-update process...", targetStableVersion)
 
-			// Signal the UI that an update is ready
-			storage.SetConfig(db, "available_update_version", latestVersion)
+			err := system.ApplyUpdate(targetStableVersion)
+			if err != nil {
+				log.Printf("[Cron] ❌ Failed to apply stable update: %v", err)
+				return err
+			}
+
+			log.Println("[Cron] ✅ Update script triggered successfully. Service will restart.")
 		} else {
-			log.Printf("[Cron] ✅ System is up to date (Running: %s)", currentVersion)
-
-			// Clear any stale update flags to ensure the UI is clean
-			storage.SetConfig(db, "available_update_version", "")
+			// Just pull the current version from the DB to log it nicely
+			currentVersion := storage.GetConfig(db, "installed_version")
+			if currentVersion == "" {
+				currentVersion = system.CurrentVersion
+			}
+			log.Printf("[Cron] ✅ System is up to date on the stable channel (Running: %s)", currentVersion)
 		}
 
 		return nil

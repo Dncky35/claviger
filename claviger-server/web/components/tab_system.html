@@ -81,13 +81,49 @@
                 </div>
             </div>
         </div>
+
+        <!-- NEW: System Version & Updates Card -->
+        <div class="bg-surface rounded-2xl border border-border shadow-sm col-span-1 lg:col-span-2 p-6 flex flex-col justify-between relative overflow-hidden">
+            <!-- Background glow effect if update is available -->
+            <div id="update-glow" class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20 hidden pointer-events-none"></div>
+            
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-6 relative z-10">{{ T "system.version_updates" }}</h3>
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
+                <div>
+                    <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-2">Current Version</p>
+                    <div class="flex items-center gap-3">
+                        <span class="relative flex h-3 w-3">
+                          <span id="update-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 hidden"></span>
+                          <span id="update-dot" class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                        </span>
+                        <span class="text-3xl font-bold tracking-tight text-slate-100 font-mono" id="sys-current-version">v---</span>
+                        
+                        <!-- NEW: Manual Check Button -->
+                        <button onclick="forceCheckUpdates(this)" id="btn-manual-check" class="ml-2 p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors group focus:outline-none" title="Check for updates now">
+                            <svg class="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" id="icon-manual-check" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+                    </div>
+                    
+                    <p id="update-status-text" class="text-sm text-muted-foreground mt-2 flex items-center gap-1.5">
+                        <svg class="animate-spin h-3 w-3 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Loading status...
+                    </p>
+                </div>
+
+                <!-- Update Buttons Container -->
+                <div id="update-actions" class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                    <!-- Buttons injected via JS -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <hr class="border-border my-8">
     
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-bold text-slate-100">{{ T "system.cron_title" }}</h3>
-        <span class="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">{{ T "system.cron_badge" }}</span>
+        <!-- <span class="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">{{ T "system.cron_badge" }}</span> -->
     </div>
 
     <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -265,9 +301,178 @@
             } catch (err) { console.error("Error fetching system info:", err); }
         }
 
-        fetchSystemTasks();
-        fetchSystemData();
-        setInterval(fetchSystemData, 3000);
+        async function fetchUpdateStatus() {
+            try {
+                const res = await fetch('/api/system/update/status');
+                if (!res.ok) throw new Error('Failed to load update status');
+                const data = await res.json();
+                console.log("Update Status:", JSON.stringify(data, null, 2));
+                // 1. Update Current Version text
+                document.getElementById('sys-current-version').innerText = data.current_version;
+
+                const actionsContainer = document.getElementById('update-actions');
+                const statusText = document.getElementById('update-status-text');
+                const pingDot = document.getElementById('update-ping');
+                const solidDot = document.getElementById('update-dot');
+                const glowFx = document.getElementById('update-glow');
+
+                actionsContainer.innerHTML = ''; // Clear previous buttons
+                let hasUpdate = false;
+
+                // 2. Render Stable Update Button
+                if (data.stable_update_available) {
+                    hasUpdate = true;
+                    actionsContainer.innerHTML += `
+                        <button onclick="applySystemUpdate('${data.stable_update_available}', this)" class="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)]">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Update to ${data.stable_update_available}
+                        </button>
+                    `;
+                }
+
+                // 3. Render Beta Update Button (Secondary Style)
+                if (data.prerelease_update_available) {
+                    hasUpdate = true;
+                    actionsContainer.innerHTML += `
+                        <button onclick="applySystemUpdate('${data.prerelease_update_available}', this)" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-amber-500/30 hover:border-amber-500/60 text-slate-200 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
+                            <span class="text-amber-500 font-bold">🧪</span> Beta ${data.prerelease_update_available}
+                        </button>
+                    `;
+                }
+
+                // 4. Update UI Status Indicators
+                if (hasUpdate) {
+                    statusText.innerHTML = `<span class="text-primary font-bold">Update Available</span> • Ready to install`;
+                    pingDot.classList.remove('hidden');
+                    solidDot.className = "relative inline-flex rounded-full h-3 w-3 bg-primary";
+                    glowFx.classList.remove('hidden'); // Show background glow
+                } else {
+                    statusText.innerHTML = `System is up to date`;
+                    pingDot.classList.add('hidden');
+                    solidDot.className = "relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
+                    glowFx.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error("Fetch Update Status Error:", e);
+                document.getElementById('sys-current-version').innerText = "Err";
+                document.getElementById('update-status-text').innerHTML = `<span class="text-red-400">Failed to check updates</span>`;
+            }
+        }
+
+        async function applySystemUpdate(version, btnElement) {
+            if (!confirm(`Are you sure you want to install ${version}?\n\nThe gateway will disconnect all clients and restart. This takes about 10 seconds.`)) return;
+
+            const originalHTML = btnElement.innerHTML;
+            // Set loading state on button
+            btnElement.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Updating...`;
+            btnElement.disabled = true;
+            btnElement.classList.add('opacity-75', 'cursor-not-allowed');
+
+            try {
+                const res = await fetch('/api/system/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ version: version })
+                });
+
+                if (!res.ok) throw new Error('Update request failed');
+
+                // Optional: Show a full-screen loading overlay while the system restarts
+                showRestartingOverlay();
+
+                // Start polling the server to see when it comes back online
+                pollForReboot();
+
+            } catch (e) {
+                console.error("Update Error:", e);
+                alert("Failed to initiate update. Check server logs.");
+                btnElement.innerHTML = originalHTML;
+                btnElement.disabled = false;
+                btnElement.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        }
+
+        function showRestartingOverlay() {
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-opacity";
+            overlay.innerHTML = `
+                <div class="relative flex items-center justify-center w-20 h-20 mb-6">
+                    <svg class="animate-spin absolute w-full h-full text-primary/20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle></svg>
+                    <svg class="animate-spin absolute w-full h-full text-primary border-t-2 border-primary rounded-full" viewBox="0 0 24 24"></svg>
+                    <span class="absolute font-bold text-xl text-primary font-mono">🚀</span>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-100 mb-2 tracking-tight">Applying Update</h2>
+                <p class="text-muted-foreground text-sm font-medium animate-pulse">Gateway is restarting. Please wait...</p>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        // Ping the status endpoint every 2 seconds until the server is back online
+        function pollForReboot() {
+            let attempts = 0;
+            const maxAttempts = 30; // 60 seconds max
+
+            const interval = setInterval(async () => {
+                attempts++;
+                try {
+                    // Give it 5 seconds before checking so we don't catch the server before it actually goes down
+                    if (attempts > 2) {
+                        const res = await fetch('/api/system/update/status', { cache: 'no-store' });
+                        if (res.ok) {
+                            clearInterval(interval);
+                            window.location.reload(); // Server is back, refresh page!
+                        }
+                    }
+                } catch (e) {
+                    // Expected to fail while the server is down
+                    if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        alert("Server is taking a long time to respond. You may need to refresh manually.");
+                    }
+                }
+            }, 2000);
+        }
+
+        async function forceCheckUpdates(btn) {
+            const icon = document.getElementById('icon-manual-check');
+            const statusText = document.getElementById('update-status-text');
+            
+            // Set UI to loading state
+            btn.disabled = true;
+            icon.classList.add('animate-spin'); // Make the refresh icon spin constantly
+            statusText.innerHTML = `
+                <svg class="animate-spin h-3 w-3 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <span class="text-primary font-medium">Pinging GitHub for updates...</span>
+            `;
+
+            try {
+                // 1. Force the server to ping GitHub
+                // const res = await fetch('/api/system/update/status', { method: 'POST' });
+                // if (!res.ok) throw new Error('Failed to check GitHub');
+                
+                // 2. Fetch the new database state to update the UI
+                await fetchUpdateStatus(); 
+                
+            } catch (e) {
+                console.error("Force check failed:", e);
+                statusText.innerHTML = `<span class="text-red-400">Update check failed. Check logs.</span>`;
+            } finally {
+                // Reset button state
+                btn.disabled = false;
+                icon.classList.remove('animate-spin');
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchUpdateStatus();
+            fetchSystemTasks();
+            fetchSystemData();
+            setInterval(fetchSystemData, 3000); // 3 seconds
+            setInterval(fetchUpdateStatus, 600000);  // 10 minutes
+        });
+
+       
     </script>
 </div>
 {{ end }}

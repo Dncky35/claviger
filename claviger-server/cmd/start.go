@@ -305,6 +305,9 @@ func RunStart() {
 		}
 	})
 
+	mux.HandleFunc("/api/system/update", api.HubAccessMiddleware(db, api.HandleApplyUpdate(db)))
+	mux.HandleFunc("/api/system/update/status", api.HubAccessMiddleware(db, api.HandleGetUpdateStatus(db)))
+
 	// --- PROTECTED DOCKER API ROUTES ---
 
 	mux.HandleFunc("/api/llms/containers", api.HubAccessMiddleware(db, api.HandleLLMContainers(dockerEngine)))
@@ -423,6 +426,7 @@ func RunStart() {
 	// ---------------------------------------------------------
 	// EMERGENCY FAILSAFE: RESTORE PUBLIC SSH ACCESS
 	// ---------------------------------------------------------
+
 	// 🎯 SAFETY FIRST: Before tearing down anything else, make sure port 22/2278
 	// is explicitly opened back up on the public interfaces so you don't lose connection!
 	fmt.Println("🔓 Restoring public SSH access safety net...")
