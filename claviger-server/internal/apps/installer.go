@@ -160,6 +160,42 @@ networks:
     external: true
 `,
 	},
+	"jenkins": {
+		Name:             "Jenkins",
+		Category:         "optional",
+		Description:      "The leading open-source automation server for CI/CD pipelines.",
+		Icon:             "🏗️",
+		HasCustomSetup:   false,
+		NeedsDynamicPort: true,
+		SetupPort:        0,
+		ComposeYAML: `
+version: '3.3'
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    restart: unless-stopped
+    user: root  # Required so Jenkins can interact with the host's Docker socket
+    environment:
+      - JAVA_OPTS="-Djava.awt.headless=true"
+    ports:
+      - "{{.DynamicPort}}:8080/tcp"  # Web UI handled by Claviger Proxy
+      - "50000:50000/tcp"            # JNLP port for connecting external build agents
+    volumes:
+      - ./jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock  # Allows Jenkins to spin up Docker environments
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - cloudrocean-net
+    labels:
+      - "claviger.app=jenkins"
+
+networks:
+  cloudrocean-net:
+    external: true
+`,
+	},
 	"gitea": {
 		Name:             "Gitea",
 		Category:         "optional",
