@@ -240,9 +240,35 @@
                 return;
             }
 
-            apps.sort((a, b) => a.category.localeCompare(b.category));
+            // Sort apps: 'llm_engine' first, then others (interfaces) alphabetically
+            apps.sort((a, b) => {
+                if (a.category === 'llm_engine' && b.category !== 'llm_engine') return -1;
+                if (a.category !== 'llm_engine' && b.category === 'llm_engine') return 1;
+                return a.category.localeCompare(b.category);
+            });
 
-            apps.forEach(app => {
+            let currentCategory = '';
+
+            apps.forEach((app, index) => {
+                // Detect category change and inject a full-width header
+                if (app.category !== currentCategory) {
+                    currentCategory = app.category;
+                    
+                    const categoryTitle = currentCategory === 'llm_engine' 
+                        ? i18nLlm.type_engine 
+                        : i18nLlm.type_interface;
+                    
+                    // Add top margin only if it's not the first section
+                    const marginTopClass = index === 0 ? '' : 'mt-6';
+                    
+                    const headerHtml = `
+                        <div class="col-span-full ${marginTopClass} mb-2 border-b border-border/50 pb-2 flex items-center">
+                            <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">${categoryTitle}</h3>
+                        </div>
+                    `;
+                    gridEl.insertAdjacentHTML('beforeend', headerHtml);
+                }
+
                 const isInstalled = app.status !== 'not_installed';
                 const isRunning = app.status === 'running';
 

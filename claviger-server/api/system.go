@@ -232,11 +232,11 @@ func HandleGetUpdateStatus(db *sql.DB) http.HandlerFunc {
 
 		// 2. Fetch Pending Stable Update
 		stableUpdate := storage.GetConfig(db, "available_update_version")
-		log.Printf("stable update: %v", stableUpdate)
+		// log.Printf("stable update: %v", stableUpdate)
 
 		// 3. Fetch Pending Pre-release Update
 		prereleaseUpdate := storage.GetConfig(db, "available_prerelease_update_version")
-		log.Printf("prerelease update: %v", prereleaseUpdate)
+		// log.Printf("prerelease update: %v", prereleaseUpdate)
 
 		// 4. Construct and send response
 		resp := GetUpdateStatusResponse{

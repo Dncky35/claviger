@@ -80,7 +80,58 @@
 
             <!-- Hardware Stats Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- ... (Your existing CPU, RAM, Disk, System Info divs remain exactly the same here) ... -->
+                
+                <!-- CPU Usage Card -->
+                <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{T "fleet.cpu_usage" }</h4>
+                    <div id="fleet-sys-cpu-val" class="text-3xl font-bold text-slate-200 mb-4">0%</div>
+                    <div>
+                        <div class="w-full bg-slate-800/50 rounded-full h-2 mb-2 overflow-hidden border border-border">
+                            <div id="fleet-sys-cpu-bar" class="bg-primary h-2 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 text-right">Load capacity</div>
+                    </div>
+                </div>
+
+                <!-- RAM Usage Card -->
+                <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{T "fleet.ram_usage" }</h4>
+                    <div id="fleet-sys-ram-val" class="text-3xl font-bold text-slate-200 mb-4">0%</div>
+                    <div>
+                        <div class="w-full bg-slate-800/50 rounded-full h-2 mb-2 overflow-hidden border border-border">
+                            <div id="fleet-sys-ram-bar" class="bg-emerald-400 h-2 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                        </div>
+                        <div id="fleet-sys-ram-text" class="text-[10px] font-mono text-slate-500 text-right">0 / 0 GB</div>
+                    </div>
+                </div>
+
+                <!-- Disk Usage Card -->
+                <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{T "fleet.disk_usage" }</h4>
+                    <div id="fleet-sys-disk-val" class="text-3xl font-bold text-slate-200 mb-4">0%</div>
+                    <div>
+                        <div class="w-full bg-slate-800/50 rounded-full h-2 mb-2 overflow-hidden border border-border">
+                            <div id="fleet-sys-disk-bar" class="bg-amber-400 h-2 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                        </div>
+                        <div id="fleet-sys-disk-text" class="text-[10px] font-mono text-slate-500 text-right">0 / 0 GB</div>
+                    </div>
+                </div>
+
+                <!-- System Info Card -->
+                <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{T "fleet.sys_info" }</h4>
+                    <div class="flex-1 flex flex-col justify-center gap-4 mt-2">
+                        <div>
+                            <div class="text-[10px] uppercase text-slate-500 mb-1">Operating System</div>
+                            <div id="fleet-sys-os" class="text-sm font-semibold text-slate-200 truncate" title="OS Name">Loading...</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] uppercase text-slate-500 mb-1">Uptime</div>
+                            <div id="fleet-sys-uptime" class="text-sm font-mono text-slate-300">--:--:--</div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </section>
 
