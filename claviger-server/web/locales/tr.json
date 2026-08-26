@@ -621,7 +621,7 @@
     "toolkit_done": "✅ Onarıldı",
     "toolkit_fail": "%s Numaralı Düğümde Araç Seti Kurulumu Başarısız Oldu:\n\n%s"
   },
-  "uninstall": {
+  "tab_uninstall": {
     "title": "Uygulama Yönetimi",
     "subtitle": "Uzantıları ve kalıcı verilerini güvenle kaldırın.",
     "danger_zone": "Tehlikeli Bölge",

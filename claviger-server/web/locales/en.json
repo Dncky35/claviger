@@ -622,7 +622,7 @@
     "toolkit_done": "✅ Done",
     "toolkit_fail": "Toolkit Installation Failed on Node %s:\n\n%s"
   },
-  "uninstall": {
+  "tab_uninstall": {
     "title": "App Management",
     "subtitle": "Safely remove extensions and wipe their persistent data.",
     "danger_zone": "Danger Zone",
