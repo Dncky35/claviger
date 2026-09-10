@@ -83,7 +83,7 @@
                 
                 <!-- CPU Usage Card -->
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{T "fleet.cpu_usage" }</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{{T "fleet.cpu_usage" }}</h4>
                     <div id="fleet-sys-cpu-val" class="text-3xl font-bold text-slate-200 mb-4">0%</div>
                     <div>
                         <div class="w-full bg-slate-800/50 rounded-full h-2 mb-2 overflow-hidden border border-border">
@@ -95,7 +95,7 @@
 
                 <!-- RAM Usage Card -->
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{T "fleet.ram_usage" }</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{{T "fleet.ram_usage" }}</h4>
                     <div id="fleet-sys-ram-val" class="text-3xl font-bold text-slate-200 mb-4">0%</div>
                     <div>
                         <div class="w-full bg-slate-800/50 rounded-full h-2 mb-2 overflow-hidden border border-border">
@@ -107,7 +107,7 @@
 
                 <!-- Disk Usage Card -->
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{T "fleet.disk_usage" }</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{{T "fleet.disk_usage" }}</h4>
                     <div id="fleet-sys-disk-val" class="text-3xl font-bold text-slate-200 mb-4">0%</div>
                     <div>
                         <div class="w-full bg-slate-800/50 rounded-full h-2 mb-2 overflow-hidden border border-border">
@@ -119,14 +119,14 @@
 
                 <!-- System Info Card -->
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{T "fleet.sys_info" }</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{{T "fleet.sys_info" }}</h4>
                     <div class="flex-1 flex flex-col justify-center gap-4 mt-2">
                         <div>
-                            <div class="text-[10px] uppercase text-slate-500 mb-1">Operating System</div>
+                            <div class="text-[10px] uppercase text-slate-500 mb-1">{{T "fleet.sys_os" }}</div>
                             <div id="fleet-sys-os" class="text-sm font-semibold text-slate-200 truncate" title="OS Name">Loading...</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-slate-500 mb-1">Uptime</div>
+                            <div class="text-[10px] uppercase text-slate-500 mb-1">{{T "fleet.sys_uptime" }}</div>
                             <div id="fleet-sys-uptime" class="text-sm font-mono text-slate-300">--:--:--</div>
                         </div>
                     </div>

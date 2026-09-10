@@ -553,6 +553,8 @@
     "ram_usage": "RAM Kullanımı",
     "disk_usage": "Disk Kullanımı",
     "sys_info": "Sistem Bilgileri",
+    "sys_os": "İşletim Sistemi",
+    "sys_uptime": "Çalışma Süresi",
     "section_apps": "Server Uygulamaları ve Uzantıları",
     "section_apps_desc": "Uzak sunucudaki resmi uzantıları ve özel Docker dağıtımlarını yönetin.",
     "btn_refresh_apps": "Senkronizasyonu Yenile",

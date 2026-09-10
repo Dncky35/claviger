@@ -553,6 +553,8 @@
     "ram_usage": "RAM Usage",
     "disk_usage": "Disk Usage",
     "sys_info": "System Info",
+    "sys_os": "OS / Kernel",
+    "sys_uptime": "Uptime",
     "section_apps": "Node Applications & Extensions",
     "section_apps_desc": "Manage official extensions and custom Docker deployments on this edge server.",
     "btn_refresh_apps": "Refresh Sync",
