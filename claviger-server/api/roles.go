@@ -49,8 +49,15 @@ func HandleRoles(db *sql.DB) http.HandlerFunc {
 			var roles []Role
 			for rows.Next() {
 				var role Role
-				rows.Scan(&role.ID, &role.Name, &role.AllowGlobalInternet, &role.AllowIntranet, &role.AllowHub, &role.AllowedPorts, &role.AllowedIPs, &role.CreatedAt)
+				if err := rows.Scan(&role.ID, &role.Name, &role.AllowGlobalInternet, &role.AllowIntranet, &role.AllowHub, &role.AllowedPorts, &role.AllowedIPs, &role.CreatedAt); err != nil {
+					http.Error(w, `{"status":"error", "message":"Database error"}`, http.StatusInternalServerError)
+					return
+				}
 				roles = append(roles, role)
+			}
+			if err := rows.Err(); err != nil {
+				http.Error(w, `{"status":"error", "message":"Database error"}`, http.StatusInternalServerError)
+				return
 			}
 			json.NewEncoder(w).Encode(roles)
 			return

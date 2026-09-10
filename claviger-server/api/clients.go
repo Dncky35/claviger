@@ -86,6 +86,11 @@ func HandleClients(db *sql.DB) http.HandlerFunc {
 				clients = append(clients, c)
 			}
 
+			if err := rows.Err(); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
 			// 2. Fetch the LIVE connection states from the Linux Kernel!
 			wgPeers := make(map[string]time.Time)
 			wg, err := wgctrl.New()

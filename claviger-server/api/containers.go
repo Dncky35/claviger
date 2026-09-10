@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -209,6 +210,10 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 						IsCustom:      true, // Flag for the UI Segregation
 					})
 				}
+			}
+
+			if err := rows.Err(); err != nil {
+				log.Printf("⚠️ Error iterating custom_apps rows: %v", err)
 			}
 		}
 

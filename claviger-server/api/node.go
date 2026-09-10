@@ -187,6 +187,12 @@ func HandleGetSubServers(db *sql.DB) http.HandlerFunc {
 			nodes = append(nodes, n)
 		}
 
+		if err := rows.Err(); err != nil {
+			log.Printf("❌ Error iterating sub_server rows: %v", err)
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
 		// Ensure we return an empty array [] instead of null if there are no nodes
 		if nodes == nil {
 			nodes = []SubServerNode{}
