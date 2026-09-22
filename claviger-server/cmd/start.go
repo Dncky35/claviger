@@ -68,6 +68,11 @@ func syncWireGuardPeers(db *sql.DB) {
 		})
 	}
 
+	if err := rows.Err(); err != nil {
+		log.Printf("⚠️ Error iterating active clients rows: %v", err)
+		return
+	}
+
 	wg, err := wgctrl.New()
 	if err != nil {
 		log.Printf("⚠️ Failed to open WireGuard control: %v", err)

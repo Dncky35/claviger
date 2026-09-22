@@ -66,6 +66,10 @@ func RunRegisterClient() {
 		roles = append(roles, r)
 	}
 
+	if err := rows.Err(); err != nil {
+		log.Fatalf("❌ Failed to read roles: %v", err)
+	}
+
 	if len(roles) == 0 {
 		log.Fatal("❌ No roles found in the database. Setup may be corrupted.")
 	}
