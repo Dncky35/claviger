@@ -12,7 +12,6 @@ import (
 	"claviger-server/internal/auth"
 	"claviger-server/internal/crypto"
 	"claviger-server/internal/firewall"
-	"claviger-server/internal/security"
 	"claviger-server/internal/system"
 	"claviger-server/network"
 	"claviger-server/storage"
@@ -275,44 +274,46 @@ func RunSetup(args []string) {
 	// ---------------------------------------------------------
 
 	// Question 1: Reverse Proxy
-	wantsProxy := promptYesNo(reader, "Will you be hosting Web Apps on public domains?", true)
+	// wantsProxy := promptYesNo(reader, "Will you be hosting Web Apps on public domains?", true)
 
-	if wantsProxy {
-		tempConfig["use_reverse_proxy"] = "true"
+	// if wantsProxy {
+	// 	tempConfig["use_reverse_proxy"] = "true"
 
-		// Question 2: Cloudflare Integration
-		proxyOptions := map[string]string{
-			"1": "Cloudflare (Recommended: Free SSL, DDoS Protection, CDN)",
-			"2": "Standard/Direct (You will manage your own DNS records)",
-		}
+	// 	// Question 2: Cloudflare Integration
+	// 	proxyOptions := map[string]string{
+	// 		"1": "Cloudflare (Recommended: Free SSL, DDoS Protection, CDN)",
+	// 		"2": "Standard/Direct (You will manage your own DNS records)",
+	// 	}
 
-		providerChoice := promptChoice(reader, "Which DNS/Proxy provider will you use?", proxyOptions, "1")
+	// 	providerChoice := promptChoice(reader, "Which DNS/Proxy provider will you use?", proxyOptions, "1")
 
-		if providerChoice == "1" {
-			tempConfig["proxy_provider"] = "cloudflare"
-			fmt.Println("✅ Cloudflare integration enabled.")
+	// 	if providerChoice == "1" {
+	// 		tempConfig["proxy_provider"] = "cloudflare"
+	// 		fmt.Println("✅ Cloudflare integration enabled.")
 
-			// Fetch the IPs and write the Nginx Real-IP config right away since they chose it during setup
-			ips, err := security.FetchCloudflareIPs()
-			if err != nil {
-				log.Fatalf("❌ Failed to fetch Cloudflare IPs from network: %v", err)
-			}
-			if err := security.GenerateNginxRealIPConfig(ips, "/opt/claviger/proxy/cloudflare_ips.conf"); err != nil {
-				log.Fatalf("❌ Failed to generate Nginx config: %v", err)
-			}
-			fmt.Println("✅ Nginx Real-IP configuration generated with current Cloudflare IPs.")
+	// 		// Fetch the IPs and write the Nginx Real-IP config right away since they chose it during setup
+	// 		ips, err := security.FetchCloudflareIPs()
+	// 		if err != nil {
+	// 			log.Fatalf("❌ Failed to fetch Cloudflare IPs from network: %v", err)
+	// 		}
+	// 		if err := security.GenerateNginxRealIPConfig(ips, "/opt/claviger/proxy/cloudflare_ips.conf"); err != nil {
+	// 			log.Fatalf("❌ Failed to generate Nginx config: %v", err)
+	// 		}
+	// 		fmt.Println("✅ Nginx Real-IP configuration generated with current Cloudflare IPs.")
 
-		} else {
-			tempConfig["proxy_provider"] = "standard"
-			fmt.Println("✅ Standard routing selected.")
-		}
-	} else {
-		// If they say no, they are just using Claviger for pure VPN routing
-		tempConfig["use_reverse_proxy"] = "false"
-		tempConfig["proxy_provider"] = "none"
-		fmt.Println("✅ Internal VPN routing only. (You can change this in the UI later).")
-	}
+	// 	} else {
+	// 		tempConfig["proxy_provider"] = "standard"
+	// 		fmt.Println("✅ Standard routing selected.")
+	// 	}
+	// } else {
+	// 	// If they say no, they are just using Claviger for pure VPN routing
+	// 	tempConfig["use_reverse_proxy"] = "false"
+	// 	tempConfig["proxy_provider"] = "none"
+	// 	fmt.Println("✅ Internal VPN routing only. (You can change this in the UI later).")
+	// }
 
+	tempConfig["use_reverse_proxy"] = "false"
+	tempConfig["proxy_provider"] = "none"
 	fmt.Println(strings.Repeat("-", 60))
 
 	// ---------------------------------------------------------

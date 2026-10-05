@@ -96,19 +96,19 @@ func main() {
 
 		switch command {
 		case "generate":
-			cli.HandleGenerate(vault)
+			cli.HandleGenerate()
 		case "approve":
 			if len(os.Args) < 3 {
 				log.Fatalf("❌ Usage: claviger approve <visa_token>")
 			}
-			cli.HandleApprove(vault, os.Args[2])
+			cli.HandleApprove(os.Args[2])
 		case "list":
 			cli.HandleList(vault)
 		case "remove":
 			if len(os.Args) < 3 {
 				log.Fatalf("❌ Usage: claviger remove <profile_id>")
 			}
-			cli.HandleRemove(vault, os.Args[2])
+			cli.HandleRemove(os.Args[2])
 		case "connect":
 			// Pass the Context (ctx)
 			cli.HandleConnect(vault, os.Args[2:], ctx)
