@@ -6,10 +6,13 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 
 	"claviger-client/internal/auth"
 	"claviger-client/internal/config"
+
+	"github.com/google/uuid"
 )
 
 // 🎯 1. Define the interface so the API doesn't need to import the VPN package
@@ -18,6 +21,7 @@ type VPNEngine interface {
 	GetSyncStatus() string
 	Connect(vault *config.ClientVault, profile *config.ServerProfile, useGlobal bool) error
 	Disconnect() error
+	GenerateKeys() (string, string, error)
 }
 
 // ListenerConfig holds the dependencies needed by the TCP listener
@@ -162,6 +166,63 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 			log.Printf("⚠️ Profile %s not found in vault. Nothing to remove.\n", targetID)
 			c.Write([]byte("ER"))
 		}
+
+	case "GENERATE_TOKEN":
+		log.Println("DEBUG: Daemon entered GENERATE_TOKEN case")
+
+		freshVault, err := config.Load()
+		if err == nil {
+			cfg.Vault = freshVault
+		}
+		if cfg.Vault.Profiles == nil {
+			cfg.Vault.Profiles = make(map[string]*config.ServerProfile)
+		}
+
+		// 2. Clean up old pending profiles
+		for _, p := range cfg.Vault.Profiles {
+			if p.Status == "pending_approval" {
+				delete(cfg.Vault.Profiles, p.ID)
+			}
+		}
+
+		// 3. Generate Keys & Device ID
+		privKey, pubKey, _ := cfg.Engine.GenerateKeys()
+		hostname, _ := os.Hostname()
+		if hostname == "" {
+			hostname = "Unknown-Desktop"
+		}
+		if cfg.Vault.DeviceID == "" {
+			cfg.Vault.DeviceID = uuid.New().String()
+		}
+
+		// 4. Create new pending profile
+		newProfileID := uuid.New().String()
+		newProfile := &config.ServerProfile{
+			ID:         newProfileID,
+			Name:       "Pending Server...",
+			PrivateKey: privKey,
+			PublicKey:  pubKey,
+			Status:     "pending_approval",
+		}
+
+		cfg.Vault.Profiles[newProfileID] = newProfile
+		cfg.Vault.ActiveProfileID = newProfileID
+
+		// 5. Save the Vault (Runs as SYSTEM, safely writes to central config)
+		if err := config.Save(cfg.Vault); err != nil {
+			log.Printf("❌ Daemon failed to save vault during token generation: %v", err)
+			c.Write([]byte("ER\n"))
+			return
+		}
+
+		// 6. Generate token and send it back to the GUI
+		token, _ := auth.GenerateRequestToken(pubKey, hostname, runtime.GOOS, cfg.Vault.DeviceID)
+
+		log.Println("✅ Daemon successfully generated token and saved pending profile.")
+
+		// Return OK and the token separated by a pipe
+		response := fmt.Sprintf("OK|%s\n", token)
+		c.Write([]byte(response))
 
 	case "APPROVE":
 		log.Println("DEBUG: Daemon entered APPROVE case")

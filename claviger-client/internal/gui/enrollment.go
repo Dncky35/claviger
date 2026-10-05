@@ -3,24 +3,20 @@
 package gui
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"runtime"
 	"strings"
 	"time"
 
-	"claviger-client/internal/auth"
 	"claviger-client/internal/config"
-	"claviger-client/internal/vpn"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
-	"github.com/google/uuid"
 )
 
 func (g *ClavigerGUI) ShowEnrollmentScreen() {
@@ -40,43 +36,44 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 
 	// 🎯 2. STEP 1: CONNECTION REQUEST (Single Generate & Copy Action)
 	generateAndCopyBtn := widget.NewButton("Generate & Copy Token", func() {
-		// Clean up pending profiles before creating new
-		for _, p := range g.Vault.Profiles {
-			if p.Status == "pending_approval" {
-				delete(g.Vault.Profiles, p.ID)
-			}
+
+		// Connect to the Daemon
+		conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
+		if err != nil {
+			dialog.ShowError(fmt.Errorf("Claviger Background Service is not running.\nPlease start the service and try again."), g.Window)
+			return
+		}
+		defer conn.Close()
+
+		// Ask Daemon to generate the profile and token
+		conn.Write([]byte("GENERATE_TOKEN\n"))
+
+		// Read the response from Daemon
+		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		resp, err := bufio.NewReader(conn).ReadString('\n')
+		if err != nil {
+			dialog.ShowError(fmt.Errorf("Failed to receive token from Daemon: %v", err), g.Window)
+			return
 		}
 
-		privKey, pubKey, _ := vpn.GenerateKeys()
-		hostname, _ := os.Hostname()
-		if hostname == "" {
-			hostname = "Unknown-Desktop"
-		}
-		if g.Vault.DeviceID == "" {
-			g.Vault.DeviceID = uuid.New().String()
-		}
+		resp = strings.TrimSpace(resp)
+		parts := strings.Split(resp, "|")
 
-		newProfileID := uuid.New().String()
-		newProfile := &config.ServerProfile{
-			ID:         newProfileID,
-			Name:       "Pending Server...",
-			PrivateKey: privKey,
-			PublicKey:  pubKey,
-			Status:     "pending_approval",
+		// If Daemon succeeded, it returns "OK|eyJhbGciOi..."
+		if len(parts) == 2 && parts[0] == "OK" {
+			token := parts[1]
+
+			// Copy to clipboard
+			g.Window.Clipboard().SetContent(token)
+
+			// Reload the GUI's vault in memory so it sees the new pending profile
+			updatedVault, _ := config.Load()
+			g.Vault = updatedVault
+
+			dialog.ShowInformation("Success", "Token generated and copied to clipboard!\nYou can now send it to your admin.", g.Window)
+		} else {
+			dialog.ShowError(fmt.Errorf("Daemon failed to generate token. Check daemon logs."), g.Window)
 		}
-
-		if g.Vault.Profiles == nil {
-			g.Vault.Profiles = make(map[string]*config.ServerProfile)
-		}
-		g.Vault.Profiles[newProfileID] = newProfile
-		g.Vault.ActiveProfileID = newProfileID
-		config.Save(g.Vault)
-
-		// Generate token and immediately copy it to the clipboard
-		token, _ := auth.GenerateRequestToken(pubKey, hostname, runtime.GOOS, g.Vault.DeviceID)
-		g.Window.Clipboard().SetContent(token)
-
-		dialog.ShowInformation("Success", "Token generated and copied to clipboard!\nYou can now send it to your admin.", g.Window)
 	})
 
 	// Wrap Step 1 in a Card for a cleaner look

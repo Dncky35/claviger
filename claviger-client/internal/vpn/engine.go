@@ -133,6 +133,11 @@ func (e *Engine) GetState() string {
 	return e.currentState
 }
 
+func (e *Engine) GenerateKeys() (string, string, error) {
+	// Call your existing package-level GenerateKeys function here
+	return GenerateKeys()
+}
+
 // ==========================================
 // GHOST CONNECTION DETECTION (THE WATCHDOG)
 // ==========================================
