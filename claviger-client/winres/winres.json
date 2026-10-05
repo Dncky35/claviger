@@ -12,7 +12,7 @@
       "0409": {
         "identity": {
           "name": "Cloudrocean.Claviger.Client",
-          "version": "0.4.2.0"
+          "version": "0.4.3.0"
         },
         "description": "Claviger VPN Client",
         "minimum-os": "win7",
