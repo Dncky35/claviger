@@ -9,7 +9,6 @@ claviger.db-shm
 claviger.db-wal
 *.db
 *.sqlite3
-*.iss
 *.conf
 *.key
 *.pem
