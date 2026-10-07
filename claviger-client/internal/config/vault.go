@@ -58,8 +58,9 @@ func getVaultPath() (string, error) {
 		// macOS System-Wide Path
 		appDir = "/Library/Application Support/Claviger"
 	default:
-		// Linux System-Wide Path
-		appDir = "/etc/claviger"
+		// Linux System-Wide Path: /var/lib is for dynamic/mutable state data.
+		// /etc is often protected as read-only by systemd.
+		appDir = "/var/lib/claviger-client"
 	}
 
 	// Ensure the directory exists.
