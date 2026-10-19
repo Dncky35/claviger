@@ -3,11 +3,12 @@
 package daemon
 
 import (
-	"claviger-client/internal/config"
-	"claviger-client/internal/vpn"
 	"context"
 	"log"
 	"time"
+
+	"claviger-client/internal/config"
+	"claviger-client/internal/vpn"
 )
 
 func RunDaemon(ctx context.Context, vault *config.ClientVault, engine *vpn.Engine) {
@@ -36,22 +37,20 @@ func RunDaemon(ctx context.Context, vault *config.ClientVault, engine *vpn.Engin
 					err := engine.Connect(vault, profile, vault.UseGlobalRouting)
 					if err == nil {
 						log.Println("✅ Auto-Connect successful! Network established.")
-						return // Break out of the loop, our job here is done
+						return // Break out of the loop once connected
 					}
 
 					// 3. Handle Failure and Backoff
 					log.Printf("⏳ Network not ready (%v). Retrying in %v...", err, retryDelay)
 
-					// Wait for the delay duration, but also listen for shutdown signals
 					select {
 					case <-ctx.Done():
 						log.Println("🛑 Auto-Connect aborted during backoff sleep.")
 						return
 					case <-time.After(retryDelay):
-						// Sleep finished, calculate the next delay (Exponential Backoff)
 						retryDelay *= 2
 						if retryDelay > maxDelay {
-							retryDelay = maxDelay // Cap the maximum wait time
+							retryDelay = maxDelay
 						}
 					}
 				}
@@ -59,7 +58,18 @@ func RunDaemon(ctx context.Context, vault *config.ClientVault, engine *vpn.Engin
 		}
 	}
 
-	// Keep the Linux daemon alive until context is cancelled
+	// Wait until systemd/SIGTERM cancels the context
 	<-ctx.Done()
+	log.Println("🛑 Linux systemd requested shutdown. Tearing down Claviger Engine...")
+
+	// 🚨 CRITICAL: Clean up WireGuard adapters, routes, and DNS rules before process exit
+	if engine != nil && engine.GetState() != "Disconnected" {
+		if err := engine.Disconnect(); err != nil {
+			log.Printf("⚠️ Engine teardown encountered an error: %v", err)
+		} else {
+			log.Println("✅ Network adapters and firewall rules cleanly restored.")
+		}
+	}
+
 	log.Println("👋 Linux Daemon shutting down gracefully...")
 }
