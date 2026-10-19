@@ -120,12 +120,12 @@ func main() {
 			if len(os.Args) < 3 {
 				log.Fatalf("❌ Usage: claviger-client autoconnect <enable|disable>")
 			}
-			cli.HandleAutoConnect(vault, os.Args[2])
+			cli.HandleAutoConnect(os.Args[2])
 		case "global":
 			if len(os.Args) < 3 {
 				log.Fatalf("❌ Usage: claviger-client global <enable|disable>")
 			}
-			cli.HandleGlobalRouting(vault, os.Args[2])
+			cli.HandleGlobalRouting(os.Args[2])
 		case "update":
 			cli.HandleUpdate()
 		case "uninstall":

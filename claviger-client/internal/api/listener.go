@@ -149,6 +149,16 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 			// Delete the explicitly requested profile
 			delete(cfg.Vault.Profiles, targetID)
 
+			// 🎯 If the active profile was deleted, auto-assign a new default
+			if cfg.Vault.ActiveProfileID == targetID {
+				cfg.Vault.ActiveProfileID = ""
+				for remainingID := range cfg.Vault.Profiles {
+					cfg.Vault.ActiveProfileID = remainingID
+					log.Printf("🔄 Auto-assigned new active profile: %s", remainingID)
+					break
+				}
+			}
+
 			// Clear active profile if we just deleted it
 			if cfg.Vault.ActiveProfileID == targetID {
 				cfg.Vault.ActiveProfileID = ""
@@ -307,6 +317,51 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 		payload := fmt.Sprintf("%s|%s", currentState, currentSync)
 		c.Write([]byte(payload))
 
+	case "SET_ACTIVE_PROFILE":
+		log.Println("DEBUG: Daemon entered SET_ACTIVE_PROFILE command")
+		if len(parts) >= 2 {
+			targetID := strings.TrimSpace(parts[1])
+
+			// Verify the profile actually exists before setting it
+			if _, exists := cfg.Vault.Profiles[targetID]; exists {
+				cfg.Vault.ActiveProfileID = targetID
+
+				// Save back to disk
+				if err := config.Save(cfg.Vault); err == nil {
+					log.Printf("✅ Daemon set active profile to: %s\n", targetID)
+					c.Write([]byte("OK\n"))
+				} else {
+					log.Printf("❌ Daemon failed to save active profile: %v\n", err)
+					c.Write([]byte("ER\n"))
+				}
+			} else {
+				log.Printf("⚠️ Daemon rejected active profile change: ID %s not found\n", targetID)
+				c.Write([]byte("ER\n"))
+			}
+		}
+
+	case "SET_GLOBAL_ROUTING":
+		if len(parts) >= 2 {
+			cfg.Vault.UseGlobalRouting = (strings.TrimSpace(parts[1]) == "true")
+			if err := config.Save(cfg.Vault); err != nil {
+				c.Write([]byte("ER\n"))
+				return
+			}
+			log.Printf("⚙️ Daemon: Global Routing set to %v", cfg.Vault.UseGlobalRouting)
+			c.Write([]byte("OK\n"))
+		}
+
+	case "SET_AUTOCONNECT":
+		if len(parts) >= 2 {
+			cfg.Vault.AutoConnect = (strings.TrimSpace(parts[1]) == "true")
+			if err := config.Save(cfg.Vault); err != nil {
+				c.Write([]byte("ER\n"))
+				return
+			}
+			log.Printf("⚙️ Daemon: AutoConnect set to %v", cfg.Vault.AutoConnect)
+			c.Write([]byte("OK\n"))
+		}
+
 	case "SUBSCRIBE":
 		log.Println("📡 GUI Client requested event subscription.")
 
@@ -332,41 +387,59 @@ func handleConnection(c net.Conn, cfg ListenerConfig) {
 		return
 
 	case "CONNECT":
-
+		log.Println("DEBUG: Daemon entered CONNECT command")
 		vpnState := cfg.Engine.GetState()
 		if vpnState != "Disconnected" {
-			c.Write([]byte("ER"))
+			log.Println("❌ Daemon rejected CONNECT: VPN is already active or transitioning.")
+			c.Write([]byte("ER|VPN is not disconnected\n"))
 			return
 		}
 
 		if len(parts) >= 3 {
-			targetID := parts[1]
-			routeMode := parts[2]
+			targetID := strings.TrimSpace(parts[1])
+			routeMode := strings.TrimSpace(parts[2])
 			useGlobal := (routeMode == "global")
 
 			// 🛡️ SAFETY 3: Load fresh vault safely
 			freshVault, err := config.Load()
 			if err == nil {
-				*cfg.Vault = *freshVault
+				if cfg.Vault == nil {
+					cfg.Vault = freshVault
+				} else {
+					*cfg.Vault = *freshVault
+				}
 			}
 
 			log.Printf("Target Id: %s, Route Mode: %s", targetID, routeMode)
-
 			if profile, exists := cfg.Vault.Profiles[targetID]; exists {
 				log.Printf("Root Daemon received CONNECT command for profile: %s", targetID)
 
-				c.Write([]byte("OK"))
+				// 🎯 Automatically set this profile as the active default
+				cfg.Vault.ActiveProfileID = targetID
+				if err := config.Save(cfg.Vault); err != nil {
+					log.Printf("⚠️ Daemon failed to save ActiveProfileID: %v", err)
+					// We don't fail the connection just because saving the default failed, but we log it.
+				} else {
+					log.Printf("✅ Daemon set profile %s as the new default.", targetID)
+				}
+
+				// Send success response with newline
+				c.Write([]byte("OK\n"))
 
 				// Spin off the connection process so we don't block the TCP listener
 				go func() {
 					err := cfg.Engine.Connect(cfg.Vault, profile, useGlobal)
 					if err != nil {
-						log.Printf("Daemon Connect Error: %v", err)
+						log.Printf("❌ Daemon Connect Error: %v", err)
 					}
 				}()
 			} else {
-				c.Write([]byte("ER"))
+				log.Printf("❌ Daemon rejected CONNECT: Profile %s not found.", targetID)
+				c.Write([]byte("ER|Profile not found\n"))
 			}
+		} else {
+			log.Println("❌ Daemon rejected CONNECT: Missing arguments.")
+			c.Write([]byte("ER|Missing arguments\n"))
 		}
 	}
 }

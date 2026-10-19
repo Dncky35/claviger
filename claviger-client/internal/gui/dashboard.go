@@ -4,8 +4,9 @@ package gui
 
 import (
 	"fmt"
-
-	"claviger-client/internal/config"
+	"log"
+	"net"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -61,15 +62,27 @@ func (g *ClavigerGUI) ShowDashboardScreen() {
 	))
 
 	// 🎯 INITIALIZE SETTINGS CONTROLS (Hidden until Modal opens)
+
+	// Helper to send simple toggle commands
+	sendSetting := func(cmd string) {
+		conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
+		if err != nil {
+			log.Println("❌ Daemon not reachable:", err)
+			return
+		}
+		defer conn.Close()
+		conn.Write([]byte(cmd + "\n"))
+	}
+
 	g.RouteCheck = widget.NewCheck("Enable Global Routing", func(checked bool) {
 		g.Vault.UseGlobalRouting = checked
-		config.Save(g.Vault)
+		sendSetting(fmt.Sprintf("SET_GLOBAL_ROUTING|%t", checked))
 	})
 	g.RouteCheck.SetChecked(g.Vault.UseGlobalRouting)
 
 	g.AutoStartCheck = widget.NewCheck("Enable AutoConnect", func(checked bool) {
 		g.Vault.AutoConnect = checked
-		config.Save(g.Vault)
+		sendSetting(fmt.Sprintf("SET_AUTOCONNECT|%t", checked))
 	})
 	g.AutoStartCheck.SetChecked(g.Vault.AutoConnect)
 

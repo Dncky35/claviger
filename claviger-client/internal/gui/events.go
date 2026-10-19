@@ -3,12 +3,15 @@
 package gui
 
 import (
+	"bufio"
 	"claviger-client/internal/config"
 	"claviger-client/internal/controller"
 	"claviger-client/internal/vpn"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -106,9 +109,28 @@ func (g *ClavigerGUI) setupEvents() {
 
 	g.ServerSelect.OnChanged = func(selected string) {
 		if id, exists := g.NameToID[selected]; exists {
+			// 1. Update the local GUI state immediately for UI responsiveness
 			g.Vault.ActiveProfileID = id
 			g.ActiveProfile = g.Vault.Profiles[id]
-			config.Save(g.Vault)
+
+			// 2. Delegate the actual disk save to the Daemon
+			conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
+			if err != nil {
+				log.Println("❌ Daemon not reachable:", err)
+				return
+			}
+			defer conn.Close()
+
+			// Send command with \n
+			payload := fmt.Sprintf("SET_ACTIVE_PROFILE|%s\n", id)
+			conn.Write([]byte(payload))
+
+			// Read response to ensure it was saved
+			conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+			resp, _ := bufio.NewReader(conn).ReadString('\n')
+			if strings.TrimSpace(resp) != "OK" {
+				log.Println("❌ Daemon failed to save the active profile change.")
+			}
 		}
 	}
 
@@ -189,22 +211,33 @@ func (g *ClavigerGUI) setupEvents() {
 			defer conn.Close()
 
 			// 🎯 THE FIX: Append the exact ID to the REMOVE command
-			payload := fmt.Sprintf("REMOVE|%s", g.ActiveProfile.ID)
+			payload := fmt.Sprintf("REMOVE|%s\n", g.ActiveProfile.ID)
 			log.Printf("📡 Whispering %s command to root daemon...", payload)
 			conn.Write([]byte(payload))
 
-			ack := make([]byte, 2)
-			conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-			conn.Read(ack)
+			conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+			resp, err := bufio.NewReader(conn).ReadString('\n')
+			if err != nil && err != io.EOF {
+				dialog.ShowError(fmt.Errorf("Failed to receive response from Daemon: %v", err), g.Window)
+				return
+			}
 
-			if string(ack) == "OK" {
+			if strings.TrimSpace(resp) == "OK" {
+				// Reload vault state saved by Daemon
 				updatedVault, loadErr := config.Load()
 				if loadErr != nil {
 					dialog.ShowError(fmt.Errorf("Failed to sync with Daemon: %v", loadErr), g.Window)
 					return
 				}
+
 				g.Vault = updatedVault
-				g.ActiveProfile = nil
+
+				// Synchronize active profile reference in memory
+				if g.Vault.ActiveProfileID != "" {
+					g.ActiveProfile = g.Vault.Profiles[g.Vault.ActiveProfileID]
+				} else {
+					g.ActiveProfile = nil
+				}
 
 				dialog.ShowInformation("Success", "Server profile removed successfully!", g.Window)
 				g.ShowDashboardScreen()
