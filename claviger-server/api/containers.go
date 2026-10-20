@@ -96,6 +96,11 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 		// 4. MERGE COMBINED CATALOG WITH DOCKER STATE & DB PORTS
 		// ---------------------------------------------------------
 		for id, manifest := range combinedCatalog {
+
+			if manifest.CatalogType != "default" && manifest.CatalogType != "custom" {
+				continue
+			}
+
 			status := "not_installed"
 
 			// 🎯 THE FIX: Handle multi-container apps like RustDesk

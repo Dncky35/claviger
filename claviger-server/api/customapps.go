@@ -2,6 +2,7 @@ package api
 
 import (
 	"claviger-server/internal/apps"
+	"claviger-server/internal/types"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -18,21 +19,21 @@ var strictAppIDRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 // HandleAddCustomApp handles POST /api/apps/custom
 func HandleAddCustomApp(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var payload apps.CustomAppPayload
+		var payload types.AppManifest // 🎯 USE THE UNIFIED TYPE
+
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 			return
 		}
 
 		// 0. Auto-Correct the YAML!
-		// Automatically add the missing networks and labels
+		// 🎯 Note: Ensure this function in 'apps' is updated to accept types.AppManifest
 		correctedYAML, err := apps.AutoCorrectZeroTrustYAML(payload)
 		if err == nil {
-			payload.ComposeYAML = correctedYAML // Replace with the hardened version
+			payload.ComposeYAML = correctedYAML
 		}
 
 		// 1. Run the Zero Trust Validation
-		// (This will now pass the network and label checks automatically)
 		validationErrors := apps.ValidateZeroTrustYAML(payload)
 
 		if len(validationErrors) > 0 {
@@ -45,27 +46,36 @@ func HandleAddCustomApp(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// 2. Generate Safe ID if missing (or if JSON sent "id" instead of our new "app_id")
 		if payload.ID == "" {
 			safeName := strings.ToLower(payload.Name)
-
-			// Replace spaces with underscores
 			safeName = strings.ReplaceAll(safeName, " ", "_")
-
-			// Replace hyphens with underscores
 			safeName = strings.ReplaceAll(safeName, "-", "_")
-
 			payload.ID = "custom_" + safeName
 		}
 
-		// 3. Save to Database
-		stmt, err := db.Prepare("INSERT INTO custom_apps (id, name, description, icon, needs_dynamic_port, has_custom_setup, setup_port, compose_yaml) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+		// 3. Save to Database (We explicitly DO NOT save Category, CatalogType, etc., because custom_apps doesn't have those columns)
+		stmt, err := db.Prepare(`
+			INSERT INTO custom_apps (
+				id, name, description, icon, needs_dynamic_port, has_custom_setup, setup_port, compose_yaml
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`)
 		if err != nil {
 			http.Error(w, "Database preparation error", http.StatusInternalServerError)
 			return
 		}
 		defer stmt.Close()
 
-		_, err = stmt.Exec(payload.ID, payload.Name, payload.Description, payload.Icon, payload.NeedsDynamicPort, payload.HasCustomSetup, payload.SetupPort, payload.ComposeYAML)
+		_, err = stmt.Exec(
+			payload.ID,
+			payload.Name,
+			payload.Description,
+			payload.Icon,
+			payload.NeedsDynamicPort,
+			payload.HasCustomSetup,
+			payload.SetupPort,
+			payload.ComposeYAML,
+		)
 		if err != nil {
 			http.Error(w, "Failed to save custom app", http.StatusInternalServerError)
 			return
@@ -82,9 +92,9 @@ func HandleAddCustomApp(db *sql.DB) http.HandlerFunc {
 
 func HandleRemoveCustomApp(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 1. Extract appID (Assuming it's passed as a URL query parameter like ?id=custom_nginx)
-		// If you use a router like Chi/Mux, adapt this to chi.URLParam(r, "id")
-		appID := r.URL.Query().Get("name")
+		// 1. Extract appID
+		// 🎯 FIX: Assuming frontend calls /api/apps/custom?id=... (Change back to "name" if your frontend strictly requires it)
+		appID := r.URL.Query().Get("id")
 
 		if appID == "" {
 			http.Error(w, "Missing app ID parameter", http.StatusBadRequest)
@@ -113,13 +123,10 @@ func HandleRemoveCustomApp(db *sql.DB) http.HandlerFunc {
 		appDir := filepath.Join("/var/lib/claviger/apps", appID)
 
 		if _, err := os.Stat(appDir); err == nil {
-			// Directory exists, which means it's installed. Initiate Scorched Earth.
-
-			// A. Tear down Docker containers, networks, and anonymous volumes
+			// A. Tear down Docker containers
 			cmd := exec.Command("docker", "compose", "down", "-v")
 			cmd.Dir = appDir
 			if output, err := cmd.CombinedOutput(); err != nil {
-				// We log the output for debugging, but return a clean 500 to the client
 				fmt.Printf("[Orchestrator] Docker teardown failed for %s: %s\n", appID, string(output))
 				http.Error(w, "Failed to stop and remove Docker containers", http.StatusInternalServerError)
 				return
@@ -134,7 +141,6 @@ func HandleRemoveCustomApp(db *sql.DB) http.HandlerFunc {
 		}
 
 		// 5. State Persistence Purge
-		// We only reach this point if the physical teardown succeeded (or wasn't needed)
 		_, err = db.Exec("DELETE FROM custom_apps WHERE id = ?", appID)
 		if err != nil {
 			fmt.Printf("[Database] Failed to delete custom app record %s: %v\n", appID, err)

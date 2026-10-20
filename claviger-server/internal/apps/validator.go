@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"claviger-server/internal/types"
 	"fmt"
 	"strings"
 
@@ -26,7 +27,8 @@ type ValidationError struct {
 }
 
 // ValidateZeroTrustYAML enforces Claviger's network and port security rules
-func ValidateZeroTrustYAML(payload CustomAppPayload) []ValidationError {
+func ValidateZeroTrustYAML(payload types.AppManifest) []ValidationError {
+
 	var errors []ValidationError
 	yamlStr := payload.ComposeYAML
 
@@ -85,7 +87,9 @@ func ValidateZeroTrustYAML(payload CustomAppPayload) []ValidationError {
 	return errors
 }
 
-func AutoCorrectZeroTrustYAML(payload CustomAppPayload) (string, error) {
+// 🎯 Note: Make sure to import "claviger/internal/types" at the top of this file if it isn't already there.
+
+func AutoCorrectZeroTrustYAML(payload types.AppManifest) (string, error) { // 🎯 CHANGED TYPE HERE
 	yamlStr := payload.ComposeYAML
 	appName := payload.Name
 	hasCustomSetup := payload.HasCustomSetup
@@ -247,7 +251,6 @@ func AutoCorrectZeroTrustYAML(payload CustomAppPayload) (string, error) {
 				}
 
 				// 🛡️ FALLBACK 1: They had a ports array, but our heuristic missed it.
-				// Force inject it to pass validation.
 				if needsDynamicPort && !dynamicPortInjected {
 					correctedPorts = append(correctedPorts, "{{.DynamicPort}}:80")
 					dynamicPortInjected = true
@@ -256,12 +259,10 @@ func AutoCorrectZeroTrustYAML(payload CustomAppPayload) (string, error) {
 				svc["ports"] = correctedPorts
 			}
 		} else {
-			// 🛡️ FALLBACK 2: The YAML had NO ports block at all (e.g. Stirling PDF)
-			// We dynamically generate the ports block from scratch!
+			// 🛡️ FALLBACK 2: The YAML had NO ports block at all
 			var newPorts []interface{}
 
 			if needsDynamicPort && !dynamicPortInjected {
-				// 8080 is the standard internal port for most port-less web containers
 				newPorts = append(newPorts, "{{.DynamicPort}}:8080")
 				dynamicPortInjected = true
 			}
@@ -271,7 +272,6 @@ func AutoCorrectZeroTrustYAML(payload CustomAppPayload) (string, error) {
 				setupPortInjected = true
 			}
 
-			// Inject the newly created block into the service
 			if len(newPorts) > 0 {
 				svc["ports"] = newPorts
 			}
