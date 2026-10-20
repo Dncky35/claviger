@@ -4,7 +4,7 @@ import "time"
 
 // AppManifest defines the universal schema used by Claviger's runner
 type AppManifest struct {
-	ID               string `json:"id"`
+	ID               string `json:"app_id"`
 	CatalogType      string `json:"catalog_type,omitempty"`
 	Name             string `json:"name"`
 	Category         string `json:"category"`
@@ -19,7 +19,7 @@ type AppManifest struct {
 
 // RemoteApp represents an entry synced from cloudrocean.com in SQLite
 type RemoteApp struct {
-	ID               string    `db:"id"`
+	ID               string    `db:"app_id"`
 	CatalogType      string    `db:"catalog_type"`
 	Name             string    `db:"name"`
 	Category         string    `db:"category"`

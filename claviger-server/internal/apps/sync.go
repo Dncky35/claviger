@@ -3,6 +3,7 @@ package apps
 import (
 	"claviger-server/internal/types"
 	"claviger-server/storage"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -81,19 +82,29 @@ func (s *CatalogSyncer) Sync() (string, error) {
 }
 
 // StartBackgroundPoller runs every 12 hours in a goroutine
-func (s *CatalogSyncer) StartBackgroundPoller(interval time.Duration) {
+func (c *CatalogSyncer) StartBackgroundPoller(ctx context.Context, interval time.Duration) {
 	go func() {
-		// Run initial check on startup
-		if _, err := s.Sync(); err != nil {
-			log.Printf("⚠️ [Catalog Sync] Initial background sync failed: %v", err)
-		}
-
 		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
+		defer ticker.Stop() // Cleanup the ticker to prevent memory leaks
 
-		for range ticker.C {
-			if _, err := s.Sync(); err != nil {
-				log.Printf("⚠️ [Catalog Sync] Scheduled sync failed: %v", err)
+		log.Println("🔄 Catalog Syncer background worker started.")
+
+		for {
+			select {
+			case <-ticker.C:
+				// It's time to sync
+				status, err := c.Sync()
+				if err != nil {
+					log.Printf("⚠️ Background catalog sync failed: %v", err)
+				} else if status == "updated" {
+					log.Println("✅ Background catalog sync completed: catalog updated.")
+				} else {
+					log.Println("⚡ Background catalog sync completed: catalog up to date.")
+				}
+			case <-ctx.Done():
+				// The app is shutting down! Trap the context cancellation.
+				log.Println("🛑 Catalog Syncer worker safely shutting down...")
+				return
 			}
 		}
 	}()

@@ -19,8 +19,8 @@ type AppStatus struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	Category      string `json:"category"`
-	Description   string `json:"description"` // ADD THIS
-	Icon          string `json:"icon"`        // ADD THIS
+	Description   string `json:"description"`
+	Icon          string `json:"icon"`
 	Status        string `json:"status"`
 	SetupComplete bool   `json:"setup_complete"`
 	ActionPort    int    `json:"action_port"`
@@ -28,14 +28,14 @@ type AppStatus struct {
 	IsCustom      bool   `json:"is_custom"`
 }
 
-// HandleContainers merges Docker state, Native state, and the App Catalog
+// HandleContainers merges Docker state, Native state, and the unified App Catalog
 func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		var appList []AppStatus
 
-		// 🎯 OPEN DB CONNECTION TO FETCH DYNAMIC PORTS
+		// 🎯 OPEN DB CONNECTION
 		db := storage.InitDB()
 		defer db.Close()
 
@@ -74,20 +74,32 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 			if containers, err := engine.ListContainers(r.Context()); err == nil {
 				rawContainers = containers
 				for _, c := range containers {
+					// Map container names to their running state
 					containerMap[c.Name] = c.State
+					containerMap["/"+c.Name] = c.State // Handle Docker API leading slash quirk
 				}
 			}
 		}
 
 		// ---------------------------------------------------------
-		// 3. MERGE CATALOG WITH DOCKER STATE & DB PORTS
+		// 3. FETCH THE 3-TIER COMBINED CATALOG
 		// ---------------------------------------------------------
-		for id, manifest := range apps.Catalog {
+		// This automatically merges custom_apps, remote_apps, and the static Catalog!
+		combinedCatalog, err := apps.GetCombinedCatalog(db)
+		if err != nil {
+			log.Printf("⚠️ [API] Failed to get combined catalog: %v", err)
+			http.Error(w, "Failed to load app catalog", http.StatusInternalServerError)
+			return
+		}
+
+		// ---------------------------------------------------------
+		// 4. MERGE COMBINED CATALOG WITH DOCKER STATE & DB PORTS
+		// ---------------------------------------------------------
+		for id, manifest := range combinedCatalog {
 			status := "not_installed"
 
 			// 🎯 THE FIX: Handle multi-container apps like RustDesk
 			if id == "rustdesk" {
-				// Safely check for standard name or the Docker-API-slashed name
 				stateHbbs := containerMap["rustdesk-hbbs"]
 				if stateHbbs == "" {
 					stateHbbs = containerMap["/rustdesk-hbbs"]
@@ -113,6 +125,8 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 				// Standard single-container check (vaultwarden, gitea, etc.)
 				if liveState, exists := containerMap[id]; exists {
 					status = liveState
+				} else if liveState, exists := containerMap["/"+id]; exists {
+					status = liveState
 				}
 			}
 
@@ -123,7 +137,11 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 			// 🎯 RUSTDESK EXCEPTION: It does not have a web UI to open
 			if id == "rustdesk" {
 				actionText = "How to Use ↗"
-				// Optional: You could make clicking this open a modal with their ID server IP.
+			}
+
+			// Custom Apps typically just say "Open App"
+			if manifest.CatalogType == "custom" {
+				actionText = "Open App ↗"
 			}
 
 			// 🎯 FETCH PORT FROM DATABASE OR ASSIGN STATIC
@@ -143,6 +161,11 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 						actionPort = manifest.SetupPort
 						actionText = "Finish Setup ↗"
 					}
+				} else {
+					// Generic setup logic for other apps
+					setupComplete = false
+					actionPort = manifest.SetupPort
+					actionText = "Finish Setup ↗"
 				}
 			}
 
@@ -156,69 +179,12 @@ func HandleContainers(engine *docker.Engine) http.HandlerFunc {
 				SetupComplete: setupComplete,
 				ActionPort:    actionPort,
 				ActionText:    actionText,
+				IsCustom:      manifest.CatalogType == "custom", // Segregate in UI
 			})
 		}
 
 		// ---------------------------------------------------------
-		// 3.5. MERGE CUSTOM APPS FROM DATABASE
-		// ---------------------------------------------------------
-		rows, err := db.Query("SELECT id, name, description, icon, needs_dynamic_port, has_custom_setup, setup_port FROM custom_apps")
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var id, name, desc, icon string
-				var needsDynamicPort bool
-				var hasCustomSetup bool
-				var setupPort int
-
-				if err := rows.Scan(&id, &name, &desc, &icon, &needsDynamicPort, &hasCustomSetup, &setupPort); err == nil {
-					status := "not_installed"
-
-					// Check Docker state (accounting for Docker's leading slash quirk)
-					if liveState, exists := containerMap[id]; exists {
-						status = liveState
-					} else if liveState, exists := containerMap["/"+id]; exists {
-						status = liveState
-					}
-
-					actionPort := 0
-					actionText := "Open App ↗"
-
-					if hasCustomSetup && status != "not_installed" {
-						actionPort = setupPort
-						actionText = "Finish Setup ↗"
-					}
-
-					// Fetch port if dynamic mapping was requested
-					if needsDynamicPort {
-						portStr := storage.GetConfig(db, fmt.Sprintf("app_%s_port", id))
-						if portStr != "" {
-							actionPort, _ = strconv.Atoi(portStr)
-						}
-					}
-
-					appList = append(appList, AppStatus{
-						ID:            id,
-						Name:          name,
-						Category:      "optional", // Force into the Extensions tab
-						Description:   desc,
-						Icon:          icon,
-						Status:        status,
-						SetupComplete: true, // Custom apps don't use Claviger's setup wizards
-						ActionPort:    actionPort,
-						ActionText:    actionText,
-						IsCustom:      true, // Flag for the UI Segregation
-					})
-				}
-			}
-
-			if err := rows.Err(); err != nil {
-				log.Printf("⚠️ Error iterating custom_apps rows: %v", err)
-			}
-		}
-
-		// ---------------------------------------------------------
-		// 4. SEND TO FRONTEND
+		// 5. SEND TO FRONTEND
 		// ---------------------------------------------------------
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"docker_installed": dockerInstalled,

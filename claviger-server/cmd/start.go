@@ -210,7 +210,7 @@ func RunStart() {
 
 	// 2. Start Background Catalog Sync (Every 12 Hours)
 	syncer := apps.NewCatalogSyncer(db)
-	syncer.StartBackgroundPoller(12 * time.Hour)
+	syncer.StartBackgroundPoller(ctx, 12*time.Hour)
 
 	// 3. Register HTTP API Routes
 	http.HandleFunc("/api/apps/sync", apps.HandleManualSync(db))
@@ -440,9 +440,11 @@ func RunStart() {
 	select {
 	case <-stopChan:
 		fmt.Println("\n\n🛑 User requested shutdown. Stopping Claviger Edge Daemon...")
+		cancel() // 🎯 ADD THIS HERE: Stop all background workers (Syncer, Watchdog, etc.) immediately!
 	case err := <-errChan:
 		fmt.Printf("\n\n❌ FATAL ERROR: %v\n", err)
 		fmt.Println("🛑 Initiating emergency cleanup...")
+		cancel() // 🎯 ADD THIS HERE TOO
 	}
 
 	// ---------------------------------------------------------
