@@ -342,21 +342,34 @@ func HandleLLMContainers(engine *docker.Engine) http.HandlerFunc {
 		if engine != nil && engine.Client != nil {
 			if containers, err := engine.ListContainers(r.Context()); err == nil {
 				for _, c := range containers {
-					// Account for leading slash in container names
-					name := c.Name
-					if len(name) > 0 && name[0] == '/' {
-						name = name[1:]
-					}
-					containerMap[name] = c.State
+					// Safely map both standard and Docker API leading slash variants
+					containerMap[c.Name] = c.State
+					containerMap["/"+c.Name] = c.State
 				}
 			}
 		}
 
-		// 2. Iterate through static LLMCatalog
-		for id, manifest := range apps.LLMCatalog {
+		// 2. Fetch the 3-Tier Combined Catalog
+		combinedCatalog, err := apps.GetCombinedCatalog(db)
+		if err != nil {
+			log.Printf("⚠️ [API] Failed to get combined catalog for LLMs: %v", err)
+			http.Error(w, "Failed to load LLM catalog", http.StatusInternalServerError)
+			return
+		}
+
+		// 3. Iterate through combined catalog
+		for id, manifest := range combinedCatalog {
+
+			// 🎯 THE FILTER: Only process apps belonging to the AI Studio (LLM catalog)
+			if manifest.CatalogType != "llm" {
+				continue
+			}
+
 			status := "not_installed"
 
 			if liveState, exists := containerMap[id]; exists {
+				status = liveState
+			} else if liveState, exists := containerMap["/"+id]; exists {
 				status = liveState
 			}
 
@@ -381,10 +394,15 @@ func HandleLLMContainers(engine *docker.Engine) http.HandlerFunc {
 				Description:   manifest.Description,
 				Icon:          manifest.Icon,
 				Status:        status,
-				SetupComplete: true,
+				SetupComplete: true, // Assuming LLMs don't have custom setup wizards
 				ActionPort:    actionPort,
 				ActionText:    actionText,
 			})
+		}
+
+		// Ensure we don't return null if the list is empty
+		if llmList == nil {
+			llmList = []LLMAppStatus{}
 		}
 
 		json.NewEncoder(w).Encode(map[string]interface{}{

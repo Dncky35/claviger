@@ -3,6 +3,7 @@ package apps
 import (
 	"claviger-server/internal/types"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -25,6 +26,8 @@ type ValidationError struct {
 	Message string `json:"message"`
 	Code    string `json:"code"`
 }
+
+var forbiddenPortsRegex = regexp.MustCompile(`(?m)^\s*-\s*['"]?(?:[0-9\.]+:)?(80|443|22):`)
 
 // ValidateZeroTrustYAML enforces Claviger's network and port security rules
 func ValidateZeroTrustYAML(payload types.AppManifest) []ValidationError {
@@ -62,17 +65,14 @@ func ValidateZeroTrustYAML(payload types.AppManifest) []ValidationError {
 	}
 
 	// 4. Fatal Port Conflicts (Master Gateway Protection)
-	// We must prevent binding to 80, 443, or 22
-	forbiddenPorts := []string{`"80:`, ` 80:`, `"443:`, ` 443:`, `"22:`, ` 22:`}
-	for _, port := range forbiddenPorts {
-		if strings.Contains(yamlStr, port) {
-			errors = append(errors, ValidationError{
-				Field:   "compose_yaml",
-				Code:    "PORT_CONFLICT",
-				Message: "Fatal: You cannot bind to ports 80, 443, or 22. These are reserved for the Master Gateway.",
-			})
-			break
-		}
+	// We use Regex to ensure we are only matching actual port bindings (e.g., - "80:80")
+	// and not environment variables or image tags (like "ubuntu22:latest")
+	if matches := forbiddenPortsRegex.FindStringSubmatch(yamlStr); len(matches) > 0 {
+		errors = append(errors, ValidationError{
+			Field:   "compose_yaml",
+			Code:    "PORT_CONFLICT",
+			Message: fmt.Sprintf("Fatal: You cannot bind to host port %s. Ports 80, 443, and 22 are reserved for the Master Gateway.", matches[1]),
+		})
 	}
 
 	// 5. Dynamic Port Variable Check
