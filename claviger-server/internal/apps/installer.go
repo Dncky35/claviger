@@ -3,6 +3,7 @@ package apps
 import (
 	"bytes"
 	"claviger-server/internal/hardware"
+	"claviger-server/internal/types"
 	"claviger-server/storage"
 	"database/sql"
 	"fmt"
@@ -16,20 +17,9 @@ import (
 )
 
 // AppManifest defines everything the system and UI needs to know about an app
-type AppManifest struct {
-	ID               string `json:"id"`
-	Name             string // Clean name for the UI
-	Category         string // "system_core" or "optional"
-	Description      string // Subtitle for the UI
-	Icon             string // Emoji icon for the UI
-	HasCustomSetup   bool   // Does it have a first-time setup wizard?
-	NeedsDynamicPort bool   // Should Claviger assign an 1808X port?
-	SetupPort        int    // The port for the setup wizard (0 if none)
-	ComposeYAML      string // The docker-compose.yml template
-}
 
 // Catalog is our universal App Registry
-var Catalog = map[string]AppManifest{
+var Catalog = map[string]types.AppManifest{
 	// --- SYSTEM CORE: THE MASTER GATEWAY ---
 	"npm": {
 		Name:             "Nginx Proxy Manager",
@@ -313,7 +303,7 @@ networks:
 }
 
 // LLMCatalog is the dedicated App Registry for the AI Studio
-var LLMCatalog = map[string]AppManifest{
+var LLMCatalog = map[string]types.AppManifest{
 
 	// --- AI ENGINES (The Backends) ---
 	"ollama": {
@@ -528,7 +518,7 @@ type TemplateData struct {
 // Install runs docker-compose for a specific app, assigning dynamic ports relative to hub_port.
 func Install(db *sql.DB, appID string, isCustom bool) error {
 
-	var manifest AppManifest
+	var manifest types.AppManifest
 
 	if isCustom {
 		// Route A: Fetch from local database

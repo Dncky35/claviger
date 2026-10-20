@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"claviger-server/internal/apps" // Required for the cascade teardown
+	"claviger-server/internal/apps"
 	"claviger-server/internal/firewall"
 	"claviger-server/internal/system"
 	"claviger-server/network"
