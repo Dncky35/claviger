@@ -226,7 +226,9 @@ func HandleGetUpdateStatus(db *sql.DB) http.HandlerFunc {
 
 		// 1. Fetch Current Version
 		currentVersion := storage.GetConfig(db, "installed_version")
-		if currentVersion == "" {
+		storedVersion := system.CurrentVersion
+
+		if currentVersion == "" || storedVersion > currentVersion {
 			currentVersion = system.CurrentVersion // Fallback to hardcoded constant
 		}
 

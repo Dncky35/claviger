@@ -14,7 +14,7 @@ import (
 )
 
 // CurrentVersion is the hardcoded fallback version of the compiled binary
-const CurrentVersion = "v0.4.3"
+const CurrentVersion = "v0.4.4"
 
 // GithubRelease maps the JSON response from GitHub's API
 type GithubRelease struct {
