@@ -2,9 +2,22 @@
 <div id="tab-extensions" class="hidden space-y-6 animate-fade-in">
     
     <!-- Header -->
-    <div>
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "extensions.title" }}</h2>
-        <p class="text-muted-foreground text-sm mt-1">{{ T "extensions.subtitle" }}</p>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "extensions.title" }}</h2>
+            <p class="text-muted-foreground text-sm mt-1">{{ T "extensions.subtitle" }}</p>
+        </div>
+        
+        <!-- Sync Button -->
+        <button id="sync-catalog-btn" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-md text-sm font-medium transition-colors border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg id="sync-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path d="M3 3v5h5"></path>
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                <path d="M16 21v-5h5"></path>
+            </svg>
+            <span id="sync-text">Sync Catalog</span>
+        </button>
     </div>
 
     <!-- The Marketplace Grid (JS will inject cards here) -->
@@ -108,6 +121,48 @@
                 if (elDesc) elDesc.placeholder = i18nExt.placeholder_desc;
                 if (elYaml) elYaml.placeholder = i18nExt.yaml_placeholder;
             }
+
+            const syncBtn = document.getElementById('sync-catalog-btn');
+            if (!syncBtn) return;
+
+            syncBtn.addEventListener('click', async (e) => {
+                const icon = document.getElementById('sync-icon');
+                const text = document.getElementById('sync-text');
+
+                // 1. Set Loading State
+                syncBtn.disabled = true;
+                icon.classList.add('animate-spin'); // Tailwind utility to spin the icon
+                text.textContent = 'Syncing...';
+
+                try {
+                    // 2. Call our new API endpoint
+                    const response = await fetch('/api/apps/sync', { 
+                        method: 'POST' 
+                    });
+                    const data = await response.json();
+
+                    // 3. Handle the response
+                    if (response.ok && data.status !== 'error') {
+                        // Show success (use your custom toast function if you have one instead of alert)
+                        alert(data.message); 
+
+                        // If new apps were actually downloaded, refresh the page to show them!
+                        if (data.status === 'updated') {
+                            window.location.reload();
+                        }
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to sync catalog'));
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert('Network error occurred while syncing.');
+                } finally {
+                    // 4. Reset Button State
+                    syncBtn.disabled = false;
+                    icon.classList.remove('animate-spin');
+                    text.textContent = 'Sync Catalog';
+                }
+            });
         });
 
         function renderExtensionsList(apps) {

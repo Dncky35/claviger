@@ -345,6 +345,8 @@ func RunStart() {
 	mux.HandleFunc("/api/containers/logs", api.HubAccessMiddleware(db, api.HandleContainerLogs(dockerEngine)))
 	mux.HandleFunc("/api/containers/stats", api.HubAccessMiddleware(db, api.HandleContainerStats(dockerEngine)))
 
+	mux.HandleFunc("/api/apps/sync", api.HubAccessMiddleware(db, api.HandleManualSync(db)))
+
 	// --- SERVE THE MAIN UI DASHBOARD ---
 	mux.HandleFunc("/", api.HubAccessBasicMiddleware(db, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
