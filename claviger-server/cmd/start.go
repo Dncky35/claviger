@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"claviger-server/api"
+	"claviger-server/internal/apps"
 	"claviger-server/internal/docker"
 	"claviger-server/internal/firewall"
 	"claviger-server/internal/notifier"
@@ -197,6 +198,22 @@ func RunStart() {
 	} else {
 		defer dockerEngine.Close()
 	}
+
+	// ---------------------------------------------------------
+	// 3.75 Migrations
+	// ----------------------------------------------------------
+
+	// 1. Run Migrations
+	if err := storage.RunMigrations(db); err != nil {
+		log.Fatalf("Fatal: Database migration failed: %v", err)
+	}
+
+	// 2. Start Background Catalog Sync (Every 12 Hours)
+	syncer := apps.NewCatalogSyncer(db)
+	syncer.StartBackgroundPoller(12 * time.Hour)
+
+	// 3. Register HTTP API Routes
+	http.HandleFunc("/api/apps/sync", apps.HandleManualSync(db))
 
 	// ---------------------------------------------------------
 	// 4. SETUP THE WEB HUB & ERROR CHANNEL

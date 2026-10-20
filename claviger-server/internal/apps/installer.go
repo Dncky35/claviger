@@ -521,35 +521,33 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 	var manifest types.AppManifest
 
 	if isCustom {
-		// Route A: Fetch from local database
-		row := db.QueryRow(`
-		SELECT id, name, description, icon, needs_dynamic_port, compose_yaml 
-		FROM custom_apps 
-		WHERE id = ?
-	`, appID)
-
-		err := row.Scan(
-			&manifest.ID,
-			&manifest.Name,
-			&manifest.Description,
-			&manifest.Icon,
-			&manifest.NeedsDynamicPort,
-			&manifest.ComposeYAML,
-		)
-
+		// Route A: User's Custom Apps
+		app, found, err := storage.GetCustomAppByID(db, appID)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				return fmt.Errorf("custom app [%s] not found in database", appID)
-			}
-			return fmt.Errorf("database transaction failed: %w", err)
+			return fmt.Errorf("database error checking custom app: %w", err)
 		}
+		if !found {
+			return fmt.Errorf("custom app [%s] not found in database", appID)
+		}
+		manifest = app
 
 	} else {
-		// Route B: Fetch from the compiled, static Zero-Trust Catalog
-		var exists bool
-		manifest, exists = Catalog[appID]
-		if !exists {
-			return fmt.Errorf("official app [%s] is not in the system catalog", appID)
+		// Route B: Official Apps (Remote sync -> Local fallback)
+		app, found, err := storage.GetRemoteAppByID(db, appID)
+		if err != nil {
+			return fmt.Errorf("database error checking remote apps: %w", err)
+		}
+
+		// Ensure we only install from the 'default' catalog
+		if found && app.CatalogType == "default" {
+			manifest = app
+		} else {
+			// Route C: Offline / Static Fallback
+			staticApp, staticFound := FallBackCatalog[appID] // Make sure apps.Catalog is imported
+			if !staticFound {
+				return fmt.Errorf("official app [%s] not found in remote or static catalog", appID)
+			}
+			manifest = staticApp
 		}
 	}
 
@@ -704,6 +702,23 @@ func InstallLLM(db *sql.DB, appID string, targetVersion string) error {
 	manifest, exists := LLMCatalog[appID]
 	if !exists {
 		return fmt.Errorf("LLM app [%s] is not in the system catalog", appID)
+	}
+
+	app, found, err := storage.GetRemoteAppByID(db, appID)
+	if err != nil {
+		return fmt.Errorf("database error checking remote apps: %w", err)
+	}
+
+	// Ensure we only install from the 'default' catalog
+	if found && app.CatalogType == "llm" {
+		manifest = app
+	} else {
+		// Route C: Offline / Static Fallback
+		staticApp, staticFound := FallBackCatalog[appID] // Make sure apps.Catalog is imported
+		if !staticFound {
+			return fmt.Errorf("official app [%s] not found in remote or static catalog", appID)
+		}
+		manifest = staticApp
 	}
 
 	// 1. Fetch the Anchor Port from DB (Fallback to 18080)
