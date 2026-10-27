@@ -558,6 +558,7 @@
     "section_apps": "Server Uygulamaları ve Uzantıları",
     "section_apps_desc": "Uzak sunucudaki resmi uzantıları ve özel Docker dağıtımlarını yönetin.",
     "btn_refresh_apps": "Senkronizasyonu Yenile",
+    "btn_refresh_catalog":"Kataloğu Yenile",
     "loading_apps": "Standart uygulamalar yükleniyor...",
     "official_extensions": "Resmi Uzantılar",
     "custom_deployments": "Özel Dağıtımlar",

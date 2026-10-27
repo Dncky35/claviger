@@ -148,7 +148,8 @@
 
                         // If new apps were actually downloaded, refresh the page to show them!
                         if (data.status === 'updated') {
-                            window.location.reload();
+                            // window.location.reload();
+                            await syncAppStates();
                         }
                     } else {
                         alert('Error: ' + (data.message || 'Failed to sync catalog'));

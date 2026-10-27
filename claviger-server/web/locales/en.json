@@ -558,6 +558,7 @@
     "section_apps": "Node Applications & Extensions",
     "section_apps_desc": "Manage official extensions and custom Docker deployments on this edge server.",
     "btn_refresh_apps": "Refresh Sync",
+    "btn_refresh_catalog" :"Refresh Catalog",
     "loading_apps": "Loading standard applications...",
     "official_extensions": "Official Extensions",
     "custom_deployments": "Custom Deployments",
