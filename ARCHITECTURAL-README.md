@@ -488,11 +488,10 @@ Claviger's security model is built on **Zero-Trust** principles:
 
 ```mermaid
 graph LR
-    A[User Devices] -->|WireGuard| B[Claviger Server]
-    B -->|Tunnel| C[Claviger Client]
-    B -->|VPN Network| D[Internal Resources]
-    B --> E[HTTP API (VPN-only)]
-```
+    A["User Devices"] -->|WireGuard| B["Claviger Server"]
+    B -->|Tunnel| C["Claviger Client"]
+    B -->|VPN Network| D["Internal Resources"]
+    B --> E["HTTP API (VPN-only)"]
 
 - Standard setup: 1 server, 1 admin, multiple standard clients.
 - All traffic routed over `wg0`.
@@ -502,11 +501,26 @@ graph LR
 
 ```mermaid
 graph TD
+    A["Master Server"] -->|VPN tunnel| B["Sub-Server 1"]
+    B -->|VPN tunnel| C["Sub-Server 2"]
+    B --> D["Sub-Server N"]
+    A --> E["Parent Management API"]
+    B --> F["Local Devices via wg0"]
+    C --> G["Local Devices via wg0"]
+    D --> H["Local Devices via wg0"]
+
+- Master server runs `public-hub` mode (`0.0.0.0:18080`).
+- Sub-servers use `register-node` to register with the master.
+- Sub-servers maintain their own WireGuard `wg0` interface.
+- Each node has its own SQLite database and local state.
+
     A[Master Server] -->|VPN tunnel| B[Sub-Server 1]
     B -->|VPN tunnel| C[Sub-Server 2]
     B --> D[Sub-Server N]
     A --> E[Parent Management API]
     B --> F[Local Devices via wg0]
+    C --> G["Local Devices via wg0"]
+    D --> H["Local Devices via wg0"]
     C --> G[Local Devices via wg0]
     D --> H[Local Devices via wg0]
 ```
