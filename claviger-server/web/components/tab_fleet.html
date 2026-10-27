@@ -304,6 +304,10 @@
         async function refetchCatalog(){
             const syncButton = document.getElementById("btn-sync-catalog");
 
+            const select = document.getElementById('fleet-node-select');
+            const selectedOption = select.options[select.selectedIndex];
+            const node = JSON.parse(selectedOption.dataset.nodeInfo);
+
             if(!syncButton){
                 return;
             }
@@ -311,12 +315,12 @@
             syncButton.disabled = true;
 
             try {
-                const res = await fetch('/api/fleet/proxy/api/sync', {
+                const res = await fetch('/api/fleet/proxy/api/apps/sync', {
                     method: 'POST',
-                    headers: { 'X-Node-ID': nodeId }
+                    headers: { 'X-Node-ID': node.id }
                 });
-                const data = await response.json();
-                if (response.ok && data.status !== 'error') {
+                const data = await res.json();
+                if (res.ok && data.status !== 'error') {
                     // Show success (use your custom toast function if you have one instead of alert)
                     alert(data.message); 
 
