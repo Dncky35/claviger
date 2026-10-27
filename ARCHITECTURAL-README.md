@@ -78,8 +78,6 @@ graph TD
     end
 ```
 
-
-"""
 ---
 
 ## Server-Side Architecture (claviger-server)
