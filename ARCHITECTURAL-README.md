@@ -47,35 +47,34 @@ Claviger is a **Zero-Trust Network Access (ZTNA)** tool that creates secure, enc
 
 ```mermaid
 graph TD
-    A[User / Admin] --> B[Claviger Client GUI/CLI]
-    B -->|TCP IPC (localhost)| C[Claviger Daemon]
-    C --> D[WireGuard Engine]
-    D -->|wg0/claviger0| E[VPNServer]
+    A["User / Admin"] --> B["Claviger Client GUI/CLI"]
+    B -->|TCP IPC (localhost)| C["Claviger Daemon"]
+    C --> D1["WireGuard Engine"]
+    D1 -->|wg0/claviger0| E["VPN Server"]
 
-    F[User / Device] -->|WireGuard|Tunnel
-    tunnel[DNS, routes] --> E
+    F["User / Device"] -->|WireGuard| tunnel["Tunnel (DNS, routes)"]
+    tunnel --> E
 
-    E --> G[HTTP API (localhost:18080)]
-    G --> H[SQLite DB]
-    G --> I[Internal Packages]
-    I --> J[Auth]
-    I --> K[Crypto]
-    I --> L[Firewall]
-    I --> M[Scheduler]
-    I --> N[Watchdog]
+    E --> G["HTTP API (localhost:18080)"]
+    G --> H["SQLite DB"]
+    G --> I["Internal Packages"]
+    I --> J["Auth"]
+    I --> K["Crypto"]
+    I --> L["Firewall"]
+    I --> M["Scheduler"]
+    I --> N["Watchdog"]
 
     subgraph "Server Node (Linux / Mac)"
+        E
         G
         H
         I
-        D
-        E
     end
 
     subgraph "Client Node (Windows / Linux / Mac)"
         B
         C
-        D
+        D1
         F
     end
 ```
