@@ -84,7 +84,17 @@ func HandleFleetProxy(db *sql.DB) http.HandlerFunc {
 
 		// 8. Execute the Request with a Strict Timeout
 		// We use 10 seconds. If the node is powered off, we don't want the Master UI to hang forever.
-		client := &http.Client{Timeout: 10 * time.Second}
+		timeoutDuration := 10 * time.Second
+		if strings.Contains(targetPath, "/api/apps/install") ||
+			strings.Contains(targetPath, "/api/apps/uninstall") ||
+			strings.Contains(targetPath, "/api/llms/install") ||
+			strings.Contains(targetPath, "/api/gateway/extensions/custom") {
+
+			timeoutDuration = 5 * time.Minute
+			log.Printf("⏳ [Fleet Proxy] Heavy deployment requested for node %s. Extended timeout to 5 minutes.", targetNodeID)
+		}
+
+		client := &http.Client{Timeout: timeoutDuration}
 		resp, err := client.Do(proxyReq)
 		if err != nil {
 			log.Printf("⚠️ Failed to reach Sub-server at %s: %v", targetURL, err)
