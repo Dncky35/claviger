@@ -492,7 +492,7 @@ graph LR
     A[User Devices] -->|WireGuard| B[Claviger Server]
     B -->|Tunnel| C[Claviger Client]
     B -->|VPN Network| D[Internal Resources]
-    B --> E[HTTP API (VPN-only)]
+    B --> E["HTTP API (VPN-only)"]
 ```
 
 - Standard setup: 1 server, 1 admin, multiple standard clients.
