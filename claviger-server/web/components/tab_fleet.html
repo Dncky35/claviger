@@ -140,11 +140,14 @@
         <!-- SECTION 2: Standard Edge Applications -->
         <section>
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                <!-- Left side texts -->
                 <div>
                     <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">{{ T "fleet.section_apps" }}</h3>
                     <p class="text-xs text-slate-500 mt-0.5">{{ T "fleet.section_apps_desc" }}</p>
                 </div>
-                <div>
+                
+                <!-- Right side buttons -->
+                <div class="flex items-center gap-3">
                     <button 
                         id="btn-refresh-fleet-apps"
                         onclick="refetchFleetContainers()" 
@@ -160,7 +163,6 @@
                         {{ T "fleet.btn_refresh_catalog" }}
                     </button>
                 </div>
-                
             </div>
 
             <!-- Unified List Container -->
