@@ -1,7 +1,7 @@
 [Setup]
 ; Basic App Info
 AppName=Claviger Client
-AppVersion=v0.4.3
+AppVersion=v0.4.5
 AppPublisher="Cloudrocean"
 AppPublisherURL="https://claviger.cloudrocean.com"
 

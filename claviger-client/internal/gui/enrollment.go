@@ -34,13 +34,19 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 
 	title := widget.NewLabelWithStyle("Join Claviger Network", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
-	// 🎯 2. STEP 1: CONNECTION REQUEST (Single Generate & Copy Action)
-	generateAndCopyBtn := widget.NewButton("Generate & Copy Token", func() {
+	// 1. Pre-declare the button variable so it can reference itself
+	var generateAndCopyBtn *widget.Button
+
+	// 2. Assign the logic
+	generateAndCopyBtn = widget.NewButton("Generate & Copy Token", func() {
+		// 🎯 INSTANT LOCK: Disable immediately to prevent double-clicking
+		generateAndCopyBtn.Disable()
 
 		// Connect to the Daemon
 		conn, err := net.DialTimeout("tcp", "127.0.0.1:42899", 2*time.Second)
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("Claviger Background Service is not running.\nPlease start the service and try again."), g.Window)
+			generateAndCopyBtn.Enable() // 🔓 Unlock so they can try again
 			return
 		}
 		defer conn.Close()
@@ -53,6 +59,7 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 		resp, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("Failed to receive token from Daemon: %v", err), g.Window)
+			generateAndCopyBtn.Enable() // 🔓 Unlock on error
 			return
 		}
 
@@ -64,15 +71,17 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 			token := parts[1]
 
 			// Copy to clipboard
-			g.Window.Clipboard().SetContent(token)
+			g.App.Clipboard().SetContent(token)
 
 			// Reload the GUI's vault in memory so it sees the new pending profile
 			updatedVault, _ := config.Load()
 			g.Vault = updatedVault
 
 			dialog.ShowInformation("Success", "Token generated and copied to clipboard!\nYou can now send it to your admin.", g.Window)
+			generateAndCopyBtn.Enable() // 🔓 Unlock so they can generate another one later if needed
 		} else {
 			dialog.ShowError(fmt.Errorf("Daemon failed to generate token. Check daemon logs."), g.Window)
+			generateAndCopyBtn.Enable() // 🔓 Unlock on error
 		}
 	})
 
@@ -87,10 +96,15 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 	visaEntry := widget.NewEntry()
 	visaEntry.SetPlaceHolder("Paste Visa Token here...")
 
-	verifyBtn := widget.NewButton("Verify & Connect", func() {
+	var verifyBtn *widget.Button
+	verifyBtn = widget.NewButton("Verify & Connect", func() {
+		// 🎯 INSTANT LOCK: Disable the button immediately to prevent double-clicks
+		verifyBtn.Disable()
+
 		tokenString := strings.TrimSpace(visaEntry.Text)
 		if tokenString == "" {
 			dialog.ShowError(fmt.Errorf("please paste the visa token"), g.Window)
+			verifyBtn.Enable() // Unlock so they can try again
 			return
 		}
 
@@ -99,6 +113,7 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 		if err != nil {
 			log.Println("❌ Daemon not reachable:", err)
 			dialog.ShowError(fmt.Errorf("Claviger Background Service is not running.\nPlease start the service from Windows Services and try again."), g.Window)
+			verifyBtn.Enable() // Unlock so they can try again
 			return
 		}
 		defer conn.Close()
@@ -115,6 +130,7 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 			updatedVault, loadErr := config.Load()
 			if loadErr != nil {
 				dialog.ShowError(fmt.Errorf("Failed to sync with Daemon: %v", loadErr), g.Window)
+				verifyBtn.Enable() // Unlock on error
 				return
 			}
 			g.Vault = updatedVault
@@ -122,8 +138,10 @@ func (g *ClavigerGUI) ShowEnrollmentScreen() {
 
 			dialog.ShowInformation("Success", "Device enrolled successfully via secure Daemon!", g.Window)
 			g.ShowDashboardScreen()
+			// 🎯 Note: We DO NOT enable the button here because we are moving to a new screen anyway!
 		} else {
 			dialog.ShowError(fmt.Errorf("Daemon rejected the token or failed to save"), g.Window)
+			verifyBtn.Enable() // Unlock so they can fix the token and try again
 		}
 	})
 

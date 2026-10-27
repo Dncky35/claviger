@@ -14,7 +14,7 @@ import (
 )
 
 // CurrentVersion is the hardcoded fallback version of the compiled binary
-const CurrentVersion = "v0.4.4"
+const CurrentVersion = "v0.4.5"
 
 // GithubRelease maps the JSON response from GitHub's API
 type GithubRelease struct {
@@ -31,7 +31,7 @@ func CheckGitHubForUpdates() (bool, string, error) {
 
 	// 1. Get currently installed version
 	currentVersion := storage.GetConfig(db, "installed_version")
-	if currentVersion == "" {
+	if currentVersion == "" || currentVersion <= CurrentVersion {
 		currentVersion = CurrentVersion
 	}
 	// log.Printf("[UpdateCheck] 🔍 Starting update check. Current installed version: '%s'", currentVersion)
