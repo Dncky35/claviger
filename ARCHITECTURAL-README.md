@@ -593,7 +593,7 @@ go test -v ./...
 
 ## License
 
-*(Add your license here — e.g., MIT, GPL-3.0, etc.)*
+[GNU AGPL v3 license](LICENSE)
 
 ---
 
