@@ -1,116 +1,181 @@
-# 🗝️ Claviger: Zero Trust VPN Gateway & Internal Developer Platform
+# Claviger — Secure Your Network, Own the Pipeline
 
-Claviger is an enterprise-grade Zero Trust networking appliance and self-hosted IDP designed for seamless infrastructure orchestration. It operates as a high-performance service daemon on Linux, providing deterministic routing, automated IP Address Management (IPAM), and a state-aware application marketplace. 
-
-By decoupling the **Control Plane** (centralized identity and enrollment) from the **Data Plane** (kernel-level WireGuard transit), Claviger ensures that sensitive cryptographic material and private network traffic never leave your sovereign infrastructure.
+> **Claviger** is a self-hosted Zero-Trust VPN gateway with an integrated app marketplace and automated security hardening. Build a private, segmented network across any number of devices — no cloud dependency, no vendor lock-in, no exposure.
 
 ---
 
-## 🏗️ Architecture Overview
+## Why Claviger?
 
-The Claviger ecosystem is architected as a distributed system composed of two primary pillars:
+Most organizations still connect workloads and users the way they did a decade ago: open ports, trust everything on the internal network, and hope nothing gets scanned. That model is broken.
 
-*   **`claviger-server` (The Node Engine):** A Golang-based daemon that manages the Linux networking stack. It utilizes `wgctrl` for kernel-level WireGuard manipulation, Docker Compose for application lifecycle management, and an embedded SQLite instance for local state persistence.
-*   **`claviger-client` (The Management Interface):** A cross-platform GUI built with Fyne, enabling secure administrative enrollment via cryptographic "Visa" tokens. It facilitates remote node management and secure peer provisioning without direct SSH exposure.
+Claviger flips the script. It gives you a **zero-trust network** that runs entirely on your own infrastructure. You decide what is exposed, to whom, and for how long. Devices are enrolled explicitly, traffic is encrypted end-to-end, and every component sits behind identity verification. No public endpoints. No open SSH ports. No flat internal network.
 
----
-
-## 🚀 Core Technical Features
-
-### 1\. Network Engineering & Zero Trust
-
-
-*   **Hot-Injection Peer Management:** Claviger performs zero-reload peer injection. New devices are added to the WireGuard interface (wg0) in real-time using wgctrl.ConfigureDevice, ensuring seamless M2M connectivity without dropping existing tunnel sessions.
-*   **Sequential 1808X Port Allocation:** To avoid port collisions, the IDP implements a collision-aware dynamic allocation strategy. Services are automatically assigned ports in a 100-port block starting from the user-defined hub\_port (defaulting to the 1808X range).
-*   **Automated IPAM:** The system manages a virtual overlay subnet (default 10.8.0.0/24). It dynamically discovers available addresses, reserving .1 for the Hub and sequentially assigning .2 through .254 to peers.  
-*   **Role-Based Access Control (RBAC):** Claviger enforces identity-aware network segmentation by assigning granular roles to connected clients, ensuring strict adherence to the principle of least privilege:
-    *   **Hub Access Role:** Grants administrative privileges to interact with the gateway management plane, modify system configurations, and manage infrastructure lifecycle.
-    *   **Global Routing Role:** Enables full network traversal for designated "Master" nodes, allowing them to route traffic across the entire VPN overlay and access all internal services.
-    *   **Service-Bound Role:** Restricts client access to specific IP/Port mappings, effectively isolating individual developer tools (like Gitea or Vaultwarden) and preventing lateral movement within the network.
-
-
-### 2\. Security Automation & OS Hardening
-
-*   **RESTful Firewall-as-API:** A comprehensive security controller exposes UFW (Uncomplicated Firewall) management via a secure API. It features a smart scanner that detects and flags "Critical" vulnerabilities, such as public SSH (22) or Database exposure.
-*   **Cloudflare Authenticated Origin Pulls (Opt-In):** For web-facing nodes, users can optionally enable an automated lockdown for ports 80/443. When activated, Claviger fetches live Cloudflare IP ranges and reconfigures UFW to drop all traffic not originating from Cloudflare’s edge, with an option to auto-update these IP ranges on a schedule.
-*   **Failure Protection:** Integrated **Fail2Ban** orchestration allows admins to manage SSH jails, monitor banned IPs, and perform surgical unbans directly from the management UI.    
-*   **Systemd Integration:** The daemon manages its own lifecycle as a standard Linux service, ensuring high availability and automatic recovery after host reboots.
-
-
-### 3. Infrastructure Orchestration & PaaS
-Claviger transforms standard Linux instances into a private PaaS through its **"App Tab" Marketplace**.
-*   **State-Aware Orchestration:** The engine dynamically generates and injects environment-specific variables into Docker Compose templates for services like **Vaultwarden**, **AdGuard Home**, and **Nginx Proxy Manager**.
-*   **Deterministic Dependency Gates:** System-core apps (e.g., NPM) are treated as master gateways, ensuring required network bridges (`cloudrocean-net`) and shared configuration volumes (Cloudflare IP lists) are provisioned before service instantiation.
+Everything runs on commodity hardware. One server can act as the control plane for a handful of devices or a backbone for an entire fleet.
 
 ---
 
-## 🛠️ Tech Stack Breakdown
+## What You Get
 
-| Layer | Technology | Purpose |
-| :--- | :--- | :--- |
-| **Core Logic** | Golang 1.21+ | High-concurrency daemon execution |
-| **VPN Kernel** | WireGuard / `wgctrl` | High-performance encrypted transit |
-| **Orchestration** | Docker Compose | Application container lifecycle |
-| **Database** | SQLite (Pure Go) | Low-overhead local state persistence |
-| **Desktop UI** | Fyne (Go-GUI) | Cross-platform management client |
+### 🔐 A Zero-Trust VPN Gateway
+
+Think of Claviger as your own private pipe. Devices connect over an encrypted WireGuard overlay, and every connection is tied to a verified identity. There is no implicit trust. There is no open firewall facing the internet by default.
+
+Once enrolled, a device can:
+
+- **Reach internal services** on your chosen subnet without exposing them to the internet
+- **Route traffic selectively** — through or around the tunnel, depending on what you need
+- **Be revoked instantly** with a single command, cutting off access before it becomes a problem
+- **Be assigned roles** that enforce least-privilege access to specific ports and services
+
+Your gateway is your network boundary. Only the things you explicitly allow are reachable.
+
+### 🛒 A Self-Hosted App Marketplace
+
+Claviger ships with a curated **App Tab Marketplace** of services that belong on a private network:
+
+- **AdGuard Home** — local DNS filtering and ad blocking, self-managed
+- **Vaultwarden** — your own password vault, not a public SaaS
+- **Nginx Proxy Manager** — reverse proxy, SSL, and access control for internal services
+- **Plus eight additional curated services** you can deploy with a single action
+
+Install, configure, and update just like any app store. Your data stays on your box. No telemetry, no cloud dependency, no external dependency on third-party infrastructure.
+
+### 🛡️ Automated Security Hardening
+
+A zero-trust network is useless if the gateway itself is exposed. Claviger's security automation takes care of the boring, error-prone parts so you don't have to:
+
+- **Firewall-as-API** — inspect and control access to every port with a clear policy model
+- **Public exposure detection** — flag services that are inadvertently reachable from the internet
+- **Authenticated origin pulls** — protect web-facing nodes with Cloudflare, or isolate them entirely
+- **SSH jail management** — automated fail2ban-style protection for administrative access
+- **Crash recovery** — if the gateway becomes unreachable, the tunnel is force-disconnected to prevent unauthorized access
+
+You still own the policy. The automation just removes the gaps that come from manual configuration.
+
+### 🛡️ Disaster Recovery
+
+Every deployment generates a **Disaster Recovery Key** (AES-256) during setup. Keep it somewhere safe.
+
+If your server fails, the key is the only way to decrypt and restore your network configuration and application data. It is never stored in plaintext and cannot be recovered if lost.
 
 ---
 
-## 🚀 Installation & Bootstrapping
+## How It Works
 
-### 1. Server Provisioning (Linux)
-Execute the following on your target Linux server to begin the Zero-Trust enrollment:
+Claviger is built around a clean separation between **control** and **data**:
+
+1. **Control Plane** — your server runs the identity engine, enrollment portal, app marketplace, and security policy. This is the only interface you manage.
+2. **Data Plane** — each enrolled device establishes an encrypted WireGuard tunnel over the overlay network. Nothing passes through the control plane. Nothing touches your public network unless you explicitly allow it.
+
+End users interact with one of two interfaces:
+
+- **Desktop GUI** — download the Claviger app, enroll a device in minutes, choose what it connects to
+- **CLI** — same capabilities, scriptable and headless for automation
+
+---
+
+## Quick Start
+
+### On Your Server (Linux)
 
 ```bash
-# Install the claviger-server
+# Install the server
 curl -sSL https://api.cloudrocean.com/v1/installers/claviger-server/latest | sudo bash
 
-```
-
-**The Setup Flow:**
-1.  **Identity Generation:** The node generates a unique UUID and cryptographic keypair.
-2.  **Network Validation:** The wizard validates UDP port availability (default `51820`) and TCP port availability for the management hub (default `18080`).
-3.  **Endpoint Verification:** Performs DNS/IP verification to ensure your node is reachable by clients.
-4.  **Admin Enrollment:** You will be prompted to paste a "Connection Request" token from your Claviger Desktop Client to link the node.
-
-```bash
-# Start the interactive setup wizard (Requires Root)
+# Run interactive setup
 sudo claviger-server setup
 ```
 
-### 2. Service Management
-Once configured, Claviger installs itself as a `systemd` unit:
+The setup wizard walks you through three steps:
+
+1. **Generate an identity** for your node
+2. **Validate network ports** for the VPN and management hub
+3. **Enroll yourself** as the first admin
+
+When setup is complete, start the daemon:
 
 ```bash
 sudo systemctl start claviger-server
 ```
 
-### 3. Client Provisioning (linux)
-Execute the following on your target Linux client to begin the Zero-Trust client:
+### Enroll a Client
+
+There are two ways to do this.
+
+**Desktop GUI (recommended for first-time enrollment):**
+
+1. Open the Claviger Desktop App
+2. Generate a connection request from the client
+3. Paste the token into the server setup terminal
+4. Copy the approval token back into the client
+
+**CLI (for scripted or headless enrollment):**
 
 ```bash
-# Install the claviger-server
-curl -sSL https://api.cloudrocean.com/v1/installers/claviger-client/latest | sudo bash
+# Client
+sudo claviger-client generate
 
+# Server
+sudo claviger-server register
+
+# Client
+sudo claviger-client approve <server-approval-token>
+
+# Client
+sudo claviger-client connect
 ```
 
-### 4. Linux Client Enrolment
-1.  Generete token **"sudo claviger-client generate"**.
-2.  Copy and paste the token into the server's setup terminal.
-3.  The server will provide an **Approval Token (Visa)**, Copy the approval token from server and paste to client terminal **"sudo claviger-client approve [server-token]"**.
-4.  to connect server enter **"sudo claviger-client connect"**.
+That's it. Your device is now on the private network with verified access.
 
+### Verify
 
+```bash
+# List connected clients
+./claviger-server list
+```
 
-### 4. Windows Client Enrollment
-1.  Open the **Claviger Desktop App**.
-2.  Click **"Generate Connection Request"**.
-3.  Paste the resulting token into the server's setup terminal.
-4.  The server will provide an **Approval Token (Visa)**. Paste this back into the client to establish the secure tunnel.
+You should see your enrolled clients with status `active`.
+
+### Revoke
+
+```bash
+# Revoke a single client
+./claviger-server revoke <client-id>
+```
+
+Done. Access cut immediately.
 
 ---
 
-## 🛡️ Disaster Recovery
-During setup, a **Disaster Recovery Key** (AES-256) is generated. 
+## Supported Platforms
 
-> ⚠️ **IMPORTANT:** Save this key immediately. If the server is destroyed, this key is the only way to decrypt and restore your network configurations and application data from backups. It is never stored in plain text and cannot be recovered if lost.
+| Platform | Role | Notes |
+|---|---|---|
+| Linux (x86_64, ARM64) | Server, Client | CLI |
+| Windows (x86_64) | Client | GUI + CLI + Windows service |
+| macOS | NA | NA | 
+
+---
+
+## For Developers
+
+If you want to dig into the code, the source tree is organized as two independent modules.
+
+- `claviger-server` — Go daemon, WireGuard control, app orchestration, security policy
+- `claviger-client` — Go UI, VPN management, CLI, cross-platform packaging
+
+Each module can be built and tested independently. Refer to the detailed [ARCHITECTURAL-README.md](ARCHITECTURAL-README.md) in the repository root for full technical documentation.
+
+---
+
+## License
+
+[GNU AGPL v3 license](LICENSE)
+
+---
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/<your-org>/claviger/issues)
+- **Documentation**: [`docs/`](docs/)
+- **Community**: *[your preferred channel]*
