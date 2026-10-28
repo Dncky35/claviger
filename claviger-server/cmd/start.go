@@ -283,6 +283,8 @@ func RunStart() {
 	// --- PROTECTED INSTALL/UNINSTALL ROUTES ---
 	mux.HandleFunc("/api/apps/uninstall", api.HubAccessMiddleware(db, api.HandleAppUninstall))
 	mux.HandleFunc("/api/apps/install", api.HubAccessMiddleware(db, api.HandleAppInstall))
+	mux.HandleFunc("/api/apps/schema", api.HubAccessBasicMiddleware(db, api.HandleGetAppSchema))
+	mux.HandleFunc("/api/apps/settings/update", api.HubAccessBasicMiddleware(db, api.HandleUpdateAppSetting))
 
 	mux.HandleFunc("/api/gateway/extensions/custom", api.HubAccessMiddleware(db, api.HandleAddCustomApp(db)))
 	mux.HandleFunc("/api/gateway/extensions/custom/remove", api.HubAccessMiddleware(db, api.HandleRemoveCustomApp(db)))

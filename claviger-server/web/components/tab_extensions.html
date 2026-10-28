@@ -166,39 +166,17 @@
             });
         });
 
-        function renderExtensionsList(apps) {
+        function renderExtensionsList(notInstalledApps) {
             const i18nExt = window.I18N.extensions;
             const gridEl = document.getElementById('extensions-grid');
             if (!gridEl) return;
             gridEl.innerHTML = ''; 
 
-            const officialApps = apps.filter(app => app.category === 'optional' && !app.is_custom);
-            const customApps = apps.filter(app => app.category === 'optional' && app.is_custom);
+            // Both categories only contain uninstalled apps now
+            const officialApps = notInstalledApps.filter(app => app.category === 'optional' && !app.is_custom);
+            const customApps = notInstalledApps.filter(app => app.category === 'optional' && app.is_custom);
 
             const buildCard = (app) => {
-                const isInstalled = app.status !== 'not_installed';
-                const isRunning = app.status === 'running';
-                
-                let badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-surface-elevated text-muted-foreground border border-border">${i18nExt.badge_not_installed}</span>`;
-                if (isInstalled) {
-                    if (isRunning) {
-                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-success/10 text-success border border-success/20">${i18nExt.badge_running}</span>`;
-                    } else if (app.status === 'degraded') {
-                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-warning/10 text-warning border border-warning/20">${i18nExt.badge_degraded}</span>`;
-                    } else {
-                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-destructive/10 text-destructive border border-destructive/20">${i18nExt.badge_stopped}</span>`;
-                    }
-                }
-
-                let installBtnClass = isInstalled ? 'hidden' : '';
-                let dashBtnClass = isInstalled ? '' : 'hidden'; 
-
-                let isDefault = app.action_port > 0;
-                let defaultAction = app.name === "RustDesk Server" ? 
-                `onclick="window.open('https://claviger.cloudrocean.com/documentation/e54a5823-8d66-4999-9d91-70ec7db319a6', '_blank')"` : 'disabled';
-                let dashOnClick = isDefault ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
-                let dashColors = 'bg-surface-elevated hover:bg-surface-hover text-foreground border-border cursor-pointer';
-
                 const borderStyle = app.is_custom ? 'border-primary/40' : 'border-border';
                 const customPill = app.is_custom ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/10 text-primary uppercase tracking-wider">${i18nExt.custom_pill}</span>` : '';
 
@@ -211,10 +189,14 @@
                             <div class="w-12 h-12 rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-2xl shadow-inner">
                                 ${app.icon}
                             </div>
-                            ${badgeHtml}
+                            
+                            <span class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-surface-elevated text-muted-foreground border border-border">
+                                ${i18nExt.badge_not_installed}
+                            </span>
+                            
                             <button id="btn-remove-${app.id}" 
                                 onclick="removeCustomApp('${app.id}')" 
-                                class="${app.is_custom && app.status === 'not_installed' ? '' : 'hidden'} text-destructive hover:text-destructive transition-colors text-sm font-bold">
+                                class="${app.is_custom ? '' : 'hidden'} text-destructive hover:text-destructive transition-colors text-sm font-bold">
                                 ${i18nExt.btn_remove}
                             </button>
                         </div>
@@ -227,13 +209,9 @@
                         <button 
                             id="btn-install-${app.id}" 
                             onclick="installApp('${app.id}', ${app.is_custom})" 
-                            class="${installBtnClass} w-full py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold rounded-lg transition-colors shadow-sm"
+                            class="w-full py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold rounded-lg transition-colors shadow-sm"
                         >
                             ${i18nExt.btn_install}
-                        </button>
-
-                        <button id="btn-dash-${app.id}" ${dashOnClick} class="${dashBtnClass} ${dashColors} w-full py-2.5 text-sm font-bold rounded-lg transition-colors border">
-                            ${app.action_text}
                         </button>
                     </div>
                 </div>`;
@@ -263,7 +241,7 @@
                 customApps.forEach(app => gridEl.insertAdjacentHTML('beforeend', buildCard(app)));
             }
         }
-
+        
         function openCustomAppModal() {
             const modal = document.getElementById('custom-app-modal');
             modal.classList.remove('hidden');

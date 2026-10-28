@@ -66,31 +66,34 @@
     }
 
     async function syncAppStates() {
-        try {
-            const res = await fetch('/api/containers');
-            const data = await res.json();
-            
-            // If the backend didn't send the registry, abort cleanly
-            if (!data.registry_apps) return;
+    try {
+        const res = await fetch('/api/containers');
+        const data = await res.json();
+        
+        if (!data.registry_apps) return;
 
-            // --- NEW: Trigger the Uninstall List renderer! ---
-            if (typeof renderUninstallList === "function") {
-                renderUninstallList(data.registry_apps);
-            }
+        // 1. Divide the apps into Installed and Not Installed
+        const installedApps = data.registry_apps.filter(app => app.status !== 'not_installed');
+        const notInstalledApps = data.registry_apps.filter(app => app.status === 'not_installed');
 
-            // 2. NEW: Render the Extensions Marketplace!
-            if (typeof renderExtensionsList === "function") {
-                renderExtensionsList(data.registry_apps);
-            }
-
-        } catch (e) {
-            console.error("Failed to sync app states", e);
+        // 2. Render the "My Apps" Management Tab (Replaces the old uninstall list)
+        if (typeof renderInstalledAppsList === "function") {
+            renderInstalledAppsList(installedApps);
         }
+
+        // 3. Render the Extensions Store Tab (Now ONLY for not installed apps)
+        if (typeof renderExtensionsList === "function") {
+            renderExtensionsList(notInstalledApps);
+        }
+
+    } catch (e) {
+        console.error("Failed to sync app states", e);
     }
+}
 
     // --- Tab Navigation Logic ---
     function switchTab(tabId) {
-        const tabs = ['system', 'security', 'clients', "voice", "access", "roles", "mfa", "containers", "llm", "homeserver",  "network", "uninstall", "extensions", "fleet"];
+        const tabs = ['system', 'security', 'clients', "voice", "access", "roles", "mfa", "containers", "llm", "homeserver",  "network", "installed-apps", "extensions", "fleet"];
         
         // New Sidebar Tailwind CSS states
         const inactiveClass = 'px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-colors';
@@ -141,7 +144,7 @@
         if (tabId === 'clients') fetchPeersData();
         if (tabId === 'access') fetchSSHKeys();
         if (tabId === 'roles') fetchRolesData();
-        if (tabId === 'uninstall') { syncAppStates(); }
+        if (tabId === 'installed-apps') { syncAppStates(); }
         if (tabId === 'containers') loadContainers();
         if (tabId === 'extensions') { syncAppStates(); }
         if (tabId === 'system') {

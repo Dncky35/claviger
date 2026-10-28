@@ -80,53 +80,6 @@ func promptValidatedIP(reader *bufio.Reader, promptText string, defaultIP string
 	}
 }
 
-// promptYesNo handles [Y/n] questions safely
-func promptYesNo(reader *bufio.Reader, promptText string, defaultYes bool) bool {
-	defaultStr := "Y/n"
-	if !defaultYes {
-		defaultStr = "y/N"
-	}
-
-	for {
-		fmt.Printf("%s [%s]: ", promptText, defaultStr)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(strings.ToLower(input))
-
-		if input == "" {
-			return defaultYes
-		}
-		if input == "y" || input == "yes" {
-			return true
-		}
-		if input == "n" || input == "no" {
-			return false
-		}
-		fmt.Println("⚠️  Please enter 'y' or 'n'.")
-	}
-}
-
-// promptChoice handles numbered menus
-func promptChoice(reader *bufio.Reader, promptText string, options map[string]string, defaultChoice string) string {
-	fmt.Printf("\n%s\n", promptText)
-	for key, desc := range options {
-		fmt.Printf("  [%s] %s\n", key, desc)
-	}
-
-	for {
-		fmt.Printf("Select an option [%s]: ", defaultChoice)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-
-		if input == "" {
-			return defaultChoice
-		}
-		if _, exists := options[input]; exists {
-			return input
-		}
-		fmt.Println("⚠️  Invalid selection. Please choose a valid number from the list.")
-	}
-}
-
 func RunSetup(args []string) {
 	// 1. Root / Sudo Enforcement
 	if os.Geteuid() != 0 {

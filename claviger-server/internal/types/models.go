@@ -49,3 +49,49 @@ func (r *RemoteApp) ToManifest() AppManifest {
 		VersionTag:       r.VersionTag,
 	}
 }
+
+// Define the core Action struct if you haven't already
+type Action struct {
+	Type            string            `json:"type"` // "env", "exec", "api"
+	TargetKey       string            `json:"target_key,omitempty"`
+	ValueMapping    map[string]string `json:"value_mapping,omitempty"`
+	RequiresRestart bool              `json:"requires_restart"`
+	ContainerName   string            `json:"container_name,omitempty"`
+	RunAsUser       string            `json:"run_as_user,omitempty"`
+	CommandTemplate string            `json:"command_template,omitempty"`
+}
+
+// UpdatePayload represents what the frontend POSTs to the backend.
+type UpdatePayload struct {
+	AppID    string `json:"app_id"`
+	FieldID  string `json:"field_id"`
+	NewValue string `json:"new_value"`
+}
+
+// Structs to unmarshal the schema.json
+type AppSchema struct {
+	AppID      string           `json:"app_id"`
+	Categories []SchemaCategory `json:"categories"`
+}
+
+type SchemaCategory struct {
+	ID     string        `json:"id"`
+	Title  string        `json:"title"`
+	Fields []SchemaField `json:"fields"`
+}
+
+type SchemaField struct {
+	ID           string       `json:"id"`
+	Label        string       `json:"label"`
+	Description  string       `json:"description"`
+	UIComponent  string       `json:"ui_component"`  // "toggle", "select", "text", "password"
+	DataType     string       `json:"data_type"`     // "boolean", "string"
+	CurrentValue interface{}  `json:"current_value"` // interface{} because it can be bool or string
+	Options      []OptionItem `json:"options,omitempty"`
+	Action       Action       `json:"action"`
+}
+
+type OptionItem struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+}

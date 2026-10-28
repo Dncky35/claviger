@@ -1,0 +1,318 @@
+{{ define "tab_installed_apps" }}
+<div id="tab-installed-apps" class="space-y-6 hidden animate-fade-in">
+    <!-- Header -->
+    <div>
+        <h2 class="text-3xl font-bold text-foreground tracking-tight">{{ T "tab_installed_apps.title" }}</h2>
+        <p class="text-muted-foreground text-sm mt-1">{{ T "tab_installed_apps.subtitle" }}</p>
+    </div>
+
+    <!-- Apps List Container -->
+    <div class="bg-surface rounded-2xl border border-border shadow-soft overflow-hidden">
+        <div class="divide-y divide-border" id="installed-apps-list">
+            <!-- Populated dynamically by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- App Orchestrator Modal -->
+<div id="modal-orchestrator" class="fixed inset-0 z-[9999] hidden bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 opacity-0 transition-opacity">
+    
+    <!-- Modal Window: Removed max-h-full and overflow-hidden. Added max-h-[90vh] -->
+    <div class="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] transform scale-95 transition-all">
+        
+        <!-- Modal Header: shrink-0 keeps it intact, rounded-t-2xl matches parent -->
+        <div class="p-5 sm:p-6 border-b border-border flex justify-between items-center bg-surface-elevated shrink-0 rounded-t-2xl">
+            <div class="flex items-center gap-4">
+                <div id="orch-app-icon" class="w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center text-xl">📦</div>
+                <div>
+                    <h3 id="orch-app-title" class="text-lg font-bold text-foreground">App Configuration</h3>
+                    <p class="text-xs text-muted-foreground">Modify settings and environment variables</p>
+                </div>
+            </div>
+            <button onclick="closeAppOrchestratorModal()" class="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-lg hover:bg-background">
+                ✕
+            </button>
+        </div>
+
+        <!-- Dynamic Form Container: flex-1 takes remaining space, overflow-y-auto handles the scroll -->
+        <div id="orch-form-container" class="p-5 sm:p-6 overflow-y-auto flex-1 w-full rounded-b-2xl">
+            <div class="flex items-center justify-center py-10 animate-pulse text-muted-foreground">
+                Loading configuration schema...
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // --- 1. RENDER THE INSTALLED APPS LIST ---
+    function renderInstalledAppsList(installedApps) {
+        const listEl = document.getElementById('installed-apps-list');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        if (installedApps.length === 0) {
+            listEl.innerHTML = `<div class="p-8 text-center text-muted-foreground text-sm">No apps are currently installed.</div>`;
+            return;
+        }
+
+        installedApps.forEach(app => {
+            const isRunning = app.status === 'running';
+            let badgeHtml = isRunning 
+                ? `<span class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-success/10 text-success border border-success/20">Running</span>`
+                : (app.status === 'degraded' 
+                    ? `<span class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-warning/10 text-warning border border-warning/20">Degraded</span>`
+                    : `<span class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-destructive/10 text-destructive border border-destructive/20">Stopped</span>`);
+
+            let isDefault = app.action_port > 0;
+            let defaultAction = app.name === "RustDesk Server" 
+                ? `onclick="window.open('https://claviger.cloudrocean.com/documentation/e54a5823-8d66-4999-9d91-70ec7db319a6', '_blank')"` : 'disabled';
+            let openAction = isDefault 
+                ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
+
+            const row = `
+            <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50 transition-colors hover:bg-surface-hover" id="installed-row-${app.id}">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-2xl shadow-inner">${app.icon}</div>
+                    <div>
+                        <h4 class="text-sm font-bold text-foreground flex items-center gap-2">
+                            ${app.name} 
+                            ${badgeHtml}
+                        </h4>
+                        <p class="text-xs text-muted-foreground mt-0.5">${app.description}</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button ${openAction} class="${!isDefault && app.name !== 'RustDesk Server' ? 'hidden' : ''} px-4 py-2 bg-surface-elevated hover:bg-surface text-foreground text-xs font-bold rounded-lg transition-colors border border-border shadow-sm whitespace-nowrap">
+                        🚀 Open
+                    </button>
+                    
+                    <button onclick="openAppOrchestratorModal('${app.id}', '${app.name}', '${app.icon}')" class="px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap">
+                        ⚙️ Configure
+                    </button>
+
+                    <button id="btn-uninstall-${app.id}" onclick="uninstallApp('${app.id}')" class="px-4 py-2 bg-destructive/10 hover:bg-destructive text-destructive hover:text-background text-xs font-bold rounded-lg transition-colors border border-destructive/20 shadow-sm whitespace-nowrap disabled:cursor-not-allowed" title="Uninstall & Wipe Data">
+                        🗑️
+                    </button>
+                </div>
+            </div>`;
+            listEl.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    // --- 2. ORCHESTRATOR MODAL LOGIC ---
+    async function openAppOrchestratorModal(appId, appName, appIcon) {
+        const modal = document.getElementById('modal-orchestrator');
+        document.getElementById('orch-app-title').innerText = `${appName} Configuration`;
+        document.getElementById('orch-app-icon').innerText = appIcon;
+        
+        // Show modal with animation
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div').classList.remove('scale-95');
+        }, 10);
+
+        // Fetch Schema & Render Form (To be implemented next)
+        const formContainer = document.getElementById('orch-form-container');
+        formContainer.innerHTML = `<div class="flex items-center justify-center py-10 animate-pulse text-muted-foreground">Loading configuration schema...</div>`;
+        
+        try {
+            const res = await fetch(`/api/apps/schema?app_id=${appId}`);
+            const schema = await res.json();
+            renderDynamicForm(schema, formContainer);
+        } catch (e) {
+            formContainer.innerHTML = `<div class="p-4 bg-destructive/10 text-destructive rounded-lg">Failed to load configuration.</div>`;
+        }
+    }
+
+    function closeAppOrchestratorModal() {
+        const modal = document.getElementById('modal-orchestrator');
+        modal.classList.add('opacity-0');
+        modal.querySelector('div').classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300); // Wait for transition
+    }
+
+    // --- 3. THE UNINSTALL ACTION ---
+    async function uninstallApp(appId) {
+        const warnMsg = window.I18N?.tab_installed_apps?.confirm_warn 
+            ? window.I18N.tab_installed_apps.confirm_warn.replace('%s', appId) 
+            : `Are you sure you want to permanently delete ${appId} and wipe all its data?`;
+            
+        if (!confirm(warnMsg)) return;
+
+        const btn = document.getElementById(`btn-uninstall-${appId}`);
+        if (!btn) return;
+
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.remove('bg-destructive/10', 'hover:bg-destructive', 'text-destructive');
+        btn.classList.add('bg-muted', 'text-muted-foreground', 'cursor-not-allowed', 'animate-pulse');
+        btn.innerHTML = '⏳';
+
+        try {
+            const res = await fetch('/api/apps/uninstall', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ app_id: appId })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                btn.classList.remove('animate-pulse', 'cursor-not-allowed', 'bg-muted', 'text-muted-foreground');
+                btn.classList.add('bg-success', 'text-background', 'border-success/40');
+                btn.innerHTML = '✓';
+
+                setTimeout(() => {
+                    checkDockerForNetworkTab();
+                    syncAppStates();
+                    if (typeof loadContainers === 'function') loadContainers();
+                }, 1500);
+            } else {
+                throw new Error(data.message || 'Unknown server error');
+            }
+        } catch (e) {
+            btn.disabled = false;
+            btn.classList.remove('bg-muted', 'text-muted-foreground', 'cursor-not-allowed', 'animate-pulse', 'bg-success', 'border-success/40');
+            btn.classList.add('bg-destructive/10', 'hover:bg-destructive', 'text-destructive', 'border-destructive/20');
+            btn.innerHTML = originalHtml;
+            alert(`Uninstall Failed:\n\n${e.message}`);
+        }
+    }
+    // --- 4. DYNAMIC FORM RENDERER ---
+    function renderDynamicForm(schema, container) {
+        if (!schema || !schema.categories || schema.categories.length === 0) {
+            container.innerHTML = `<div class="text-center text-muted-foreground">No configurable settings available for this app.</div>`;
+            return;
+        }
+
+        let html = '';
+        const appId = schema.app_id;
+
+        schema.categories.forEach(category => {
+            html += `
+            <div class="mb-6">
+                <h4 class="text-sm font-bold text-foreground uppercase tracking-wider mb-4 border-b border-border pb-2">${category.title}</h4>
+                <div class="space-y-4">
+            `;
+
+            category.fields.forEach(field => {
+                html += `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-surface-elevated border border-border transition-colors hover:border-primary/30">
+                    <div class="flex-grow">
+                        <label class="text-sm font-bold text-foreground block">${field.label}</label>
+                        <p class="text-xs text-muted-foreground mt-1">${field.description}</p>
+                    </div>
+                    <div class="flex-shrink-0 sm:w-1/2 flex items-center justify-end gap-2">
+                        ${renderUIComponent(appId, field)}
+                    </div>
+                </div>`;
+            });
+
+            html += `</div></div>`;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // --- 5. COMPONENT GENERATOR ---
+    function renderUIComponent(appId, field) {
+        const val = field.current_value || '';
+        const fieldId = `field-${field.id}`;
+        
+        // Generate the "Save" button for text/password/select fields
+        const saveBtn = `
+            <button id="btn-${field.id}" onclick="saveAppSetting('${appId}', '${field.id}', document.getElementById('${fieldId}').value)" 
+                class="px-3 py-2 bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap">
+                Save
+            </button>`;
+
+        switch (field.ui_component) {
+            case 'toggle':
+                const isChecked = val === true || val === 'true';
+                // Toggles auto-save on change (no separate save button needed)
+                return `
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="${fieldId}" class="sr-only peer" ${isChecked ? 'checked' : ''} 
+                        onchange="saveAppSetting('${appId}', '${field.id}', this.checked)">
+                    <div class="w-11 h-6 bg-background border border-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-muted-foreground peer-checked:after:bg-white after:border after:border-border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:border-primary"></div>
+                </label>`;
+
+            case 'select':
+                let optionsHtml = field.options.map(opt => 
+                    `<option value="${opt.value}" ${opt.value === val ? 'selected' : ''}>${opt.label}</option>`
+                ).join('');
+                return `
+                <select id="${fieldId}" class="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none">
+                    ${optionsHtml}
+                </select>
+                ${saveBtn}`;
+
+            case 'password':
+                return `
+                <input type="password" id="${fieldId}" placeholder="Enter new password" class="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none placeholder:text-muted-foreground/50">
+                ${saveBtn}`;
+
+            case 'text':
+            default:
+                return `
+                <input type="text" id="${fieldId}" value="${val}" class="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none">
+                ${saveBtn}`;
+        }
+    }
+
+    // --- 6. SAVE SETTING TO BACKEND ---
+    async function saveAppSetting(appId, fieldId, newValue) {
+        // Find the button (or toggle) to show loading state
+        const btn = document.getElementById(`btn-${fieldId}`);
+        const originalHtml = btn ? btn.innerHTML : null;
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            btn.innerHTML = '⏳';
+        }
+
+        try {
+            const res = await fetch('/api/apps/settings/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    app_id: appId, 
+                    field_id: fieldId, 
+                    new_value: String(newValue) // Ensure booleans become strings for the backend
+                })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok && data.status === 'success') {
+                if (btn) {
+                    btn.classList.replace('bg-primary', 'bg-success');
+                    btn.classList.replace('hover:bg-primary-hover', 'hover:bg-success');
+                    btn.innerHTML = '✓ Saved';
+                    setTimeout(() => {
+                        btn.classList.replace('bg-success', 'bg-primary');
+                        btn.classList.replace('hover:bg-success', 'hover:bg-primary-hover');
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                    }, 2000);
+                }
+            } else {
+                throw new Error(data.message || 'Server error');
+            }
+        } catch (e) {
+            alert(`Failed to save setting:\n${e.message}`);
+            if (btn) {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+        }
+    }
+</script>
+{{ end }}
