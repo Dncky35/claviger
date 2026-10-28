@@ -1,17 +1,17 @@
 {{ define "tab_uninstall" }}
 <div id="tab-uninstall" class="space-y-6 hidden animate-fade-in">
     <div>
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "tab_uninstall.title" }}</h2>
+        <h2 class="text-3xl font-bold text-foreground tracking-tight">{{ T "tab_uninstall.title" }}</h2>
         <p class="text-muted-foreground text-sm mt-1">{{ T "tab_uninstall.subtitle" }}</p>
     </div>
 
-    <div class="bg-surface rounded-2xl border border-rose-500/30 shadow-sm overflow-hidden">
-        <div class="p-4 bg-rose-500/10 border-b border-rose-500/20">
-            <h3 class="text-rose-400 font-bold text-sm flex items-center gap-2">
+    <div class="bg-surface rounded-2xl border border-destructive/30 shadow-soft overflow-hidden">
+        <div class="p-4 bg-destructive/10 border-b border-destructive/20">
+            <h3 class="text-destructive font-bold text-sm flex items-center gap-2">
                 <span>⚠️</span> {{ T "tab_uninstall.danger_zone" }}
             </h3>
         </div>
-        
+
         <div class="divide-y divide-border" id="uninstall-list"></div>
     </div>
 
@@ -19,30 +19,30 @@
         // --- 1. RENDER THE LIST DYNAMICALLY ---
         function renderUninstallList(apps) {
             const listEl = document.getElementById('uninstall-list');
-            listEl.innerHTML = ''; // Clear it out
+            listEl.innerHTML = '';
 
-            // Filter out apps that are NOT installed
+            // Only show apps that are currently installed.
             const installedApps = apps.filter(app => app.status !== 'not_installed');
 
             if (installedApps.length === 0) {
-                listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">No apps are currently installed.</div>`;
+                listEl.innerHTML = `<div class="p-8 text-center text-muted-foreground text-sm">No apps are currently installed.</div>`;
                 return;
             }
 
             installedApps.forEach(app => {
-                // We use the Icon and Description from the Go backend!
+                // Icons and descriptions are supplied by the Go backend.
                 const row = `
-                <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50 transition-all hover:bg-background/80" id="uninstall-row-${app.id}">
+                <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50 transition-colors hover:bg-surface-hover" id="uninstall-row-${app.id}">
                     <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-lg bg-slate-800 border border-border flex items-center justify-center text-xl">${app.icon}</div>
+                        <div class="w-10 h-10 rounded-lg bg-surface-elevated border border-border flex items-center justify-center text-xl">${app.icon}</div>
                         <div>
-                            <h4 class="text-sm font-bold text-slate-200">${app.name}</h4>
-                            <p class="text-xs text-slate-400 mt-0.5">${app.description}</p>
+                            <h4 class="text-sm font-bold text-foreground">${app.name}</h4>
+                            <p class="text-xs text-muted-foreground mt-0.5">${app.description}</p>
                         </div>
                     </div>
-                    
-                    <button id="btn-uninstall-${app.id}" onclick="uninstallApp('${app.id}')" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors border border-rose-500 shadow-sm shadow-rose-500/20 whitespace-nowrap">
-                        🗑️ Uninstall & Wipe Data
+
+                    <button id="btn-uninstall-${app.id}" onclick="uninstallApp('${app.id}')" class="px-4 py-2 bg-destructive hover:bg-destructive/90 text-background text-xs font-bold rounded-lg transition-colors border border-destructive/40 shadow-sm shadow-destructive/10 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-70">
+                        🗑️ Uninstall &amp; Wipe Data
                     </button>
                 </div>`;
                 listEl.insertAdjacentHTML('beforeend', row);
@@ -55,13 +55,12 @@
             if (!confirm(warnMsg)) return;
 
             const btn = document.getElementById(`btn-uninstall-${appId}`);
-            const originalHtml = btn.innerHTML;
+            if (!btn) return;
 
+            const originalHtml = btn.innerHTML;
             btn.disabled = true;
-            btn.classList.replace('bg-rose-600', 'bg-slate-700');
-            btn.classList.replace('hover:bg-rose-700', 'cursor-not-allowed');
-            btn.classList.add('animate-pulse');
-            // btn.innerHTML = '⏳ Destroying...';
+            btn.classList.remove('bg-destructive', 'hover:bg-destructive/90', 'text-background');
+            btn.classList.add('bg-muted', 'text-muted-foreground', 'cursor-not-allowed', 'animate-pulse');
             btn.innerHTML = window.I18N.tab_uninstall.btn_destroying;
 
             try {
@@ -71,26 +70,25 @@
                     body: JSON.stringify({ app_id: appId })
                 });
                 const data = await res.json();
-                
+
                 if (res.ok && data.status === 'success') {
-                    btn.classList.remove('animate-pulse');
-                    btn.classList.replace('bg-slate-700', 'bg-emerald-600');
-                    // btn.innerHTML = '✅ Removed';
+                    btn.classList.remove('animate-pulse', 'cursor-not-allowed', 'bg-muted', 'text-muted-foreground');
+                    btn.classList.add('bg-success', 'text-background', 'border-success/40');
                     btn.innerHTML = window.I18N.tab_uninstall.btn_removed;
-                    
+
                     setTimeout(() => {
-                        // Resync everything. This will automatically remove the row from this list!
-                        checkDockerForNetworkTab(); // Refresh network tab in background
-                        syncAppStates(); 
-                        if (typeof loadContainers === "function") loadContainers();
+                        // Refresh related views so the removed app disappears from this list.
+                        checkDockerForNetworkTab();
+                        syncAppStates();
+                        if (typeof loadContainers === 'function') loadContainers();
                     }, 1500);
                 } else {
-                    throw new Error(data.message || "Unknown server error");
+                    throw new Error(data.message || 'Unknown server error');
                 }
             } catch (e) {
                 btn.disabled = false;
-                btn.classList.replace('bg-slate-700', 'bg-rose-600');
-                btn.classList.remove('cursor-not-allowed', 'animate-pulse');
+                btn.classList.remove('bg-muted', 'text-muted-foreground', 'cursor-not-allowed', 'animate-pulse', 'bg-success', 'border-success/40');
+                btn.classList.add('bg-destructive', 'hover:bg-destructive/90', 'text-background', 'border-destructive/40');
                 btn.innerHTML = originalHtml;
                 alert(`Uninstall Failed:\n\n${e.message}`);
             }

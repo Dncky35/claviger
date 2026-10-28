@@ -1,26 +1,26 @@
 {{ define "tab_homeserver" }}
 <div id="tab-homeserver" class="space-y-6 hidden animate-fade-in">
     <div>
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "homeserver.title" }}</h2>
+        <h2 class="text-3xl font-bold text-foreground tracking-tight">{{ T "homeserver.title" }}</h2>
         <p class="text-muted-foreground text-sm mt-1">{{ T "homeserver.subtitle" }}</p>
     </div>
 
     <!-- Global Docker Warning Banner (Hidden by default, shown via JS if Docker is offline) -->
-    <div id="network-docker-warning" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3 text-amber-400 text-sm">
-        <span>⚠️</span>
+    <div id="network-docker-warning" class="hidden bg-warning/10 border border-warning/30 rounded-xl p-4 flex items-center gap-3 text-warning text-sm">
+        <span aria-hidden="true">⚠️</span>
         <p>{{ T "homeserver.docker_warning" }}</p>
     </div>
 
     <div class="grid grid-cols-1 gap-6">
 
         <!-- 1. NETWORK PERSISTENCE & IP WATCHDOG CARD -->
-        <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
+        <div class="bg-surface rounded-2xl border border-border p-6 shadow-soft flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
             <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
             <div class="z-10 flex-1">
                 <div class="flex items-center gap-3 mb-2">
-                    <div class="w-10 h-10 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 text-xl">📡</div>
-                    <h3 class="text-lg font-bold text-slate-100">{{ T "homeserver.watchdog_title" }}</h3>
-                    <span id="badge-watchdog-status" class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">{{ T "homeserver.status_checking" }}</span>
+                    <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-xl">📡</div>
+                    <h3 class="text-lg font-bold text-foreground">{{ T "homeserver.watchdog_title" }}</h3>
+                    <span id="badge-watchdog-status" class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-surface-elevated text-muted-foreground border border-border">{{ T "homeserver.status_checking" }}</span>
                 </div>
                 <p class="text-muted-foreground text-sm max-w-2xl mb-4">
                     {{ T "homeserver.watchdog_desc" }}
@@ -28,56 +28,56 @@
                 <div class="flex items-center gap-3">
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="toggle-ip-watchdog" onchange="toggleIPWatchdog(this)" class="sr-only peer">
-                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-slate-700"></div>
+                        <div class="w-11 h-6 bg-surface-elevated peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border"></div>
                     </label>
-                    <span class="text-xs font-medium text-slate-300" id="label-watchdog-toggle-text">{{ T "homeserver.watchdog_toggle" }}</span>
+                    <span class="text-xs font-medium text-muted-foreground" id="label-watchdog-toggle-text">{{ T "homeserver.watchdog_toggle" }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- 3. OS STATIC IP ENFORCER CARD -->
-        <div class="bg-surface rounded-2xl border border-amber-500/20 p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+        <!-- 2. OS STATIC IP ENFORCER CARD -->
+        <div class="bg-surface rounded-2xl border border-warning/20 p-6 shadow-soft flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-warning/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
             <div class="z-10 flex-1">
                 <div class="flex items-center gap-3 mb-2">
-                    <div class="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-400 text-xl">🔒</div>
-                    <h3 class="text-lg font-bold text-slate-100">{{ T "homeserver.static_title" }}</h3>
+                    <div class="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center text-warning text-xl">🔒</div>
+                    <h3 class="text-lg font-bold text-foreground">{{ T "homeserver.static_title" }}</h3>
                 </div>
                 <p class="text-muted-foreground text-sm max-w-2xl mb-4">
                     {{ T "homeserver.static_desc_desc" }}
-                    <strong class="text-amber-400">{{ T "homeserver.static_desc_warning" }}</strong> {{ T "homeserver.static_desc_2" }}
+                    <strong class="text-warning">{{ T "homeserver.static_desc_warning" }}</strong> {{ T "homeserver.static_desc_2" }}
                 </p>
 
                 <!-- Input Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mb-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">{{ T "homeserver.label_ip" }}</label>
-                        <input type="text" id="input-static-ip" placeholder="192.168.1.15/24" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500" />
+                        <label class="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">{{ T "homeserver.label_ip" }}</label>
+                        <input type="text" id="input-static-ip" placeholder="192.168.1.15/24" class="w-full bg-background border border-border text-foreground text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-warning focus:ring-1 focus:ring-warning" />
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">{{ T "homeserver.label_gateway" }}</label>
-                        <input type="text" id="input-gateway" placeholder="192.168.1.1" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500" />
+                        <label class="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">{{ T "homeserver.label_gateway" }}</label>
+                        <input type="text" id="input-gateway" placeholder="192.168.1.1" class="w-full bg-background border border-border text-foreground text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-warning focus:ring-1 focus:ring-warning" />
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">{{ T "homeserver.label_interface" }}</label>
-                        <input type="text" id="input-interface" placeholder="eth0 or enp3s0" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500" />
+                        <label class="block text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">{{ T "homeserver.label_interface" }}</label>
+                        <input type="text" id="input-interface" placeholder="eth0 or enp3s0" class="w-full bg-background border border-border text-foreground text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-warning focus:ring-1 focus:ring-warning" />
                     </div>
                 </div>
-                
-                <button onclick="applyStaticIP()" id="btn-apply-static" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm shadow-amber-900/20">
+
+                <button onclick="applyStaticIP()" id="btn-apply-static" class="px-4 py-2 bg-warning hover:bg-warning/80 text-primary-foreground text-sm font-bold rounded-lg transition-colors shadow-sm">
                     {{ T "homeserver.btn_apply" }}
                 </button>
             </div>
         </div>
 
-        <!-- 2. CLOUDFLARE TUNNEL (CLOUDFLARED) CARD -->
-        <div class="bg-surface rounded-2xl border border-border p-6 shadow-sm flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
+        <!-- 3. CLOUDFLARE TUNNEL (CLOUDFLARED) CARD -->
+        <div class="bg-surface rounded-2xl border border-border p-6 shadow-soft flex flex-col md:flex-row items-start justify-between gap-6 relative overflow-hidden">
             <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
             <div class="z-10 flex-1">
                 <div class="flex items-center gap-3 mb-2">
-                    <div class="w-10 h-10 bg-sky-500/10 rounded-lg flex items-center justify-center text-sky-400 text-xl">☁️</div>
-                    <h3 class="text-lg font-bold text-slate-100">{{ T "homeserver.tunnel_title" }}</h3>
-                    <span id="badge-app-cloudflared" class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">{{ T "homeserver.status_checking" }}</span>
+                    <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-xl">☁️</div>
+                    <h3 class="text-lg font-bold text-foreground">{{ T "homeserver.tunnel_title" }}</h3>
+                    <span id="badge-app-cloudflared" class="px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-surface-elevated text-muted-foreground border border-border">{{ T "homeserver.status_checking" }}</span>
                 </div>
                 <p class="text-muted-foreground text-sm max-w-2xl mb-4">
                     {{ T "homeserver.tunnel_desc" }}
@@ -85,14 +85,14 @@
 
                 <!-- Token Input Drawer (Appears when configuring) -->
                 <div id="wrapper-token-cloudflared" class="hidden flex flex-col sm:flex-row gap-2 max-w-md mt-3">
-                    <input type="password" id="input-tunnel-token" placeholder="" class="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed" />
-                    <button id="btn-deploy-tunnel" onclick="installCloudflaredWithToken()" class="px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    <input type="password" id="input-tunnel-token" placeholder="" class="bg-background border border-border text-foreground text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed" />
+                    <button id="btn-deploy-tunnel" onclick="installCloudflaredWithToken()" class="px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium rounded-lg transition-colors shadow-soft">
                         {{ T "homeserver.btn_deploy" }}
                     </button>
                 </div>
             </div>
             <div class="z-10 flex flex-col items-end shrink-0 gap-2">
-                <button id="btn-install-cloudflared" onclick="toggleCloudflareTokenInput()" class="hidden px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-primary/20">
+                <button id="btn-install-cloudflared" onclick="toggleCloudflareTokenInput()" class="hidden px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium rounded-lg transition-colors shadow-soft">
                     {{ T "homeserver.btn_configuring" }}
                 </button>
             </div>
@@ -101,7 +101,7 @@
     </div>
 
     <script>
-        // Set dynamic placeholder for token input on load
+        // Set dynamic placeholder for token input on load.
         document.addEventListener('DOMContentLoaded', () => {
             const tokenInput = document.getElementById('input-tunnel-token');
             if (tokenInput && window.I18N && window.I18N.homeserver) {
@@ -116,20 +116,20 @@
                 const res = await fetch('/api/network/watchdog');
                 if (!res.ok) return;
                 const data = await res.json();
-                
+
                 const toggle = document.getElementById('toggle-ip-watchdog');
                 const badge = document.getElementById('badge-watchdog-status');
-                
+
                 toggle.checked = data.enabled;
                 if (data.enabled) {
                     badge.innerText = i18nHS.status_active;
-                    badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                    badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-success/10 text-success border border-success/20';
                 } else {
                     badge.innerText = i18nHS.status_disabled;
-                    badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700';
+                    badge.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-surface-elevated text-muted-foreground border border-border';
                 }
             } catch (e) {
-                console.error("Failed to fetch watchdog state:", e);
+                console.error('Failed to fetch watchdog state:', e);
             }
         }
 
@@ -167,7 +167,7 @@
             const tokenInput = document.getElementById('input-tunnel-token');
             const deployBtn = document.getElementById('btn-deploy-tunnel');
             const token = tokenInput.value.trim();
-            
+
             if (!token) {
                 alert(i18nHS.alert_token_required);
                 return;
@@ -176,8 +176,8 @@
             const originalBtnHtml = deployBtn.innerHTML;
             deployBtn.disabled = true;
             tokenInput.disabled = true;
-            deployBtn.classList.remove('bg-primary', 'hover:bg-emerald-600');
-            deployBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
+            deployBtn.classList.remove('bg-primary', 'hover:bg-primary-hover');
+            deployBtn.classList.add('bg-surface-hover', 'cursor-not-allowed', 'animate-pulse');
             deployBtn.innerHTML = i18nHS.btn_deploying;
 
             try {
@@ -186,32 +186,32 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ app_id: 'cloudflared', custom_token: token })
                 });
-                
+
                 if (res.ok) {
-                    deployBtn.classList.remove('animate-pulse', 'bg-slate-700');
-                    deployBtn.classList.add('bg-emerald-600');
+                    deployBtn.classList.remove('animate-pulse', 'bg-surface-hover');
+                    deployBtn.classList.add('bg-success');
                     deployBtn.innerHTML = i18nHS.btn_deployed;
-                    
+
                     setTimeout(() => {
                         toggleCloudflareTokenInput();
                         checkDockerForNetworkTab();
-                        
+
                         tokenInput.value = '';
                         tokenInput.disabled = false;
                         deployBtn.disabled = false;
-                        deployBtn.className = 'px-4 py-2 bg-primary hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm';
+                        deployBtn.className = 'px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium rounded-lg transition-colors shadow-soft';
                         deployBtn.innerHTML = originalBtnHtml;
                     }, 1500);
                 } else {
                     const errData = await res.json();
-                    throw new Error(errData.message || "Unknown server error");
+                    throw new Error(errData.message || 'Unknown server error');
                 }
             } catch (e) {
                 console.error(e);
-                deployBtn.classList.remove('animate-pulse', 'bg-slate-700', 'cursor-not-allowed');
-                deployBtn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+                deployBtn.classList.remove('animate-pulse', 'bg-surface-hover', 'cursor-not-allowed');
+                deployBtn.classList.add('bg-destructive', 'hover:bg-destructive/80');
                 deployBtn.innerHTML = i18nHS.btn_failed_retry;
-                
+
                 setTimeout(() => {
                     alert(i18nHS.fail_tunnel_deploy + e.message);
                     deployBtn.disabled = false;
@@ -228,7 +228,7 @@
                 const res = await fetch('/api/containers');
                 if (!res.ok) return;
                 const data = await res.json();
-                
+
                 if (!data.docker_installed) {
                     document.getElementById('network-docker-warning').classList.remove('hidden');
                     const btn = document.getElementById('btn-install-cloudflared');
@@ -236,7 +236,7 @@
                         btn.classList.remove('hidden');
                         btn.disabled = true;
                         btn.innerText = i18nHS.btn_docker_required;
-                        btn.className = 'px-4 py-2 bg-slate-800 text-slate-500 text-sm font-medium rounded-lg border border-slate-700 cursor-not-allowed';
+                        btn.className = 'px-4 py-2 bg-surface-elevated text-muted-foreground text-sm font-medium rounded-lg border border-border cursor-not-allowed';
                     }
                     return;
                 }
@@ -248,17 +248,19 @@
 
                 if (isCloudflaredRunning) {
                     badgeCloudflared.innerText = i18nHS.status_online;
-                    badgeCloudflared.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                    badgeCloudflared.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-success/10 text-success border border-success/20';
                     btnInstallCloudflared.classList.add('hidden');
                     document.getElementById('wrapper-token-cloudflared').classList.add('hidden');
                 } else {
                     badgeCloudflared.innerText = i18nHS.status_offline;
-                    badgeCloudflared.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700';
+                    badgeCloudflared.className = 'px-2.5 py-0.5 text-[10px] uppercase font-bold rounded-full bg-surface-elevated text-muted-foreground border border-border';
                     btnInstallCloudflared.classList.remove('hidden');
+                    btnInstallCloudflared.disabled = false;
+                    btnInstallCloudflared.className = 'px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium rounded-lg transition-colors shadow-soft';
                 }
 
             } catch (e) {
-                console.error("Failed to check container statuses for homeserver tab:", e);
+                console.error('Failed to check container statuses for homeserver tab:', e);
             }
         }
 

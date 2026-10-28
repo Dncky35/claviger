@@ -2,7 +2,7 @@
 <div id="tab-llm" class="space-y-6 block animate-fade-in hidden">
 
     <div>
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "llm.title" }}</h2>
+        <h2 class="text-3xl font-bold text-foreground tracking-tight">{{ T "llm.title" }}</h2>
         <p class="text-muted-foreground text-sm mt-1">{{ T "llm.subtitle" }}</p>
     </div>
     
@@ -15,7 +15,7 @@
             <div>
                 <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">{{ T "llm.compute_target" }}</p>
                 <div class="flex items-center gap-3">
-                    <span id="llm-hw-status" class="text-lg font-bold text-slate-100"></span>
+                    <span id="llm-hw-status" class="text-lg font-bold text-foreground"></span>
                     <span id="llm-hw-badge" class="hidden text-xs font-medium px-2 py-1 rounded border"></span>
                 </div>
             </div>
@@ -25,7 +25,7 @@
             <!-- RAM -->
             <div>
                 <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">{{ T "llm.system_memory" }}</p>
-                <span id="llm-ram-status" class="text-md font-bold text-slate-200">-- GB</span>
+                <span id="llm-ram-status" class="text-md font-bold text-foreground">-- GB</span>
             </div>
             
             <div class="hidden md:block w-px h-8 bg-border"></div>
@@ -33,21 +33,21 @@
             <!-- Cores -->
             <div>
                 <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">{{ T "llm.cpu_cores" }}</p>
-                <span id="llm-cpu-status" class="text-md font-bold text-slate-200">-- Cores</span>
+                <span id="llm-cpu-status" class="text-md font-bold text-foreground">-- Cores</span>
             </div>
         </div>
 
         <!-- The Guardrail Warning Banner -->
-        <div id="llm-toolkit-warning" class="hidden mt-4 p-5 bg-surface border border-rose-500/30 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+        <div id="llm-toolkit-warning" class="hidden mt-4 p-5 bg-surface border border-destructive/30 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-soft">
             <div class="flex items-start gap-3">
                 <span class="text-2xl">⚠️</span>
                 <div>
-                    <p class="text-sm font-bold text-rose-400">{{ T "llm.hw_warning_title" }}</p>
-                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">{{ T "llm.hw_warning_desc" | safeHTML }}</p>
+                    <p class="text-sm font-bold text-destructive">{{ T "llm.hw_warning_title" }}</p>
+                    <p class="text-xs text-muted-foreground mt-1 leading-relaxed">{{ T "llm.hw_warning_desc" | safeHTML }}</p>
                 </div>
             </div>
             
-            <button id="btn-install-toolkit" onclick="installNvidiaToolkit()" class="px-5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/30 flex items-center justify-center gap-2 whitespace-nowrap flex-shrink-0">
+            <button id="btn-install-toolkit" onclick="installNvidiaToolkit()" class="px-5 py-2 bg-destructive/10 hover:bg-destructive/90/20 text-destructive text-xs font-bold rounded-lg transition-colors border border-destructive/30 flex items-center justify-center gap-2 whitespace-nowrap flex-shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                 {{ T "llm.btn_install_toolkit" }}
             </button>
@@ -59,12 +59,12 @@
 
     <!-- Section 2: AI Engines & Frontends -->
     <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-bold text-slate-100">{{ T "llm.ecosystem_title" }}</h3>
+        <h3 class="text-lg font-bold text-foreground">{{ T "llm.ecosystem_title" }}</h3>
     </div>
 
     <!-- The Grid Container -->
     <div id="llm-app-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="col-span-full p-8 text-center text-slate-400 text-sm animate-pulse" id="llm-loading-text">
+        <div class="col-span-full p-8 text-center text-muted-foreground text-sm animate-pulse" id="llm-loading-text">
         </div>
     </div>
 
@@ -73,14 +73,14 @@
     <!-- Section 3: Model Library -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
         <div class="flex items-center gap-4">
-            <h3 class="text-lg font-bold text-slate-100">{{ T "llm.library_title" }}</h3>
+            <h3 class="text-lg font-bold text-foreground">{{ T "llm.library_title" }}</h3>
             
             <!-- Engine Selector Dropdown -->
-            <select id="engine-selector" onchange="switchEngineView(this.value)" class="bg-slate-800 border border-border text-slate-300 text-xs rounded-lg focus:ring-primary focus:border-primary block p-2 transition-colors cursor-pointer">
+            <select id="engine-selector" onchange="switchEngineView(this.value)" class="bg-surface-elevated border border-border text-muted-foreground text-xs rounded-lg focus:ring-primary focus:border-primary block p-2 transition-colors cursor-pointer">
             </select>
         </div>
 
-        <button onclick="openPullModal()" class="bg-primary hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap">
+        <button onclick="openPullModal()" class="bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             {{ T "llm.btn_pull" }}
         </button>
@@ -97,30 +97,30 @@
         <div class="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300" id="pull-modal-content">
             
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2" id="modal-title-text">
+                <h3 class="text-lg font-bold text-foreground flex items-center gap-2" id="modal-title-text">
                 </h3>
-                <button onclick="closePullModal()" class="text-slate-400 hover:text-white transition-colors">
+                <button onclick="closePullModal()" class="text-muted-foreground hover:text-foreground transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" id="label-target-engine"></label>
-                    <select id="pull-target-engine" class="w-full bg-slate-800 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none">
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2" id="label-target-engine"></label>
+                    <select id="pull-target-engine" class="w-full bg-surface-elevated border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none">
                     </select>
                 </div>
                 
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" id="label-model-id"></label>
-                    <input type="text" id="pull-model-id" class="w-full bg-slate-900 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none font-mono placeholder-slate-600">
-                    <p class="text-[10px] text-slate-500 mt-2 leading-relaxed" id="hint-model-id"></p>
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2" id="label-model-id"></label>
+                    <input type="text" id="pull-model-id" class="w-full bg-background border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none font-mono placeholder-muted-foreground">
+                    <p class="text-[10px] text-muted-foreground mt-2 leading-relaxed" id="hint-model-id"></p>
                 </div>
             </div>
 
             <div class="mt-8 flex justify-end gap-3">
-                <button onclick="closePullModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-lg transition-colors border border-border" id="btn-cancel-pull"></button>
-                <button id="btn-execute-pull" onclick="executeModelPull()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
+                <button onclick="closePullModal()" class="px-4 py-2 bg-surface-elevated hover:bg-surface-hover text-muted-foreground text-sm font-bold rounded-lg transition-colors border border-border" id="btn-cancel-pull"></button>
+                <button id="btn-execute-pull" onclick="executeModelPull()" class="px-5 py-2 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
                 </button>
             </div>
         </div>
@@ -136,7 +136,7 @@
                 const hwStatusEl = document.getElementById('llm-hw-status');
                 
                 if (loadingEl) loadingEl.innerText = i18nLlm.loading_ecosystem;
-                if (modelListEl) modelListEl.innerHTML = `<div class="p-8 text-center text-slate-500 text-sm font-mono">${i18nLlm.select_engine_prompt}</div>`;
+                if (modelListEl) modelListEl.innerHTML = `<div class="p-8 text-center text-muted-foreground text-sm font-mono">${i18nLlm.select_engine_prompt}</div>`;
                 if (engineSelector) engineSelector.innerHTML = `<option value="">${i18nLlm.detecting_engines}</option>`;
                 if (hwStatusEl && !hwStatusEl.innerText) hwStatusEl.innerText = i18nLlm.scanning;
 
@@ -184,10 +184,10 @@
 
                     let vendorStyles = "";
                     switch(profile.gpu.vendor) {
-                        case "nvidia": vendorStyles = "text-emerald-400 border-emerald-400/30 bg-emerald-400/10"; break;
-                        case "amd":    vendorStyles = "text-red-500 border-red-500/30 bg-red-500/10"; break;
-                        case "intel":  vendorStyles = "text-blue-400 border-blue-400/30 bg-blue-400/10"; break;
-                        case "apple":  vendorStyles = "text-slate-200 border-slate-500/50 bg-slate-700/50"; break;
+                        case "nvidia": vendorStyles = "text-success border-success/30 bg-success/10"; break;
+                        case "amd":    vendorStyles = "text-destructive border-destructive/30 bg-destructive/10"; break;
+                        case "intel":  vendorStyles = "text-primary border-primary/30 bg-primary/10"; break;
+                        case "apple":  vendorStyles = "text-foreground border-border bg-surface-hover/50"; break;
                         default:       vendorStyles = "text-primary border-primary/30 bg-primary/10";
                     }
                     badgeEl.className = `text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${vendorStyles}`;
@@ -195,14 +195,14 @@
                     if (profile.gpu.vendor === 'nvidia' && !profile.gpu.toolkit_ready) {
                         deploymentLocked = true;
                         document.getElementById('llm-toolkit-warning').classList.remove('hidden');
-                        document.getElementById('llm-hw-card').classList.add('border-rose-500/30', 'bg-rose-500/5');
+                        document.getElementById('llm-hw-card').classList.add('border-destructive/30', 'bg-destructive/5');
                     }
 
                 } else {
                     statusEl.innerText = profile.cpu_name;
                     badgeEl.innerText = "CPU Only";
                     badgeEl.classList.remove('hidden');
-                    badgeEl.className = "text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 px-2 py-1 rounded border border-border";
+                    badgeEl.className = "text-[11px] font-bold uppercase tracking-wider bg-surface-elevated text-muted-foreground px-2 py-1 rounded border border-border";
                 }
 
             } catch (e) {
@@ -236,7 +236,7 @@
             gridEl.innerHTML = ''; 
 
             if (apps.length === 0) {
-                gridEl.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 text-sm">${i18nLlm.no_apps}</div>`;
+                gridEl.innerHTML = `<div class="col-span-full p-8 text-center text-muted-foreground text-sm">${i18nLlm.no_apps}</div>`;
                 return;
             }
 
@@ -263,7 +263,7 @@
                     
                     const headerHtml = `
                         <div class="col-span-full ${marginTopClass} mb-2 border-b border-border/50 pb-2 flex items-center">
-                            <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">${categoryTitle}</h3>
+                            <h3 class="text-sm font-bold text-muted-foreground uppercase tracking-wider">${categoryTitle}</h3>
                         </div>
                     `;
                     gridEl.insertAdjacentHTML('beforeend', headerHtml);
@@ -272,18 +272,18 @@
                 const isInstalled = app.status !== 'not_installed';
                 const isRunning = app.status === 'running';
 
-                let badgeHtml = `<span class="text-[10px] font-mono text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-border">Not Installed</span>`;
+                let badgeHtml = `<span class="text-[10px] font-mono text-muted-foreground bg-surface-elevated px-2 py-0.5 rounded border border-border">Not Installed</span>`;
                 if (isInstalled) {
                     if (isRunning) {
-                        badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Running</span>`;
+                        badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-success bg-success/10 px-2 py-0.5 rounded border border-success/20"><span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>Running</span>`;
                     } else {
-                        badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-rose-400 bg-rose-400/10 px-2 py-0.5 rounded border border-rose-400/20">Stopped</span>`;
+                        badgeHtml = `<span class="flex items-center gap-1 text-[10px] font-mono text-destructive bg-destructive/10 px-2 py-0.5 rounded border border-destructive/20">Stopped</span>`;
                     }
                 }
 
                 const typePill = app.category === 'llm_engine' 
-                    ? `<span class="text-[9px] uppercase font-bold tracking-wider text-indigo-400 bg-indigo-400/10 px-1.5 py-0.5 rounded border border-indigo-500/20">${i18nLlm.type_engine}</span>`
-                    : `<span class="text-[9px] uppercase font-bold tracking-wider text-fuchsia-400 bg-fuchsia-400/10 px-1.5 py-0.5 rounded border border-fuchsia-500/20">${i18nLlm.type_interface}</span>`;
+                    ? `<span class="text-[9px] uppercase font-bold tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">${i18nLlm.type_engine}</span>`
+                    : `<span class="text-[9px] uppercase font-bold tracking-wider text-accent-foreground bg-accent/10 px-1.5 py-0.5 rounded border border-border">${i18nLlm.type_interface}</span>`;
 
                 let installBtnClass = isInstalled ? 'hidden' : '';
                 let dashBtnClass = isInstalled ? '' : 'hidden';
@@ -302,11 +302,11 @@
                     <div>
                         <div class="flex justify-between items-start mb-4">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-slate-800 border border-border flex items-center justify-center text-xl shadow-inner flex-shrink-0">
+                                <div class="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-xl shadow-inner flex-shrink-0">
                                     ${app.icon}
                                 </div>
                                 <div>
-                                    <h4 class="text-md font-bold text-slate-200 flex items-center gap-2">
+                                    <h4 class="text-md font-bold text-foreground flex items-center gap-2">
                                         ${app.name} 
                                     </h4>
                                     <div class="mt-1">${typePill}</div>
@@ -314,14 +314,14 @@
                             </div>
                             ${badgeHtml}
                         </div>
-                        <p class="text-xs text-slate-400 leading-relaxed">${app.description}</p>
+                        <p class="text-xs text-muted-foreground leading-relaxed">${app.description}</p>
                     </div>
                     
                     <div class="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
                         <button 
                             id="btn-install-llm-${app.id}" 
                             onclick="installLLMApp('${app.id}')" 
-                            class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm w-full flex items-center justify-center gap-2"
+                            class="${installBtnClass} px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold rounded-lg transition-colors shadow-sm w-full flex items-center justify-center gap-2"
                         >
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                             ${i18nLlm.btn_install}
@@ -330,7 +330,7 @@
                         <button 
                             id="btn-dash-llm-${app.id}" 
                             ${dashOnClick} 
-                            class="${dashBtnClass} px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors border border-border flex-1"
+                            class="${dashBtnClass} px-4 py-2 bg-surface-elevated hover:bg-surface-hover text-foreground text-xs font-bold rounded-lg transition-colors border border-border flex-1"
                         >
                             ${app.action_text}
                         </button>
@@ -338,7 +338,7 @@
                         <button 
                             id="btn-uninstall-llm-${app.id}" 
                             onclick="uninstallLLMApp('${app.id}')" 
-                            class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 flex-shrink-0"
+                            class="${uninstallBtnClass} px-3 py-2 bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold rounded-lg transition-colors border border-destructive/20 flex-shrink-0"
                             title="${i18nLlm.btn_uninstall}"
                         >
                             🗑️
@@ -363,8 +363,8 @@
             if (!installBtn) return;
 
             installBtn.disabled = true;
-            installBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
-            installBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
+            installBtn.classList.remove('bg-primary', 'hover:bg-primary-hover');
+            installBtn.classList.add('bg-surface-hover', 'cursor-not-allowed', 'animate-pulse');
             installBtn.innerHTML = i18nLlm.installing;
 
             try {
@@ -377,7 +377,7 @@
                 
                 if (res.ok && data.status === 'success') {
                     installBtn.classList.remove('animate-pulse');
-                    installBtn.classList.add('bg-emerald-600');
+                    installBtn.classList.add('bg-success');
                     installBtn.innerHTML = i18nLlm.deployed;
                     
                     setTimeout(() => {
@@ -388,8 +388,8 @@
                 }
             } catch (e) {
                 installBtn.disabled = false;
-                installBtn.classList.remove('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
-                installBtn.classList.add('bg-rose-600', 'hover:bg-rose-500'); 
+                installBtn.classList.remove('bg-surface-hover', 'cursor-not-allowed', 'animate-pulse');
+                installBtn.classList.add('bg-destructive', 'hover:bg-destructive/90'); 
                 installBtn.innerHTML = i18nLlm.btn_retry;
                 
                 setTimeout(() => {
@@ -411,8 +411,8 @@
             const originalHtml = uninstallBtn.innerHTML;
 
             uninstallBtn.disabled = true;
-            uninstallBtn.classList.remove('bg-rose-600/10', 'hover:bg-rose-600/20', 'text-rose-400');
-            uninstallBtn.classList.add('bg-slate-700', 'text-slate-400', 'cursor-not-allowed', 'animate-pulse');
+            uninstallBtn.classList.remove('bg-destructive/10', 'hover:bg-destructive/20', 'text-destructive');
+            uninstallBtn.classList.add('bg-surface-hover', 'text-muted-foreground', 'cursor-not-allowed', 'animate-pulse');
             uninstallBtn.innerHTML = '⏳';
 
             try {
@@ -430,14 +430,14 @@
                 }
             } catch (e) {
                 uninstallBtn.disabled = false;
-                uninstallBtn.classList.remove('bg-slate-700', 'text-slate-400', 'cursor-not-allowed', 'animate-pulse');
-                uninstallBtn.classList.add('bg-rose-600', 'text-white'); 
+                uninstallBtn.classList.remove('bg-surface-hover', 'text-muted-foreground', 'cursor-not-allowed', 'animate-pulse');
+                uninstallBtn.classList.add('bg-destructive', 'text-primary-foreground'); 
                 uninstallBtn.innerHTML = '❌';
                 
                 setTimeout(() => {
                     alert(`Teardown Failed for ${appId}:\n\n${e.message}`);
                     uninstallBtn.innerHTML = originalHtml;
-                    uninstallBtn.className = "px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 flex-shrink-0";
+                    uninstallBtn.className = "px-3 py-2 bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold rounded-lg transition-colors border border-destructive/20 flex-shrink-0";
                 }, 100);
             }
         }
@@ -480,14 +480,14 @@
             const i18nLlm = window.I18N.llm;
             const listEl = document.getElementById('llm-model-list');
             const queryMsg = i18nLlm.querying_api.replace('%s', engineId);
-            listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">${queryMsg}</div>`;
+            listEl.innerHTML = `<div class="p-8 text-center text-muted-foreground text-sm animate-pulse">${queryMsg}</div>`;
             
             try {
                 const res = await fetch(`/api/llms/models?engine=${engineId}`);
                 
                 if (!res.ok) {
                     const failMsg = i18nLlm.connect_fail.replace('%s', engineId);
-                    listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${failMsg}</div>`;
+                    listEl.innerHTML = `<div class="p-8 text-center text-destructive text-sm">${failMsg}</div>`;
                     return;
                 }
 
@@ -496,7 +496,7 @@
 
                 if (models.length === 0) {
                     const noModelsMsg = i18nLlm.no_models.replace('%s', engineId);
-                    listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">${noModelsMsg}</div>`;
+                    listEl.innerHTML = `<div class="p-8 text-center text-muted-foreground text-sm">${noModelsMsg}</div>`;
                     return;
                 }
 
@@ -507,14 +507,14 @@
                     const paramsText = model.params !== "Unknown" ? `${model.params} Params` : i18nLlm.params_unknown;
                     
                     const rowHTML = `
-                    <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-800/30 transition-colors">
+                    <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-surface-hover/70 transition-colors">
                         <div class="flex items-start gap-4">
-                            <div class="w-10 h-10 rounded-lg bg-slate-800 border border-border flex items-center justify-center text-lg shadow-inner flex-shrink-0">
+                            <div class="w-10 h-10 rounded-lg bg-surface-elevated border border-border flex items-center justify-center text-lg shadow-inner flex-shrink-0">
                                 🧠
                             </div>
                             <div>
-                                <h4 class="text-sm font-bold text-slate-200">${model.name}</h4>
-                                <div class="flex items-center gap-3 mt-2 text-[11px] font-mono text-slate-500">
+                                <h4 class="text-sm font-bold text-foreground">${model.name}</h4>
+                                <div class="flex items-center gap-3 mt-2 text-[11px] font-mono text-muted-foreground">
                                     <span>${sizeText}</span>
                                     <span>•</span>
                                     <span>${paramsText}</span>
@@ -524,7 +524,7 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-3 border-t border-border pt-4 md:border-0 md:pt-0">
-                            <button onclick="deleteModel('${activeEngine}', '${model.id}')" class="px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600/20 border border-rose-500/20 rounded text-xs font-medium text-rose-400 transition-colors">
+                            <button onclick="deleteModel('${activeEngine}', '${model.id}')" class="px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 rounded text-xs font-medium text-destructive transition-colors">
                                 ${i18nLlm.btn_delete}
                             </button>
                         </div>
@@ -534,7 +534,7 @@
                 });
             } catch (e) {
                 console.error("Fetch Models Error:", e);
-                listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${i18nLlm.net_error}</div>`;
+                listEl.innerHTML = `<div class="p-8 text-center text-destructive text-sm">${i18nLlm.net_error}</div>`;
             }
         }
 
@@ -576,7 +576,7 @@
             btn.disabled = true;
             btn.classList.add('opacity-75', 'cursor-not-allowed', 'animate-pulse');
             btn.innerHTML = `
-                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-primary-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 ${i18nLlm.downloading}
             `;
 
@@ -591,14 +591,14 @@
                 
                 if (res.ok && data.status === 'success') {
                     btn.classList.remove('animate-pulse');
-                    btn.classList.replace('bg-primary', 'bg-emerald-600');
+                    btn.classList.replace('bg-primary', 'bg-success');
                     btn.innerHTML = i18nLlm.download_complete;
                     
                     setTimeout(() => {
                         closePullModal();
                         btn.disabled = false;
                         btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                        btn.classList.replace('bg-emerald-600', 'bg-primary');
+                        btn.classList.replace('bg-success', 'bg-primary');
                         btn.innerHTML = i18nLlm.btn_start_download;
                         
                         document.getElementById('engine-selector').value = engine;
@@ -645,8 +645,7 @@
             if (!confirm(i18nLlm.confirm_toolkit)) return;
 
             btn.disabled = true;
-            btn.classList.replace('text-rose-400', 'text-slate-300');
-            btn.classList.add('bg-slate-800', 'border-slate-700', 'cursor-not-allowed', 'animate-pulse');
+            btn.className = 'px-5 py-2 bg-surface-hover text-muted-foreground text-xs font-bold rounded-lg transition-colors border border-border flex items-center justify-center gap-2 whitespace-nowrap flex-shrink-0 cursor-not-allowed animate-pulse';
             btn.innerHTML = i18nLlm.toolkit_installing;
 
             try {
@@ -654,8 +653,7 @@
                 const data = await res.json();
 
                 if (res.ok && data.status === 'success') {
-                    btn.classList.remove('animate-pulse', 'bg-slate-800');
-                    btn.classList.add('bg-emerald-600', 'text-white', 'border-emerald-500');
+                    btn.className = 'px-5 py-2 bg-success text-primary-foreground text-xs font-bold rounded-lg transition-colors border border-success flex items-center justify-center gap-2 whitespace-nowrap flex-shrink-0';
                     btn.innerHTML = i18nLlm.toolkit_success;
                     
                     setTimeout(() => {
@@ -666,8 +664,7 @@
                 }
             } catch (e) {
                 btn.disabled = false;
-                btn.classList.remove('animate-pulse', 'bg-slate-800', 'text-slate-300');
-                btn.classList.add('bg-rose-600', 'text-white', 'border-rose-500');
+                btn.className = 'px-5 py-2 bg-destructive text-primary-foreground text-xs font-bold rounded-lg transition-colors border border-destructive flex items-center justify-center gap-2 whitespace-nowrap flex-shrink-0';
                 btn.innerHTML = '❌ Installation Failed';
                 
                 setTimeout(() => {

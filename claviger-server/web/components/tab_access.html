@@ -6,7 +6,8 @@
             <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "access.title" }}</h2>
             <p class="text-muted-foreground text-sm mt-1">{{ T "access.subtitle" }}</p>
         </div>
-        <button onclick="addSSHKey()" class="bg-primary hover:bg-primary/90 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)] px-5 py-2.5 rounded-xl font-semibold transition-all text-sm flex items-center gap-2 active:scale-95 shrink-0">
+        <button onclick="addSSHKey()" 
+            class="px-6 py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold rounded-xl transition-colors border border-primary/30 shadow-sm shadow-primary/20 whitespace-nowrap shrink-0 flex items-center gap-2 text-xs font-bold uppercase tracking-widest shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
             {{ T "access.btn_add" }}
         </button>

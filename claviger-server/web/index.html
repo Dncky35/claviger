@@ -10,29 +10,78 @@
     </script>
     <script>
         window.I18N = JSON.parse(document.getElementById('i18n-data').textContent);
-        tailwind.config = { 
-            darkMode: 'class', 
-            theme: { 
-                extend: { 
-                    colors: { 
-                        background: '#020617', 
-                        surface: '#0f172a',    
-                        border: '#1e293b',     
-                        primary: '#3b82f6',    
-                        success: '#22c55e',    
-                        warning: '#f59e0b',    
-                        destructive: '#ef4444',
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#111418',
+                        foreground: '#E5E9EC',
+
+                        surface: {
+                            DEFAULT: '#1A1F25',
+                            elevated: '#222931',
+                            hover: '#282F38'
+                        },
+
+                        border: '#303943',
+
+                        primary: {
+                            DEFAULT: '#789C98',
+                            foreground: '#111817',
+                            hover: '#91B2AC',
+                            muted: '#344541'
+                        },
+
+                        success: {
+                            DEFAULT: '#83A992',
+                            muted: '#25372E'
+                        },
+
+                        warning: {
+                            DEFAULT: '#D6B477',
+                            muted: '#3A3123'
+                        },
+
+                        destructive: {
+                            DEFAULT: '#CD8585',
+                            muted: '#3D282B'
+                        },
+
                         muted: {
-                            DEFAULT: '#1e293b',
-                            foreground: '#94a3b8' 
+                            DEFAULT: '#222931',
+                            foreground: '#9AA6B2'
+                        },
+
+                        accent: {
+                            DEFAULT: '#293832',
+                            foreground: '#B4CCC3'
                         }
                     },
+
                     fontFamily: {
-                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        sans: [
+                            'Inter',
+                            'system-ui',
+                            '-apple-system',
+                            'BlinkMacSystemFont',
+                            'Segoe UI',
+                            'sans-serif'
+                        ]
+                    },
+
+                    boxShadow: {
+                        'soft': '0 4px 24px rgba(0, 0, 0, 0.16)',
+                        'panel': '0 8px 32px rgba(0, 0, 0, 0.20)'
+                    },
+
+                    borderRadius: {
+                        'xl': '0.875rem',
+                        '2xl': '1.125rem'
                     }
-                } 
-            } 
-        }
+                }
+            }
+        };
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');

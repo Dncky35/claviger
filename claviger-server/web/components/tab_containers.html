@@ -1,25 +1,25 @@
 {{define "tab_containers"}}
 <div id="tab-containers" class="hidden space-y-6">
-    
+
     <div class="flex justify-between items-center">
-        <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "containers.title" }}</h2>
-        <button onclick="loadContainers()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg transition-colors border border-slate-700 shadow-sm flex items-center gap-2">
+        <h2 class="text-3xl font-bold text-foreground tracking-tight">{{ T "containers.title" }}</h2>
+        <button onclick="loadContainers()" class="px-4 py-2 bg-surface-elevated hover:bg-surface-hover text-foreground text-sm font-medium rounded-lg transition-colors border border-border shadow-sm flex items-center gap-2">
             <span>🔄</span> {{ T "containers.btn_refresh" }}
         </button>
     </div>
 
-    <div id="docker-missing-state" class="hidden bg-amber-500/10 border border-amber-500/20 text-amber-200 p-6 rounded-xl shadow-sm">
+    <div id="docker-missing-state" class="hidden bg-warning/10 border border-warning/20 text-warning p-6 rounded-xl shadow-sm">
         <h3 class="text-lg font-semibold mb-2 flex items-center gap-2"><span>⚠️</span> {{ T "containers.docker_req_title" }}</h3>
-        <p class="text-sm text-amber-200/80 mb-4">{{ T "containers.docker_req_desc" }}</p>
-        <p class="text-sm mb-2 text-amber-200/90">{{ T "containers.docker_req_cmd_label" }}</p>
-        <code class="block bg-black/40 text-amber-100 p-4 rounded-lg text-sm font-mono border border-amber-500/20">curl -fsSL https://get.docker.com | sudo sh</code>
-        <p class="text-sm mt-4 text-amber-200/80">{{ T "containers.docker_req_footer" }}</p>
+        <p class="text-sm text-warning/80 mb-4">{{ T "containers.docker_req_desc" }}</p>
+        <p class="text-sm mb-2 text-warning/90">{{ T "containers.docker_req_cmd_label" }}</p>
+        <code class="block bg-background text-warning p-4 rounded-lg text-sm font-mono border border-warning/20">curl -fsSL https://get.docker.com | sudo sh</code>
+        <p class="text-sm mt-4 text-warning/80">{{ T "containers.docker_req_footer" }}</p>
     </div>
 
     <div id="docker-active-state" class="hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-sm overflow-hidden">
+        <div class="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
             <table class="w-full text-left border-collapse">
-                <thead class="bg-slate-900/50 border-b border-slate-800 text-sm text-slate-400">
+                <thead class="bg-surface-elevated/50 border-b border-border text-sm text-muted-foreground">
                     <tr>
                         <th class="p-4 font-medium">{{ T "containers.th_name" }}</th>
                         <th class="p-4 font-medium">{{ T "containers.th_image" }}</th>
@@ -28,19 +28,19 @@
                         <th class="p-4 font-medium text-right">{{ T "containers.th_actions" }}</th>
                     </tr>
                 </thead>
-                <tbody id="containers-table-body" class="text-sm divide-y divide-slate-800/50">
+                <tbody id="containers-table-body" class="text-sm divide-y divide-border/50">
                 </tbody>
             </table>
         </div>
     </div>
 
-    <dialog id="logs-modal" class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-0 w-[90%] max-w-4xl backdrop:bg-black/60 text-slate-200">
-        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-            <h3 class="font-semibold text-white">{{ T "containers.logs_title" }}</h3>
-            <button onclick="document.getElementById('logs-modal').close()" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">{{ T "containers.logs_close" }}</button>
+    <dialog id="logs-modal" class="bg-surface-elevated border border-border rounded-xl shadow-2xl p-0 w-[90%] max-w-4xl backdrop:bg-black/60 text-foreground">
+        <div class="p-4 border-b border-border flex justify-between items-center bg-surface/50">
+            <h3 class="font-semibold text-foreground">{{ T "containers.logs_title" }}</h3>
+            <button onclick="document.getElementById('logs-modal').close()" class="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">{{ T "containers.logs_close" }}</button>
         </div>
         <div class="p-4">
-            <pre id="logs-output" class="bg-[#0c0c0c] text-emerald-400 p-4 rounded-lg overflow-y-auto max-h-[500px] font-mono text-xs leading-relaxed border border-slate-800"></pre>
+            <pre id="logs-output" class="bg-background text-success p-4 rounded-lg overflow-y-auto max-h-[500px] font-mono text-xs leading-relaxed border border-border"></pre>
         </div>
     </dialog>
 
@@ -65,24 +65,24 @@
                 document.getElementById('docker-active-state').classList.add('block');
 
                 const tbody = document.getElementById('containers-table-body');
-                tbody.innerHTML = ''; 
+                tbody.innerHTML = '';
 
-               if (!data.raw_containers || !Array.isArray(data.raw_containers) || data.raw_containers.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500">${i18nContainers.no_containers}</td></tr>`;
+                if (!data.raw_containers || !Array.isArray(data.raw_containers) || data.raw_containers.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-muted-foreground">${i18nContainers.no_containers}</td></tr>`;
                     return;
                 }
 
                 data.raw_containers.forEach(c => {
                     let statusBadge = '';
                     if (c.state === 'running') {
-                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${i18nContainers.status_running}</span>`;
+                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">${i18nContainers.status_running}</span>`;
                     } else if (c.state === 'exited') {
-                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">${i18nContainers.status_stopped}</span>`;
+                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20">${i18nContainers.status_stopped}</span>`;
                     } else {
-                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">● ${c.state}</span>`;
+                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">● ${c.state}</span>`;
                     }
 
-                    let portString = `<span class="text-slate-600">${i18nContainers.none}</span>`;
+                    let portString = `<span class="text-muted-foreground">${i18nContainers.none}</span>`;
                     let rawPorts = i18nContainers.none;
                     if (c.ports && c.ports.length > 0) {
                         const uniquePorts = [...new Set(c.ports)];
@@ -91,19 +91,19 @@
                     }
 
                     let row = `
-                    <tr class="hover:bg-slate-800/30 transition-colors">
-                        <td class="p-4 font-semibold text-slate-200">${c.name}</td>
-                        <td class="p-4 text-slate-400 text-xs max-w-[200px] font-mono truncate">${c.image}</td>
+                    <tr class="hover:bg-surface-hover/60 transition-colors">
+                        <td class="p-4 font-semibold text-foreground">${c.name}</td>
+                        <td class="p-4 text-muted-foreground text-xs max-w-[200px] font-mono truncate">${c.image}</td>
                         <td class="p-4">${statusBadge}</td>
-                        <td class="p-4 font-mono text-xs text-slate-400 max-w-[200px] truncate" title="${rawPorts}">
+                        <td class="p-4 font-mono text-xs text-muted-foreground max-w-[200px] truncate" title="${rawPorts}">
                             ${portString}
                         </td>
                         <td class="p-4 text-right space-x-2">
-                            <button onclick="containerAction('${c.id}', 'start')" class="p-1.5 text-slate-400 hover:text-emerald-400 transition-colors" title="Start">▶️</button>
-                            <button onclick="containerAction('${c.id}', 'stop')" class="p-1.5 text-slate-400 hover:text-amber-400 transition-colors" title="Stop">⏹️</button>
-                            <button onclick="containerAction('${c.id}', 'restart')" class="p-1.5 text-slate-400 hover:text-blue-400 transition-colors" title="Restart">🔄</button>
-                            <button onclick="viewLogs('${c.id}')" class="p-1.5 text-slate-400 hover:text-purple-400 transition-colors" title="Logs">📋</button>
-                            <button onclick="containerAction('${c.id}', 'delete')" class="p-1.5 text-slate-400 hover:text-rose-400 transition-colors" title="Delete">🗑️</button>
+                            <button onclick="containerAction('${c.id}', 'start')" class="p-1.5 text-muted-foreground hover:text-success transition-colors" title="Start">▶️</button>
+                            <button onclick="containerAction('${c.id}', 'stop')" class="p-1.5 text-muted-foreground hover:text-warning transition-colors" title="Stop">⏹️</button>
+                            <button onclick="containerAction('${c.id}', 'restart')" class="p-1.5 text-muted-foreground hover:text-primary transition-colors" title="Restart">🔄</button>
+                            <button onclick="viewLogs('${c.id}')" class="p-1.5 text-muted-foreground hover:text-accent-foreground transition-colors" title="Logs">📋</button>
+                            <button onclick="containerAction('${c.id}', 'delete')" class="p-1.5 text-muted-foreground hover:text-destructive transition-colors" title="Delete">🗑️</button>
                         </td>
                     </tr>`;
                     tbody.insertAdjacentHTML('beforeend', row);
@@ -124,7 +124,7 @@
                     body: JSON.stringify({ container_id: id, action: action })
                 });
                 const data = await res.json();
-                
+
                 if (data.status === 'success') {
                     setTimeout(loadContainers, 500);
                 } else {

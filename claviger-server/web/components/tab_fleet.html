@@ -3,17 +3,17 @@
     
     <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h2 class="text-2xl font-bold tracking-tight text-white">{{ T "fleet.title" }}</h2>
-            <p class="text-slate-400 text-sm mt-1">{{ T "fleet.subtitle" }}</p>
+            <h2 class="text-2xl font-bold tracking-tight text-foreground">{{ T "fleet.title" }}</h2>
+            <p class="text-muted-foreground text-sm mt-1">{{ T "fleet.subtitle" }}</p>
         </div>
         
         <div id="fleet-selector-container" class="hidden flex items-center gap-3">
-            <label for="fleet-node-select" class="text-xs font-bold uppercase tracking-widest text-slate-500">{{ T "fleet.target_label" }}</label>
+            <label for="fleet-node-select" class="text-xs font-bold uppercase tracking-widest text-muted-foreground">{{ T "fleet.target_label" }}</label>
             <div class="relative min-w-[200px]">
-                <select id="fleet-node-select" onchange="onNodeSelected()" class="appearance-none bg-surface border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full py-2 pl-4 pr-10 shadow-sm cursor-pointer outline-none transition-colors">
+                <select id="fleet-node-select" onchange="onNodeSelected()" class="appearance-none bg-surface border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block w-full py-2 pl-4 pr-10 shadow-sm cursor-pointer outline-none transition-colors">
                     <option value="">{{ T "fleet.select_placeholder" }}</option>
                 </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
             </div>
@@ -22,11 +22,11 @@
 
     <!-- Empty State -->
     <div id="fleet-empty-state" class="hidden bg-surface border border-border rounded-2xl p-12 text-center shadow-sm">
-        <div class="w-16 h-16 bg-slate-800/50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+        <div class="w-16 h-16 bg-surface-elevated text-muted-foreground rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
         </div>
-        <h3 class="text-lg font-bold text-white mb-2">{{ T "fleet.empty_title" }}</h3>
-        <p class="text-slate-400 max-w-md mx-auto mb-6">{{ T "fleet.empty_desc" }}</p>
+        <h3 class="text-lg font-bold text-foreground mb-2">{{ T "fleet.empty_title" }}</h3>
+        <p class="text-muted-foreground max-w-md mx-auto mb-6">{{ T "fleet.empty_desc" }}</p>
     </div>
 
     <!-- Node Dashboard Content -->
@@ -35,18 +35,18 @@
         <!-- SECTION 1: System & Hardware Telemetry -->
         <section>
             <div class="flex items-center justify-between mb-5">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">{{ T "fleet.section_telemetry" }}</h3>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-muted-foreground">{{ T "fleet.section_telemetry" }}</h3>
             </div>
             
             <!-- Identity Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.node_status" }}</h4>
-                    <div id="node-stat-status" class="text-lg font-bold text-slate-200 flex items-center gap-2">-</div>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{{ T "fleet.node_status" }}</h4>
+                    <div id="node-stat-status" class="text-lg font-bold text-foreground flex items-center gap-2">-</div>
                 </div>
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{{ T "fleet.tunnel_ip" }}</h4>
-                    <div id="node-stat-ip" class="text-lg font-mono font-bold text-slate-200">-</div>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{{ T "fleet.tunnel_ip" }}</h4>
+                    <div id="node-stat-ip" class="text-lg font-mono font-bold text-foreground">-</div>
                 </div>
             </div>
 
@@ -56,16 +56,16 @@
                 <div id="fleet-update-glow" class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20 hidden pointer-events-none"></div>
                 
                 <div class="relative z-10 mb-4 md:mb-0">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Node Version</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Node Version</h4>
                     <div class="flex items-center gap-3">
                         <span class="relative flex h-3 w-3">
                             <span id="fleet-update-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 hidden"></span>
-                            <span id="fleet-update-dot" class="relative inline-flex rounded-full h-3 w-3 bg-slate-500"></span>
+                            <span id="fleet-update-dot" class="relative inline-flex rounded-full h-3 w-3 bg-muted-foreground"></span>
                         </span>
-                        <span class="text-3xl font-bold tracking-tight text-slate-100 font-mono" id="fleet-current-version">v---</span>
+                        <span class="text-3xl font-bold tracking-tight text-foreground font-mono" id="fleet-current-version">v---</span>
                         
                         <!-- Manual Check Button -->
-                        <button onclick="forceCheckFleetUpdates(this)" id="btn-fleet-manual-check" class="ml-2 p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-700/50 rounded-lg transition-colors group focus:outline-none" title="Check node for updates">
+                        <button onclick="forceCheckFleetUpdates(this)" id="btn-fleet-manual-check" class="ml-2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-hover/50 rounded-lg transition-colors group focus:outline-none" title="Check node for updates">
                             <svg class="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" id="icon-fleet-manual-check" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         </button>
                     </div>
@@ -83,51 +83,51 @@
                 
                 <!-- CPU Usage Card -->
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{{T "fleet.cpu_usage" }}</h4>
-                    <div id="fleet-sys-cpu-val" class="text-3xl font-bold text-slate-200 mb-4">0%</div>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">{{T "fleet.cpu_usage" }}</h4>
+                    <div id="fleet-sys-cpu-val" class="text-3xl font-bold text-foreground mb-4">0%</div>
                     <div>
-                        <div class="w-full bg-slate-800/50 rounded-full h-2 mb-2 overflow-hidden border border-border">
+                        <div class="w-full bg-surface-elevated rounded-full h-2 mb-2 overflow-hidden border border-border">
                             <div id="fleet-sys-cpu-bar" class="bg-primary h-2 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
                         </div>
-                        <div class="text-[10px] text-slate-500 text-right">Load capacity</div>
+                        <div class="text-[10px] text-muted-foreground text-right">Load capacity</div>
                     </div>
                 </div>
 
                 <!-- RAM Usage Card -->
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{{T "fleet.ram_usage" }}</h4>
-                    <div id="fleet-sys-ram-val" class="text-3xl font-bold text-slate-200 mb-4">0%</div>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">{{T "fleet.ram_usage" }}</h4>
+                    <div id="fleet-sys-ram-val" class="text-3xl font-bold text-foreground mb-4">0%</div>
                     <div>
-                        <div class="w-full bg-slate-800/50 rounded-full h-2 mb-2 overflow-hidden border border-border">
-                            <div id="fleet-sys-ram-bar" class="bg-emerald-400 h-2 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                        <div class="w-full bg-surface-elevated rounded-full h-2 mb-2 overflow-hidden border border-border">
+                            <div id="fleet-sys-ram-bar" class="bg-success h-2 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
                         </div>
-                        <div id="fleet-sys-ram-text" class="text-[10px] font-mono text-slate-500 text-right">0 / 0 GB</div>
+                        <div id="fleet-sys-ram-text" class="text-[10px] font-mono text-muted-foreground text-right">0 / 0 GB</div>
                     </div>
                 </div>
 
                 <!-- Disk Usage Card -->
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{{T "fleet.disk_usage" }}</h4>
-                    <div id="fleet-sys-disk-val" class="text-3xl font-bold text-slate-200 mb-4">0%</div>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">{{T "fleet.disk_usage" }}</h4>
+                    <div id="fleet-sys-disk-val" class="text-3xl font-bold text-foreground mb-4">0%</div>
                     <div>
-                        <div class="w-full bg-slate-800/50 rounded-full h-2 mb-2 overflow-hidden border border-border">
-                            <div id="fleet-sys-disk-bar" class="bg-amber-400 h-2 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                        <div class="w-full bg-surface-elevated rounded-full h-2 mb-2 overflow-hidden border border-border">
+                            <div id="fleet-sys-disk-bar" class="bg-warning h-2 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
                         </div>
-                        <div id="fleet-sys-disk-text" class="text-[10px] font-mono text-slate-500 text-right">0 / 0 GB</div>
+                        <div id="fleet-sys-disk-text" class="text-[10px] font-mono text-muted-foreground text-right">0 / 0 GB</div>
                     </div>
                 </div>
 
                 <!-- System Info Card -->
                 <div class="bg-surface p-5 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{{T "fleet.sys_info" }}</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">{{T "fleet.sys_info" }}</h4>
                     <div class="flex-1 flex flex-col justify-center gap-4 mt-2">
                         <div>
-                            <div class="text-[10px] uppercase text-slate-500 mb-1">{{T "fleet.sys_os" }}</div>
-                            <div id="fleet-sys-os" class="text-sm font-semibold text-slate-200 truncate" title="OS Name">Loading...</div>
+                            <div class="text-[10px] uppercase text-muted-foreground mb-1">{{T "fleet.sys_os" }}</div>
+                            <div id="fleet-sys-os" class="text-sm font-semibold text-foreground truncate" title="OS Name">Loading...</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-slate-500 mb-1">{{T "fleet.sys_uptime" }}</div>
-                            <div id="fleet-sys-uptime" class="text-sm font-mono text-slate-300">--:--:--</div>
+                            <div class="text-[10px] uppercase text-muted-foreground mb-1">{{T "fleet.sys_uptime" }}</div>
+                            <div id="fleet-sys-uptime" class="text-sm font-mono text-muted-foreground">--:--:--</div>
                         </div>
                     </div>
                 </div>
@@ -142,23 +142,17 @@
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
                 <!-- Left side texts -->
                 <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">{{ T "fleet.section_apps" }}</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">{{ T "fleet.section_apps_desc" }}</p>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-muted-foreground">{{ T "fleet.section_apps" }}</h3>
+                    <p class="text-xs text-muted-foreground mt-0.5">{{ T "fleet.section_apps_desc" }}</p>
                 </div>
                 
                 <!-- Right side buttons -->
                 <div class="flex items-center gap-3">
-                    <button 
-                        id="btn-refresh-fleet-apps"
-                        onclick="refetchFleetContainers()" 
-                        class="px-4 py-2 bg-surface hover:bg-slate-800 text-xs font-bold text-slate-300 rounded-lg border border-border transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm">
+                    <button id="btn-refresh-fleet-apps" onclick="refetchFleetContainers()" class="px-4 py-2 bg-surface hover:bg-surface-hover text-xs font-bold text-muted-foreground rounded-lg border border-border transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         {{ T "fleet.btn_refresh_apps" }}
                     </button>
-                    <button 
-                        id="btn-sync-catalog"
-                        onclick="refetchCatalog()" 
-                        class="px-4 py-2 bg-surface hover:bg-slate-800 text-xs font-bold text-slate-300 rounded-lg border border-border transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm">
+                    <button id="btn-sync-catalog" onclick="refetchCatalog()" class="px-4 py-2 bg-surface hover:bg-surface-hover text-xs font-bold text-muted-foreground rounded-lg border border-border transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         {{ T "fleet.btn_refresh_catalog" }}
                     </button>
@@ -167,7 +161,7 @@
 
             <!-- Unified List Container -->
             <div class="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm divide-y divide-border min-h-[100px]" id="app-list">
-                <div class="p-8 text-center text-slate-500 text-sm animate-pulse" id="loading-apps-text">{{ T "fleet.loading_apps" }}</div>
+                <div class="p-8 text-center text-muted-foreground text-sm animate-pulse" id="loading-apps-text">{{ T "fleet.loading_apps" }}</div>
             </div>
         </section>
 
@@ -176,21 +170,21 @@
         <!-- SECTION 3: AI & LLM Studio (Edge Node) -->
         <section>
             <div class="mb-6">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-400">{{ T "fleet.section_edge_ai" }}</h3>
-                <p class="text-xs text-slate-500 mt-0.5">{{ T "fleet.section_edge_ai_desc" }}</p>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-primary">{{ T "fleet.section_edge_ai" }}</h3>
+                <p class="text-xs text-muted-foreground mt-0.5">{{ T "fleet.section_edge_ai_desc" }}</p>
             </div>
 
             <div class="flex flex-col gap-6">
                 
                 <!-- Subsection: AI Hardware Profile -->
                 <div>
-                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <h4 class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5">
                         <span>⚡</span> {{ T "fleet.ai_compute_profile" }}
                     </h4>
                     
                     <div id="fleet-ai-profile-container" class="bg-surface/40 p-4 rounded-xl border border-border shadow-sm min-h-[70px] flex flex-col justify-center transition-all">
-                        <div class="text-xs text-slate-500 animate-pulse font-mono flex items-center gap-2">
-                            <svg class="animate-spin h-3.5 w-3.5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <div class="text-xs text-muted-foreground animate-pulse font-mono flex items-center gap-2">
+                            <svg class="animate-spin h-3.5 w-3.5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             <span id="scanning-hw-text">{{ T "fleet.scanning_hardware" }}</span>
                         </div>
                     </div>
@@ -198,29 +192,29 @@
 
                 <!-- Subsection: AI Ecosystem -->
                 <div>
-                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <h4 class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5">
                         <span>🧠</span> {{ T "fleet.ai_ecosystem_apps" }}
                     </h4>
                     
                     <div class="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm divide-y divide-border min-h-[100px]" id="fleet-llm-list">
-                        <div class="p-8 text-center text-slate-500 text-sm animate-pulse" id="loading-ai-text">{{ T "fleet.loading_ai" }}</div>
+                        <div class="p-8 text-center text-muted-foreground text-sm animate-pulse" id="loading-ai-text">{{ T "fleet.loading_ai" }}</div>
                     </div>
                 </div>
 
                 <div class="mt-4">
                     <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
                         <div class="flex items-center gap-4">
-                            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                            <h4 class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                                 <span>📚</span> {{ T "fleet.local_model_library" }}
                             </h4>
                             
                             <!-- Fleet Engine Selector Dropdown -->
-                            <select id="fleet-engine-selector" onchange="switchFleetEngineView(this.value)" class="bg-slate-800 border border-border text-slate-300 text-xs rounded-lg focus:ring-primary focus:border-primary block p-1.5 transition-colors cursor-pointer outline-none">
+                            <select id="fleet-engine-selector" onchange="switchFleetEngineView(this.value)" class="bg-surface-elevated border border-border text-muted-foreground text-xs rounded-lg focus:ring-primary focus:border-primary block p-1.5 transition-colors cursor-pointer outline-none">
                                 <option value="" id="detecting-engines-opt">{{ T "fleet.detecting_edge_engines" }}</option>
                             </select>
                         </div>
 
-                        <button onclick="openFleetPullModal()" class="bg-primary hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap">
+                        <button onclick="openFleetPullModal()" class="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                             {{ T "fleet.btn_pull_model" }}
                         </button>
@@ -229,7 +223,7 @@
                     <!-- Model List Container -->
                     <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden mb-2">
                         <div class="divide-y divide-border min-h-[100px]" id="fleet-model-list">
-                            <div class="p-8 text-center text-slate-500 text-sm font-mono" id="select-engine-prompt-text">
+                            <div class="p-8 text-center text-muted-foreground text-sm font-mono" id="select-engine-prompt-text">
                                 {{ T "fleet.select_edge_engine_prompt" }}
                             </div>
                         </div>
@@ -244,32 +238,32 @@
             <div class="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300" id="fleet-pull-modal-content">
                 
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2" id="modal-title-fleet">
+                    <h3 class="text-lg font-bold text-foreground flex items-center gap-2" id="modal-title-fleet">
                         {{ T "fleet.modal_pull_title" }}
                     </h3>
-                    <button onclick="closeFleetPullModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <button onclick="closeFleetPullModal()" class="text-muted-foreground hover:text-foreground transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" id="lbl-target-engine">{{ T "fleet.target_edge_engine" }}</label>
-                        <select id="fleet-pull-target-engine" class="w-full bg-slate-800 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none">
+                        <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2" id="lbl-target-engine">{{ T "fleet.target_edge_engine" }}</label>
+                        <select id="fleet-pull-target-engine" class="w-full bg-surface-elevated border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none">
                             <!-- Populated dynamically -->
                         </select>
                     </div>
                     
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" id="lbl-model-id">{{ T "fleet.model_tag_label" }}</label>
-                        <input type="text" id="fleet-pull-model-id" class="w-full bg-slate-900 border border-border text-slate-200 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none font-mono placeholder-slate-600">
-                        <p class="text-[10px] text-slate-500 mt-2 leading-relaxed" id="hint-model-id">{{ T "fleet.model_tag_hint" }}</p>
+                        <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2" id="lbl-model-id">{{ T "fleet.model_tag_label" }}</label>
+                        <input type="text" id="fleet-pull-model-id" class="w-full bg-background border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none font-mono placeholder-muted-foreground">
+                        <p class="text-[10px] text-muted-foreground mt-2 leading-relaxed" id="hint-model-id">{{ T "fleet.model_tag_hint" }}</p>
                     </div>
                 </div>
 
                 <div class="mt-8 flex justify-end gap-3">
-                    <button onclick="closeFleetPullModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-lg transition-colors border border-border" id="btn-cancel-fleet">{{ T "fleet.btn_cancel" }}</button>
-                    <button id="btn-fleet-execute-pull" onclick="executeFleetModelPull()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
+                    <button onclick="closeFleetPullModal()" class="px-4 py-2 bg-surface-elevated hover:bg-surface-hover text-muted-foreground text-sm font-bold rounded-lg transition-colors border border-border" id="btn-cancel-fleet">{{ T "fleet.btn_cancel" }}</button>
+                    <button id="btn-fleet-execute-pull" onclick="executeFleetModelPull()" class="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
                         {{ T "fleet.btn_start_edge_download" }}
                     </button>
                 </div>
@@ -321,12 +315,8 @@
                 });
                 const data = await res.json();
                 if (res.ok && data.status !== 'error') {
-                    // Show success (use your custom toast function if you have one instead of alert)
                     alert(data.message); 
-
-                    // If new apps were actually downloaded, refresh the page to show them!
                     if (data.status === 'updated') {
-                        // window.location.reload();
                         await refetchFleetContainers();
                     }
                 } else {
@@ -396,7 +386,7 @@
 
             const statusEl = document.getElementById('node-stat-status');
             if (node.status === 'active') {
-                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_8px_rgba(129,140,248,0.6)]"></div> <span class="text-indigo-400">${i18nFleet.active_node}</span>`;
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-primary animate-pulse shadow-sm"></div> <span class="text-primary">${i18nFleet.active_node}</span>`;
                 
                 fetchFleetNodeSystemData(node.id);
                 fetchFleetContainers(node.id, node.ip_address);
@@ -405,13 +395,12 @@
                 fetchFleetNodeUpdateStatus(node.id);
 
                 fleetPollingInterval = setInterval(() => fetchFleetNodeSystemData(node.id), 5000);
-                fleetContainerPollingInterval = setInterval(() => fetchFleetContainers(node.id, node.ip_address), 600000); // Update every 10 minutes
+                fleetContainerPollingInterval = setInterval(() => fetchFleetContainers(node.id, node.ip_address), 600000);
                 fleetLLMContainerPollingInterval = setInterval(() => fetchFleetLLMContainers(node.id, node.ip_address), 600000);
                 fleetUpdatePollingInterval = setInterval(() => fetchFleetNodeUpdateStatus(node.id), 600000);
                 
-
             } else {
-                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div> <span class="text-amber-400">${i18nFleet.pending_node}</span>`;
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-warning animate-pulse"></div> <span class="text-warning">${i18nFleet.pending_node}</span>`;
                 resetFleetStats();
             }
 
@@ -445,7 +434,6 @@
 
         async function fetchFleetNodeUpdateStatus(nodeId) {
             try {
-                // Hitting the subserver via the smart proxy
                 const res = await fetch(`/api/fleet/proxy/api/system/update/status`, {
                     method: 'GET',
                     headers: { 'X-Node-ID': nodeId }
@@ -465,23 +453,21 @@
                 actionsContainer.innerHTML = ''; 
                 let hasUpdate = false;
 
-                // Render Stable Button
                 if (data.stable_update_available) {
                     hasUpdate = true;
                     actionsContainer.innerHTML += `
-                        <button onclick="applyFleetUpdate('${nodeId}', '${data.stable_update_available}', this)" class="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                        <button onclick="applyFleetUpdate('${nodeId}', '${data.stable_update_available}', this)" class="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-soft">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                             Update Node to ${data.stable_update_available}
                         </button>
                     `;
                 }
 
-                // Render Beta Button
                 if (data.prerelease_update_available) {
                     hasUpdate = true;
                     actionsContainer.innerHTML += `
-                        <button onclick="applyFleetUpdate('${nodeId}', '${data.prerelease_update_available}', this)" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-amber-500/30 text-slate-200 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
-                            <span class="text-amber-500 font-bold">🧪</span> Beta ${data.prerelease_update_available}
+                        <button onclick="applyFleetUpdate('${nodeId}', '${data.prerelease_update_available}', this)" class="px-4 py-2.5 bg-surface-elevated hover:bg-surface-hover border border-warning/30 text-foreground text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
+                            <span class="text-warning font-bold">🧪</span> Beta ${data.prerelease_update_available}
                         </button>
                     `;
                 }
@@ -494,15 +480,15 @@
                 } else {
                     statusText.innerHTML = `Node is up to date`;
                     pingDot.classList.add('hidden');
-                    solidDot.className = "relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
+                    solidDot.className = "relative inline-flex rounded-full h-3 w-3 bg-success shadow-sm";
                     glowFx.classList.add('hidden');
                 }
 
             } catch (e) {
                 console.error("Fetch Fleet Update Status Error:", e);
                 document.getElementById('fleet-current-version').innerText = "Err";
-                document.getElementById('fleet-update-status-text').innerHTML = `<span class="text-red-400">Node unreachable</span>`;
-                document.getElementById('fleet-update-dot').className = "relative inline-flex rounded-full h-3 w-3 bg-red-500";
+                document.getElementById('fleet-update-status-text').innerHTML = `<span class="text-destructive">Node unreachable</span>`;
+                document.getElementById('fleet-update-dot').className = "relative inline-flex rounded-full h-3 w-3 bg-destructive";
             }
         }
 
@@ -520,10 +506,9 @@
             statusText.innerHTML = `<span class="text-primary">Asking node to check GitHub...</span>`;
 
             try {
-                // Refetch the UI status after the check completes
                 await fetchFleetNodeUpdateStatus(currentSelectedNodeId); 
             } catch (e) {
-                statusText.innerHTML = `<span class="text-red-400">Node failed to check updates.</span>`;
+                statusText.innerHTML = `<span class="text-destructive">Node failed to check updates.</span>`;
             } finally {
                 btn.disabled = false;
                 icon.classList.remove('animate-spin');
@@ -539,7 +524,6 @@
             btnElement.classList.add('opacity-75', 'cursor-not-allowed');
 
             try {
-                // Send the apply command via smart proxy
                 const res = await fetch(`/api/fleet/proxy/api/system/update`, {
                     method: 'POST',
                     headers: { 
@@ -552,8 +536,6 @@
                 if (!res.ok) throw new Error('Node update request failed');
 
                 document.getElementById('fleet-update-status-text').innerHTML = `<span class="text-primary font-bold animate-pulse">Node is restarting...</span>`;
-                
-                // Wait 8 seconds for the node to reboot and reconnect the VPN tunnel, then refresh UI
                 setTimeout(() => fetchFleetNodeUpdateStatus(nodeId), 8000);
 
             } catch (e) {
@@ -583,7 +565,7 @@
                 console.error("Failed to sync fleet app states", e);
                 const listApp = document.getElementById('app-list');
                 if (listApp) {
-                    listApp.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${i18nFleet.load_fail}</div>`;
+                    listApp.innerHTML = `<div class="p-8 text-center text-destructive text-sm">${i18nFleet.load_fail}</div>`;
                 }
             }
         } 
@@ -632,7 +614,7 @@
                 const profile = await res.json();
 
                 let computeName = profile.cpu_name;
-                let badgeStyles = "bg-slate-800 text-slate-400 border-border";
+                let badgeStyles = "bg-surface-elevated text-muted-foreground border-border";
                 let badgeText = "CPU Only";
                 let warningHtml = "";
 
@@ -641,24 +623,24 @@
                     badgeText = `${profile.gpu.total_vram_gb}GB VRAM`;
                     
                     switch(profile.gpu.vendor) {
-                        case "nvidia": badgeStyles = "text-emerald-400 border-emerald-400/30 bg-emerald-400/10"; break;
-                        case "amd":    badgeStyles = "text-red-500 border-red-500/30 bg-red-500/10"; break;
-                        case "intel":  badgeStyles = "text-blue-400 border-blue-400/30 bg-blue-400/10"; break;
-                        case "apple":  badgeStyles = "text-slate-200 border-slate-500/50 bg-slate-700/50"; break;
+                        case "nvidia": badgeStyles = "text-success border-success/30 bg-success/10"; break;
+                        case "amd":    badgeStyles = "text-destructive border-destructive/30 bg-destructive/10"; break;
+                        case "intel":  badgeStyles = "text-primary border-primary/30 bg-primary/10"; break;
+                        case "apple":  badgeStyles = "text-foreground border-border bg-surface-hover"; break;
                         default:       badgeStyles = "text-primary border-primary/30 bg-primary/10";
                     }
 
                     if (profile.gpu.vendor === 'nvidia' && !profile.gpu.toolkit_ready) {
                         deploymentFleetLocked = true;
-                        container.classList.add('border-rose-500/30');
+                        container.classList.add('border-destructive/30');
                         
                         warningHtml = `
-                        <div class="mt-3 p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg flex items-center justify-between gap-3">
+                        <div class="mt-3 p-2.5 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center justify-between gap-3">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm">⚠️</span>
-                                <p class="text-[11px] text-rose-400 font-medium">${i18nFleet.toolkit_missing_warning}</p>
+                                <p class="text-[11px] text-destructive font-medium">${i18nFleet.toolkit_missing_warning}</p>
                             </div>
-                            <button id="btn-fleet-toolkit-${nodeId}" onclick="installFleetNvidiaToolkit('${nodeId}')" class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-bold rounded transition-colors border border-rose-500/30 whitespace-nowrap">
+                            <button id="btn-fleet-toolkit-${nodeId}" onclick="installFleetNvidiaToolkit('${nodeId}')" class="px-3 py-1.5 bg-destructive/10 hover:bg-destructive/90/20 text-destructive text-[10px] font-bold rounded transition-colors border border-destructive/30 whitespace-nowrap">
                                 ${i18nFleet.btn_fix_issue}
                             </button>
                         </div>`;
@@ -669,10 +651,10 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <div class="flex items-center gap-2 mb-1">
-                                <h5 class="text-sm font-bold text-slate-200 truncate max-w-[200px] sm:max-w-xs" title="${computeName}">${computeName}</h5>
+                                <h5 class="text-sm font-bold text-foreground truncate max-w-[200px] sm:max-w-xs" title="${computeName}">${computeName}</h5>
                                 <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${badgeStyles}">${badgeText}</span>
                             </div>
-                            <p class="text-[11px] text-slate-400 font-mono">${profile.total_ram_gb} GB RAM • ${profile.cpu_cores} Cores</p>
+                            <p class="text-[11px] text-muted-foreground font-mono">${profile.total_ram_gb} GB RAM • ${profile.cpu_cores} Cores</p>
                         </div>
                     </div>
                     ${warningHtml}
@@ -680,7 +662,7 @@
 
             } catch (err) { 
                 console.error("Error fetching remote node AI profile:", err);
-                container.innerHTML = `<div class="text-xs text-rose-400 font-mono flex items-center gap-2"><span>❌</span> Unable to reach hardware profiler</div>`;
+                container.innerHTML = `<div class="text-xs text-destructive font-mono flex items-center gap-2"><span>❌</span> Unable to reach hardware profiler</div>`;
             } 
         }
 
@@ -694,8 +676,8 @@
 
             btn.disabled = true;
             btn.innerHTML = i18nFleet.toolkit_fixing;
-            btn.classList.remove('text-rose-400', 'bg-rose-500/10', 'hover:bg-rose-500/20', 'border-rose-500/30');
-            btn.classList.add('animate-pulse', 'bg-slate-800', 'text-slate-400', 'border-slate-700');
+            btn.classList.remove('text-destructive', 'bg-destructive/10', 'hover:bg-destructive/90/20', 'border-destructive/30');
+            btn.classList.add('animate-pulse', 'bg-surface-elevated', 'text-muted-foreground', 'border-border');
 
             try {
                 const res = await fetch('/api/fleet/proxy/api/hardware/install-toolkit', {
@@ -705,8 +687,8 @@
                 const data = await res.json();
                 
                 if (res.ok && data.status === 'success') {
-                    btn.classList.remove('animate-pulse', 'text-slate-400');
-                    btn.classList.add('text-emerald-400', 'border-emerald-500/30', 'bg-emerald-500/10');
+                    btn.classList.remove('animate-pulse', 'text-muted-foreground');
+                    btn.classList.add('text-success', 'border-success/30', 'bg-success/10');
                     btn.innerHTML = i18nFleet.toolkit_done;
                     
                     deploymentFleetLocked = false;
@@ -719,8 +701,8 @@
                 alert(failMsg);
                 btn.disabled = false;
                 btn.innerHTML = i18nFleet.btn_fix_issue;
-                btn.classList.add('text-rose-400', 'bg-rose-500/10', 'hover:bg-rose-500/20', 'border-rose-500/30');
-                btn.classList.remove('animate-pulse', 'bg-slate-800', 'text-slate-400', 'border-slate-700');
+                btn.classList.add('text-destructive', 'bg-destructive/10', 'hover:bg-destructive/90/20', 'border-destructive/30');
+                btn.classList.remove('animate-pulse', 'bg-surface-elevated', 'text-muted-foreground', 'border-border');
             }
         }
 
@@ -746,7 +728,7 @@
             const customApps = apps.filter(app => app.category === 'optional' && app.is_custom);
         
             if (apps.length === 0) {
-                listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">${i18nFleet.no_apps}</div>`;
+                listEl.innerHTML = `<div class="p-8 text-center text-muted-foreground text-sm">${i18nFleet.no_apps}</div>`;
                 return;
             }
 
@@ -754,14 +736,14 @@
                 const isInstalled = app.status !== 'not_installed';
                 const isRunning = app.status === 'running';
 
-                let badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">${i18nFleet.badge_not_installed}</span>`;
+                let badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-surface-elevated text-muted-foreground border border-border">${i18nFleet.badge_not_installed}</span>`;
                 if (isInstalled) {
                     if (isRunning) {
-                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${i18nFleet.badge_running}</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-success/10 text-success border border-success/20">${i18nFleet.badge_running}</span>`;
                     } else if (app.status === 'degraded') {
-                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">${i18nFleet.badge_degraded}</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-warning/10 text-warning border border-warning/20">${i18nFleet.badge_degraded}</span>`;
                     } else {
-                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">${i18nFleet.badge_stopped}</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-destructive/10 text-destructive border border-destructive/20">${i18nFleet.badge_stopped}</span>`;
                     }
                 }
 
@@ -774,46 +756,31 @@
                     `onclick="window.open('https://claviger.cloudrocean.com/documentation/e54a5823-8d66-4999-9d91-70ec7db319a6', '_blank')"` : 'disabled';
                 let dashOnClick = isDefault ? `onclick="window.open('http://${vpnIp}:${app.action_port}', '_blank')"` : defaultAction;
 
-                const customPill = app.is_custom ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-400 uppercase tracking-wider">${i18nFleet.custom_pill}</span>` : '';
+                const customPill = app.is_custom ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent text-primary uppercase tracking-wider">${i18nFleet.custom_pill}</span>` : '';
 
                 return `
                 <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface/50 transition-all hover:bg-surface/80" id="row-node-${nodeId}-app-${app.id}">
                     <div class="flex items-start gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-slate-800 border border-border flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                        <div class="w-12 h-12 rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
                             ${app.icon}
                         </div>
                         <div>
                             <div class="flex items-center gap-2 mb-1">
-                                <h4 class="text-sm font-bold text-slate-100 flex items-center">${app.name} ${customPill}</h4>
+                                <h4 class="text-sm font-bold text-foreground flex items-center">${app.name} ${customPill}</h4>
                                 ${badgeHtml}
                             </div>
-                            <p class="text-xs text-slate-400 leading-relaxed">${app.description}</p>
+                            <p class="text-xs text-muted-foreground leading-relaxed">${app.description}</p>
                         </div>
                     </div>
                     
                     <div class="flex items-center gap-2 self-end md:self-center flex-shrink-0">
-                        <button 
-                            id="btn-install-node-${nodeId}-${app.id}" 
-                            onclick="installFleetApp('${nodeId}', '${app.id}', ${app.is_custom})" 
-                            class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap"
-                        >
+                        <button id="btn-install-node-${nodeId}-${app.id}" onclick="installFleetApp('${nodeId}', '${app.id}', ${app.is_custom})" class="${installBtnClass} px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap">
                             ${i18nFleet.btn_install}
                         </button>
-
-                        <button 
-                            id="btn-dash-node-${nodeId}-${app.id}" 
-                            ${dashOnClick} 
-                            class="${dashBtnClass} px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors border border-border whitespace-nowrap"
-                        >
+                        <button id="btn-dash-node-${nodeId}-${app.id}" ${dashOnClick} class="${dashBtnClass} px-4 py-2 bg-surface-elevated hover:bg-surface-hover text-foreground text-xs font-bold rounded-lg transition-colors border border-border whitespace-nowrap">
                             ${app.action_text}
                         </button>
-
-                        <button 
-                            id="btn-uninstall-node-${nodeId}-${app.id}" 
-                            onclick="uninstallFleetApp('${app.id}', '${nodeId}')" 
-                            class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 whitespace-nowrap"
-                            title=""
-                        >
+                        <button id="btn-uninstall-node-${nodeId}-${app.id}" onclick="uninstallFleetApp('${app.id}', '${nodeId}')" class="${uninstallBtnClass} px-3 py-2 bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold rounded-lg transition-colors border border-destructive/20 whitespace-nowrap" title="">
                             🗑️
                         </button>
                     </div>
@@ -821,12 +788,12 @@
             };
 
             if (officialApps.length > 0) {
-                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-border">${i18nFleet.official_extensions}</div>`);
+                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border">${i18nFleet.official_extensions}</div>`);
                 officialApps.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
             }
 
             if (customApps.length > 0) {
-                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-indigo-400 uppercase tracking-widest border-b border-border mt-2">${i18nFleet.custom_deployments}</div>`);
+                listEl.insertAdjacentHTML('beforeend', `<div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-primary uppercase tracking-widest border-b border-border mt-2">${i18nFleet.custom_deployments}</div>`);
                 customApps.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
             }
         }
@@ -838,7 +805,7 @@
             listEl.innerHTML = ''; 
 
             if (apps.length === 0) {
-                listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">${i18nFleet.no_ai_apps}</div>`;
+                listEl.innerHTML = `<div class="p-8 text-center text-muted-foreground text-sm">${i18nFleet.no_ai_apps}</div>`;
                 return;
             }
 
@@ -849,18 +816,18 @@
                 const isInstalled = app.status !== 'not_installed';
                 const isRunning = app.status === 'running';
 
-                let badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">${i18nFleet.badge_not_installed}</span>`;
+                let badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-surface-elevated text-muted-foreground border border-border">${i18nFleet.badge_not_installed}</span>`;
                 if (isInstalled) {
                     if (isRunning) {
-                        badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${i18nFleet.badge_running}</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-success/10 text-success border border-success/20">${i18nFleet.badge_running}</span>`;
                     } else {
-                        badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">${i18nFleet.badge_stopped}</span>`;
+                        badgeHtml = `<span id="badge-node-${nodeId}-llm-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-destructive/10 text-destructive border border-destructive/20">${i18nFleet.badge_stopped}</span>`;
                     }
                 }
 
                 const typePill = app.category === 'llm_engine' 
-                    ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-400 uppercase tracking-wider">${i18nFleet.type_engine}</span>`
-                    : `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-fuchsia-500/20 text-fuchsia-400 uppercase tracking-wider">${i18nFleet.type_interface}</span>`;
+                    ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent text-primary uppercase tracking-wider">${i18nFleet.type_engine}</span>`
+                    : `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent text-accent-foreground uppercase tracking-wider">${i18nFleet.type_interface}</span>`;
 
                 let installBtnClass = isInstalled ? 'hidden' : '';
                 let dashBtnClass = isInstalled ? '' : 'hidden';
@@ -876,47 +843,32 @@
                 let dashOnClick = isDefault ? `onclick="window.open('http://${vpnIp}:${app.action_port}', '_blank')"` : defaultAction;
                 
                 let dashBtnStyle = (isDefault || defaultAction !== 'disabled') 
-                    ? 'bg-slate-800 hover:bg-slate-700 text-white border-border cursor-pointer' 
-                    : 'bg-slate-800/40 text-slate-500 border-transparent cursor-not-allowed';
+                    ? 'bg-surface-elevated hover:bg-surface-hover text-foreground border-border cursor-pointer' 
+                    : 'bg-surface-elevated/70 text-muted-foreground border-transparent cursor-not-allowed';
 
                 return `
                 <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface/50 transition-all hover:bg-surface/80" id="row-node-${nodeId}-llm-${app.id}">
                     <div class="flex items-start gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-slate-800 border border-border flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                        <div class="w-12 h-12 rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
                             ${app.icon}
                         </div>
                         <div>
                             <div class="flex items-center gap-2 mb-1">
-                                <h4 class="text-sm font-bold text-slate-100 flex items-center">${app.name} ${typePill}</h4>
+                                <h4 class="text-sm font-bold text-foreground flex items-center">${app.name} ${typePill}</h4>
                                 ${badgeHtml}
                             </div>
-                            <p class="text-xs text-slate-400 leading-relaxed">${app.description}</p>
+                            <p class="text-xs text-muted-foreground leading-relaxed">${app.description}</p>
                         </div>
                     </div>
                     
                     <div class="flex items-center gap-2 self-end md:self-center flex-shrink-0">
-                        <button 
-                            id="btn-install-llm-node-${nodeId}-${app.id}" 
-                            onclick="installFleetLLMApp('${nodeId}', '${app.id}')" 
-                            class="${installBtnClass} px-4 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap"
-                        >
+                        <button id="btn-install-llm-node-${nodeId}-${app.id}" onclick="installFleetLLMApp('${nodeId}', '${app.id}')" class="${installBtnClass} px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap">
                             ${i18nFleet.btn_llm_install}
                         </button>
-
-                        <button 
-                            id="btn-dash-llm-node-${nodeId}-${app.id}" 
-                            ${dashOnClick} 
-                            class="${dashBtnClass} ${dashBtnStyle} px-4 py-2 text-xs font-bold rounded-lg transition-colors border whitespace-nowrap"
-                        >
+                        <button id="btn-dash-llm-node-${nodeId}-${app.id}" ${dashOnClick} class="${dashBtnClass} ${dashBtnStyle} px-4 py-2 text-xs font-bold rounded-lg transition-colors border whitespace-nowrap">
                             ${app.action_text}
                         </button>
-
-                        <button 
-                            id="btn-uninstall-llm-node-${nodeId}-${app.id}" 
-                            onclick="uninstallFleetLLMApp('${nodeId}', '${app.id}')" 
-                            class="${uninstallBtnClass} px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 whitespace-nowrap"
-                            title=""
-                        >
+                        <button id="btn-uninstall-llm-node-${nodeId}-${app.id}" onclick="uninstallFleetLLMApp('${nodeId}', '${app.id}')" class="${uninstallBtnClass} px-3 py-2 bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold rounded-lg transition-colors border border-destructive/20 whitespace-nowrap" title="">
                             🗑️
                         </button>
                     </div>
@@ -925,7 +877,7 @@
 
             if (engines.length > 0) {
                 listEl.insertAdjacentHTML('beforeend', `
-                    <div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-indigo-400 uppercase tracking-widest border-b border-border flex items-center gap-2">
+                    <div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-primary uppercase tracking-widest border-b border-border flex items-center gap-2">
                         <span class="text-sm">⚙️</span> Core Engines
                     </div>`);
                 engines.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
@@ -933,7 +885,7 @@
 
             if (interfaces.length > 0) {
                 listEl.insertAdjacentHTML('beforeend', `
-                    <div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-fuchsia-400 uppercase tracking-widest border-b border-border flex items-center gap-2 ${engines.length > 0 ? 'mt-2' : ''}">
+                    <div class="px-5 py-3 bg-background/40 text-[11px] font-bold text-accent-foreground uppercase tracking-widest border-b border-border flex items-center gap-2 ${engines.length > 0 ? 'mt-2' : ''}">
                         <span class="text-sm">🖥️</span> User Interfaces
                     </div>`);
                 interfaces.forEach(app => listEl.insertAdjacentHTML('beforeend', buildRow(app)));
@@ -949,8 +901,8 @@
             if (!installBtn) return;
 
             installBtn.disabled = true;
-            installBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
-            installBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
+            installBtn.classList.remove('bg-primary', 'hover:bg-primary/90');
+            installBtn.classList.add('bg-surface-hover', 'cursor-not-allowed', 'animate-pulse');
             installBtn.innerHTML = i18nFleet.btn_installing;
 
             try {
@@ -967,7 +919,7 @@
                 
                 if (res.ok && data.status === 'success') {
                     installBtn.classList.remove('animate-pulse');
-                    installBtn.classList.add('bg-emerald-600');
+                    installBtn.classList.add('bg-success');
                     installBtn.innerHTML = i18nFleet.btn_installed;
                     
                     setTimeout(() => {
@@ -978,8 +930,8 @@
                 }
             } catch (e) {
                 installBtn.disabled = false;
-                installBtn.classList.remove('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
-                installBtn.classList.add('bg-rose-600', 'hover:bg-rose-500'); 
+                installBtn.classList.remove('bg-surface-hover', 'cursor-not-allowed', 'animate-pulse');
+                installBtn.classList.add('bg-destructive', 'hover:bg-destructive/90'); 
                 installBtn.innerHTML = i18nFleet.btn_retry;
                 
                 setTimeout(() => {
@@ -998,8 +950,8 @@
             if (!btn) return;
 
             btn.disabled = true;
-            btn.classList.replace('bg-rose-600', 'bg-slate-700');
-            btn.classList.replace('hover:bg-rose-700', 'cursor-not-allowed');
+            btn.classList.replace('bg-destructive', 'bg-surface-hover');
+            btn.classList.replace('hover:bg-destructive/90', 'cursor-not-allowed');
             btn.classList.add('animate-pulse');
             btn.innerHTML = i18nFleet.btn_destroying;
 
@@ -1016,7 +968,7 @@
                 
                 if (res.ok && data.status === 'success') {
                     btn.classList.remove('animate-pulse');
-                    btn.classList.replace('bg-slate-700', 'bg-emerald-600');
+                    btn.classList.replace('bg-surface-hover', 'bg-success');
                     btn.innerHTML = i18nFleet.btn_removed;
                     
                     setTimeout(() => {
@@ -1027,7 +979,7 @@
                 }
             } catch (e) {
                 btn.disabled = false;
-                btn.classList.replace('bg-slate-700', 'bg-rose-600');
+                btn.classList.replace('bg-surface-hover', 'bg-destructive');
                 btn.classList.remove('cursor-not-allowed', 'animate-pulse');
                 btn.innerHTML = '🗑️';
                 alert(i18nFleet.uninstall_fail.replace('%s', e.message));
@@ -1048,8 +1000,8 @@
             if (!installBtn) return;
 
             installBtn.disabled = true;
-            installBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
-            installBtn.classList.add('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
+            installBtn.classList.remove('bg-primary', 'hover:bg-primary/90');
+            installBtn.classList.add('bg-surface-hover', 'cursor-not-allowed', 'animate-pulse');
             installBtn.innerHTML = i18nFleet.btn_llm_pulling;
 
             try {
@@ -1062,7 +1014,7 @@
                 
                 if (res.ok && data.status === 'success') {
                     installBtn.classList.remove('animate-pulse');
-                    installBtn.classList.add('bg-emerald-600');
+                    installBtn.classList.add('bg-success');
                     installBtn.innerHTML = i18nFleet.btn_llm_deployed;
                     
                     setTimeout(() => {
@@ -1073,8 +1025,8 @@
                 }
             } catch (e) {
                 installBtn.disabled = false;
-                installBtn.classList.remove('bg-slate-700', 'cursor-not-allowed', 'animate-pulse');
-                installBtn.classList.add('bg-rose-600', 'hover:bg-rose-500'); 
+                installBtn.classList.remove('bg-surface-hover', 'cursor-not-allowed', 'animate-pulse');
+                installBtn.classList.add('bg-destructive', 'hover:bg-destructive/90'); 
                 installBtn.innerHTML = i18nFleet.btn_retry;
                 
                 setTimeout(() => {
@@ -1096,8 +1048,8 @@
             const originalHtml = uninstallBtn.innerHTML;
 
             uninstallBtn.disabled = true;
-            uninstallBtn.classList.remove('bg-rose-600/10', 'hover:bg-rose-600/20', 'text-rose-400');
-            uninstallBtn.classList.add('bg-slate-700', 'text-slate-400', 'cursor-not-allowed', 'animate-pulse');
+            uninstallBtn.classList.remove('bg-destructive/10', 'hover:bg-destructive/20', 'text-destructive');
+            uninstallBtn.classList.add('bg-surface-hover', 'text-muted-foreground', 'cursor-not-allowed', 'animate-pulse');
             uninstallBtn.innerHTML = '⏳';
 
             try {
@@ -1115,14 +1067,14 @@
                 }
             } catch (e) {
                 uninstallBtn.disabled = false;
-                uninstallBtn.classList.remove('bg-slate-700', 'text-slate-400', 'cursor-not-allowed', 'animate-pulse');
-                uninstallBtn.classList.add('bg-rose-600', 'text-white'); 
+                uninstallBtn.classList.remove('bg-surface-hover', 'text-muted-foreground', 'cursor-not-allowed', 'animate-pulse');
+                uninstallBtn.classList.add('bg-destructive', 'text-foreground'); 
                 uninstallBtn.innerHTML = '❌';
                 
                 setTimeout(() => {
                     alert(`Teardown Failed for ${appId}:\n\n${e.message}`);
                     uninstallBtn.innerHTML = originalHtml;
-                    uninstallBtn.className = "px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 text-xs font-bold rounded-lg transition-colors border border-rose-500/20 flex-shrink-0";
+                    uninstallBtn.className = "px-3 py-2 bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold rounded-lg transition-colors border border-destructive/20 flex-shrink-0";
                 }, 100);
             }
         }
@@ -1164,7 +1116,7 @@
             const i18nFleet = window.I18N.fleet;
             const listEl = document.getElementById('fleet-model-list');
             const queryMsg = i18nFleet.querying_edge_api.replace('%s', engineId);
-            listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">${queryMsg}</div>`;
+            listEl.innerHTML = `<div class="p-8 text-center text-muted-foreground text-sm animate-pulse">${queryMsg}</div>`;
             
             try {
                 const res = await fetch(`/api/fleet/proxy/api/llms/models?engine=${engineId}`, {
@@ -1173,7 +1125,7 @@
                 
                 if (!res.ok) {
                     const failMsg = i18nFleet.edge_connect_fail.replace('%s', engineId);
-                    listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${failMsg}</div>`;
+                    listEl.innerHTML = `<div class="p-8 text-center text-destructive text-sm">${failMsg}</div>`;
                     return;
                 }
 
@@ -1182,7 +1134,7 @@
 
                 if (models.length === 0) {
                     const noModelsMsg = i18nFleet.no_edge_models.replace('%s', engineId);
-                    listEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-sm">${noModelsMsg}</div>`;
+                    listEl.innerHTML = `<div class="p-8 text-center text-muted-foreground text-sm">${noModelsMsg}</div>`;
                     return;
                 }
 
@@ -1193,14 +1145,14 @@
                     const paramsText = model.params !== "Unknown" ? `${model.params} Params` : i18nFleet.params_unknown || 'Params Unknown';
                     
                     const rowHTML = `
-                    <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-800/30 transition-colors">
+                    <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-surface-hover/30 transition-colors">
                         <div class="flex items-start gap-4">
-                            <div class="w-10 h-10 rounded-lg bg-slate-800 border border-border flex items-center justify-center text-lg shadow-inner flex-shrink-0">
+                            <div class="w-10 h-10 rounded-lg bg-surface-elevated border border-border flex items-center justify-center text-lg shadow-inner flex-shrink-0">
                                 🧠
                             </div>
                             <div>
-                                <h4 class="text-sm font-bold text-slate-200">${model.name}</h4>
-                                <div class="flex items-center gap-3 mt-2 text-[11px] font-mono text-slate-500">
+                                <h4 class="text-sm font-bold text-foreground">${model.name}</h4>
+                                <div class="flex items-center gap-3 mt-2 text-[11px] font-mono text-muted-foreground">
                                     <span>${sizeText}</span>
                                     <span>•</span>
                                     <span>${paramsText}</span>
@@ -1210,7 +1162,7 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-3 border-t border-border pt-4 md:border-0 md:pt-0">
-                            <button onclick="deleteFleetModel('${engineId}', '${model.id}', '${nodeId}')" class="px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600/20 border border-rose-500/20 rounded text-xs font-medium text-rose-400 transition-colors">
+                            <button onclick="deleteFleetModel('${engineId}', '${model.id}', '${nodeId}')" class="px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 rounded text-xs font-medium text-destructive transition-colors">
                                 ${i18nFleet.btn_delete || 'Delete'}
                             </button>
                         </div>
@@ -1220,7 +1172,7 @@
                 });
             } catch (e) {
                 console.error("Fetch Fleet Models Error:", e);
-                listEl.innerHTML = `<div class="p-8 text-center text-rose-400 text-sm">${i18nFleet.edge_net_error}</div>`;
+                listEl.innerHTML = `<div class="p-8 text-center text-destructive text-sm">${i18nFleet.edge_net_error}</div>`;
             }
         }
 
@@ -1284,14 +1236,14 @@
                 
                 if (res.ok && data.status === 'success') {
                     btn.classList.remove('animate-pulse');
-                    btn.classList.replace('bg-primary', 'bg-emerald-600');
+                    btn.classList.replace('bg-primary', 'bg-success');
                     btn.innerHTML = i18nFleet.download_complete;
                     
                     setTimeout(() => {
                         closeFleetPullModal();
                         btn.disabled = false;
                         btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                        btn.classList.replace('bg-emerald-600', 'bg-primary');
+                        btn.classList.replace('bg-success', 'bg-primary');
                         btn.innerHTML = i18nFleet.btn_start_edge_download;
                         
                         document.getElementById('fleet-engine-selector').value = engine;

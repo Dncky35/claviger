@@ -4,12 +4,12 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h2 class="text-3xl font-bold text-slate-100 tracking-tight">{{ T "extensions.title" }}</h2>
+            <h2 class="text-3xl font-bold text-foreground tracking-tight">{{ T "extensions.title" }}</h2>
             <p class="text-muted-foreground text-sm mt-1">{{ T "extensions.subtitle" }}</p>
         </div>
         
         <!-- Sync Button -->
-        <button id="sync-catalog-btn" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-md text-sm font-medium transition-colors border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+        <button id="sync-catalog-btn" class="flex items-center gap-2 bg-surface-elevated hover:bg-surface-hover text-foreground px-4 py-2 rounded-md text-sm font-medium transition-colors border border-border disabled:opacity-50 disabled:cursor-not-allowed">
             <svg id="sync-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                 <path d="M3 3v5h5"></path>
@@ -26,16 +26,16 @@
     </div>
 
     <div id="custom-app-modal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
-        <div class="bg-surface border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div class="bg-surface border border-border rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col">
             
-            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
+            <div class="p-6 border-b border-border flex justify-between items-center bg-surface/70">
                 <div>
-                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <h2 class="text-xl font-bold text-foreground flex items-center gap-2">
                         {{ T "extensions.modal_title" }}
                     </h2>
-                    <p class="text-sm text-slate-400 mt-1">{{ T "extensions.modal_desc" }}</p>
+                    <p class="text-sm text-muted-foreground mt-1">{{ T "extensions.modal_desc" }}</p>
                 </div>
-                <button onclick="closeCustomAppModal()" class="text-slate-400 hover:text-rose-400 transition-colors">
+                <button onclick="closeCustomAppModal()" class="text-muted-foreground hover:text-destructive transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
@@ -44,59 +44,59 @@
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{{ T "extensions.label_name" }}</label>
-                        <input type="text" id="custom-app-name" required placeholder="" class="w-full bg-background border border-slate-700 rounded-lg px-4 py-2 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+                        <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "extensions.label_name" }}</label>
+                        <input type="text" id="custom-app-name" required placeholder="" class="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
                     </div>
                     
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{{ T "extensions.label_emoji" }}</label>
-                            <input type="text" id="custom-app-icon" placeholder="" maxlength="2" class="w-full bg-background border border-slate-700 rounded-lg px-4 py-2 text-white text-center focus:border-primary outline-none transition-all">
+                            <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "extensions.label_emoji" }}</label>
+                            <input type="text" id="custom-app-icon" placeholder="" maxlength="2" class="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground text-center focus:border-primary outline-none transition-all">
                         </div>
                     </div>
 
                     <div class="mb-4 col-span-full">
-                        <label class="block text-sm font-medium text-gray-300 mb-2">{{ T "extensions.net_config" }}</label>
+                        <label class="block text-sm font-medium text-foreground mb-2">{{ T "extensions.net_config" }}</label>
                         
                         <div class="flex items-center mb-2">
-                            <input type="checkbox" id="custom-app-dynamic-port" checked class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
-                            <label for="custom-app-dynamic-port" class="ml-2 text-sm font-medium text-gray-300">
+                            <input type="checkbox" id="custom-app-dynamic-port" checked class="w-4 h-4 text-primary bg-surface-elevated border-border rounded focus:ring-primary focus:ring-2">
+                            <label for="custom-app-dynamic-port" class="ml-2 text-sm font-medium text-foreground">
                                 {{ T "extensions.dynamic_port" }}
                             </label>
                         </div>
 
                         <div class="flex items-center mb-2">
-                            <input type="checkbox" id="custom-app-needs-setup" onchange="toggleSetupPortField()" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
-                            <label for="custom-app-needs-setup" class="ml-2 text-sm font-medium text-gray-300">
+                            <input type="checkbox" id="custom-app-needs-setup" onchange="toggleSetupPortField()" class="w-4 h-4 text-primary bg-surface-elevated border-border rounded focus:ring-primary focus:ring-2">
+                            <label for="custom-app-needs-setup" class="ml-2 text-sm font-medium text-foreground">
                                 {{ T "extensions.needs_setup" }}
                             </label>
                         </div>
 
                         <div id="setup-port-container" class="hidden mt-2 ml-6">
-                            <label class="block text-xs font-medium text-gray-400 mb-1">{{ T "extensions.setup_port_label" }}</label>
-                            <input type="number" id="custom-app-setup-port" placeholder="" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-1/3 p-2.5">
+                            <label class="block text-xs font-medium text-muted-foreground mb-1">{{ T "extensions.setup_port_label" }}</label>
+                            <input type="number" id="custom-app-setup-port" placeholder="" class="bg-surface-elevated border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block w-1/3 p-2.5">
                         </div>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{{ T "extensions.label_desc" }}</label>
-                    <input type="text" id="custom-app-desc" required placeholder="" class="w-full bg-background border border-slate-700 rounded-lg px-4 py-2 text-white focus:border-primary outline-none transition-all">
+                    <label class="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{{ T "extensions.label_desc" }}</label>
+                    <input type="text" id="custom-app-desc" required placeholder="" class="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:border-primary outline-none transition-all">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <label class="block text-xs font-bold text-primary uppercase tracking-wider mb-2 flex items-center justify-between">
                         <span>{{ T "extensions.yaml_label" }}</span>
-                        <span class="text-[10px] text-slate-500 normal-case">{{ T "extensions.yaml_hint" }}</span>
+                        <span class="text-[10px] text-muted-foreground normal-case">{{ T "extensions.yaml_hint" }}</span>
                     </label>
-                    <textarea id="custom-app-yaml" required rows="8" placeholder="" class="w-full bg-background border border-slate-700 rounded-lg px-4 py-3 text-white font-mono text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"></textarea>
+                    <textarea id="custom-app-yaml" required rows="8" placeholder="" class="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground font-mono text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"></textarea>
                 </div>
 
                 <div class="pt-4 flex gap-3">
-                    <button type="button" onclick="closeCustomAppModal()" class="w-1/3 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-lg transition-colors border border-slate-700">
+                    <button type="button" onclick="closeCustomAppModal()" class="w-1/3 py-2.5 bg-surface-elevated hover:bg-surface-hover text-foreground text-sm font-bold rounded-lg transition-colors border border-border">
                         {{ T "extensions.btn_cancel" }}
                     </button>
-                    <button type="submit" id="btn-submit-custom" class="w-2/3 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2">
+                    <button type="submit" id="btn-submit-custom" class="w-2/3 py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold rounded-lg transition-colors shadow-lg shadow-black/20 flex items-center justify-center gap-2">
                         {{ T "extensions.btn_deploy_custom" }}
                     </button>
                 </div>
@@ -179,14 +179,14 @@
                 const isInstalled = app.status !== 'not_installed';
                 const isRunning = app.status === 'running';
                 
-                let badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-slate-800 text-slate-400 border border-slate-700">${i18nExt.badge_not_installed}</span>`;
+                let badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-surface-elevated text-muted-foreground border border-border">${i18nExt.badge_not_installed}</span>`;
                 if (isInstalled) {
                     if (isRunning) {
-                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${i18nExt.badge_running}</span>`;
+                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-success/10 text-success border border-success/20">${i18nExt.badge_running}</span>`;
                     } else if (app.status === 'degraded') {
-                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">${i18nExt.badge_degraded}</span>`;
+                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-warning/10 text-warning border border-warning/20">${i18nExt.badge_degraded}</span>`;
                     } else {
-                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">${i18nExt.badge_stopped}</span>`;
+                        badgeHtml = `<span id="badge-app-${app.id}" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-destructive/10 text-destructive border border-destructive/20">${i18nExt.badge_stopped}</span>`;
                     }
                 }
 
@@ -197,37 +197,37 @@
                 let defaultAction = app.name === "RustDesk Server" ? 
                 `onclick="window.open('https://claviger.cloudrocean.com/documentation/e54a5823-8d66-4999-9d91-70ec7db319a6', '_blank')"` : 'disabled';
                 let dashOnClick = isDefault ? `onclick="window.open('http://' + window.location.hostname + ':${app.action_port}', '_blank')"` : defaultAction;
-                let dashColors = 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700 cursor-pointer';
+                let dashColors = 'bg-surface-elevated hover:bg-surface-hover text-foreground border-border cursor-pointer';
 
-                const borderStyle = app.is_custom ? 'border-indigo-500/40' : 'border-border';
-                const customPill = app.is_custom ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-400 uppercase tracking-wider">${i18nExt.custom_pill}</span>` : '';
+                const borderStyle = app.is_custom ? 'border-primary/40' : 'border-border';
+                const customPill = app.is_custom ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/10 text-primary uppercase tracking-wider">${i18nExt.custom_pill}</span>` : '';
 
                 return `
-                <div class="bg-surface rounded-2xl border ${borderStyle} overflow-hidden flex flex-col transition-all hover:border-slate-600 hover:shadow-lg hover:shadow-black/20 group relative">
+                <div class="bg-surface rounded-2xl border ${borderStyle} overflow-hidden flex flex-col transition-all hover:border-border hover:shadow-lg hover:shadow-black/20 group relative">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-primary/15 transition-colors"></div>
                     
                     <div class="p-6 flex-grow z-10">
                         <div class="flex items-start justify-between mb-4">
-                            <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner">
+                            <div class="w-12 h-12 rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-2xl shadow-inner">
                                 ${app.icon}
                             </div>
                             ${badgeHtml}
                             <button id="btn-remove-${app.id}" 
                                 onclick="removeCustomApp('${app.id}')" 
-                                class="${app.is_custom && app.status === 'not_installed' ? '' : 'hidden'} text-rose-400 hover:text-rose-500 transition-colors text-sm font-bold">
+                                class="${app.is_custom && app.status === 'not_installed' ? '' : 'hidden'} text-destructive hover:text-destructive transition-colors text-sm font-bold">
                                 ${i18nExt.btn_remove}
                             </button>
                         </div>
                         
-                        <h3 class="text-lg font-bold text-slate-100 mb-2 flex items-center">${app.name} ${customPill}</h3>
-                        <p class="text-sm text-slate-400 leading-relaxed">${app.description}</p>
+                        <h3 class="text-lg font-bold text-foreground mb-2 flex items-center">${app.name} ${customPill}</h3>
+                        <p class="text-sm text-muted-foreground leading-relaxed">${app.description}</p>
                     </div>
 
-                    <div class="p-4 bg-slate-900/50 border-t border-slate-800 z-10 flex gap-2">
+                    <div class="p-4 bg-surface/70 border-t border-border z-10 flex gap-2">
                         <button 
                             id="btn-install-${app.id}" 
                             onclick="installApp('${app.id}', ${app.is_custom})" 
-                            class="${installBtnClass} w-full py-2.5 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm"
+                            class="${installBtnClass} w-full py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-bold rounded-lg transition-colors shadow-sm"
                         >
                             ${i18nExt.btn_install}
                         </button>
@@ -244,20 +244,20 @@
             }
 
             const addAppCard = `
-            <div onclick="openCustomAppModal()" class="bg-surface/30 rounded-2xl border border-dashed border-slate-600 overflow-hidden flex flex-col items-center justify-center transition-all hover:border-primary hover:bg-surface hover:shadow-lg group cursor-pointer p-6 min-h-[220px]">
-                <div class="w-14 h-14 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner text-slate-400 group-hover:text-primary group-hover:border-primary/50 transition-colors mb-4">
+            <div onclick="openCustomAppModal()" class="bg-surface/30 rounded-2xl border border-dashed border-border overflow-hidden flex flex-col items-center justify-center transition-all hover:border-primary hover:bg-surface hover:shadow-lg group cursor-pointer p-6 min-h-[220px]">
+                <div class="w-14 h-14 rounded-full bg-surface-elevated border border-border flex items-center justify-center text-2xl shadow-inner text-muted-foreground group-hover:text-primary group-hover:border-primary/50 transition-colors mb-4">
                     ➕
                 </div>
-                <h3 class="text-lg font-bold text-slate-300 group-hover:text-white transition-colors">${i18nExt.add_card_title}</h3>
-                <p class="text-sm text-slate-500 text-center mt-2 group-hover:text-slate-400">${i18nExt.add_card_desc}</p>
+                <h3 class="text-lg font-bold text-muted-foreground group-hover:text-foreground transition-colors">${i18nExt.add_card_title}</h3>
+                <p class="text-sm text-muted-foreground text-center mt-2 group-hover:text-muted-foreground">${i18nExt.add_card_desc}</p>
             </div>`;
             gridEl.insertAdjacentHTML('beforeend', addAppCard);
 
             if (customApps.length > 0) {
                 gridEl.insertAdjacentHTML('beforeend', `
-                    <div class="col-span-full mt-8 mb-2 border-b border-slate-700 pb-2">
-                        <h3 class="text-xl font-bold text-slate-300">${i18nExt.deployments_title}</h3>
-                        <p class="text-xs text-slate-500">${i18nExt.deployments_subtitle}</p>
+                    <div class="col-span-full mt-8 mb-2 border-b border-border pb-2">
+                        <h3 class="text-xl font-bold text-muted-foreground">${i18nExt.deployments_title}</h3>
+                        <p class="text-xs text-muted-foreground">${i18nExt.deployments_subtitle}</p>
                     </div>
                 `);
                 customApps.forEach(app => gridEl.insertAdjacentHTML('beforeend', buildCard(app)));
@@ -296,7 +296,7 @@
             const originalText = btn.innerHTML;
             
             btn.disabled = true;
-            btn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${i18nExt.deploying}`;
+            btn.innerHTML = `<svg class="animate-spin h-4 w-4 text-primary-foreground inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${i18nExt.deploying}`;
 
             const needsDynamicPort = document.getElementById('custom-app-dynamic-port').checked;
             const needsSetupPort = document.getElementById('custom-app-needs-setup').checked;
