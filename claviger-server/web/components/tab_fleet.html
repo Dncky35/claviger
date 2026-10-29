@@ -8,13 +8,14 @@
         </div>
         
         <div id="fleet-selector-container" class="hidden flex items-center gap-3">
-            <label for="fleet-node-select" class="text-xs font-bold uppercase tracking-widest text-muted-foreground">{{ T "fleet.target_label" }}</label>
-            <div class="relative min-w-[200px]">
-                <select id="fleet-node-select" onchange="onNodeSelected()" class="appearance-none bg-surface border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block w-full py-2 pl-4 pr-10 shadow-sm cursor-pointer outline-none transition-colors">
-                    <option value="">{{ T "fleet.select_placeholder" }}</option>
-                </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            <label class="text-xs font-bold uppercase tracking-widest text-muted-foreground">{{ T "fleet.target_label" }}</label>
+            <div id="fleet-node-dropdown" class="relative min-w-[260px]">
+                <button id="fleet-node-btn" onclick="toggleFleetNodeDropdown()" class="w-full flex items-center justify-between gap-3 bg-surface border border-border text-foreground text-sm rounded-xl px-4 py-2.5 shadow-soft hover:bg-surface-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40">
+                    <span id="fleet-node-btn-label" class="truncate font-medium">{{ T "fleet.select_placeholder" }}</span>
+                    <svg class="h-4 w-4 text-muted-foreground transition-transform duration-200" id="fleet-node-caret" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="fleet-node-panel" class="hidden absolute z-40 mt-2 w-full bg-surface border border-border rounded-xl shadow-panel overflow-hidden">
+                    <div id="fleet-node-list" class="max-h-64 overflow-y-auto divide-y divide-border"></div>
                 </div>
             </div>
         </div>
@@ -286,21 +287,19 @@
         let fleetLLMContainerPollingInterval = null;
         let deploymentFleetLocked = false;
         let fleetUpdatePollingInterval = false;
+        let selectedFleetNodeId = '';
+        let selectedFleetNode = null;
 
         async function refetchFleetContainers() {
-            const select = document.getElementById('fleet-node-select');
-            const selectedOption = select.options[select.selectedIndex];
-            const node = JSON.parse(selectedOption.dataset.nodeInfo);
-
-            await fetchFleetContainers(node.id, node.ip_address);
+            if (!selectedFleetNode) return;
+            await fetchFleetContainers(selectedFleetNode.id, selectedFleetNode.ip_address);
         }
         
         async function refetchCatalog(){
             const syncButton = document.getElementById("btn-sync-catalog");
 
-            const select = document.getElementById('fleet-node-select');
-            const selectedOption = select.options[select.selectedIndex];
-            const node = JSON.parse(selectedOption.dataset.nodeInfo);
+            if (!selectedFleetNode) return;
+            const node = selectedFleetNode;
 
             if(!syncButton){
                 return;
@@ -339,7 +338,7 @@
                 
                 const emptyState = document.getElementById('fleet-empty-state');
                 const selectorContainer = document.getElementById('fleet-selector-container');
-                const nodeSelect = document.getElementById('fleet-node-select');
+                const nodeList = document.getElementById('fleet-node-list');
                 const dashboard = document.getElementById('fleet-node-dashboard');
 
                 if (!nodes || nodes.length === 0) {
@@ -351,37 +350,51 @@
                 
                 emptyState.classList.add('hidden');
                 selectorContainer.classList.remove('hidden');
-                nodeSelect.innerHTML = `<option value="">${i18nFleet.select_placeholder}</option>`;
+                nodeList.innerHTML = '';
                 
                 nodes.forEach(node => {
-                    const opt = document.createElement('option');
-                    opt.value = node.id;
-                    opt.textContent = node.status === 'pending' ? node.name + ' (' + i18nFleet.pending_node + ')' : node.name;
-                    opt.dataset.nodeInfo = JSON.stringify(node);
-                    nodeSelect.appendChild(opt);
+                    const btn = document.createElement('button');
+                    btn.className = 'w-full text-left px-4 py-3 hover:bg-surface-hover transition-colors flex items-center justify-between gap-3';
+                    btn.innerHTML = `<span class="truncate font-medium text-foreground">${node.name}</span>` +
+                        (node.status === 'pending' ? `<span class="text-[10px] uppercase font-bold text-warning">${i18nFleet.pending_node}</span>` : `<span class="w-2 h-2 rounded-full bg-success"></span>`);
+                    btn.onclick = () => selectFleetNode(node);
+                    nodeList.appendChild(btn);
                 });
             } catch (error) {
                 console.error('Error fetching fleet nodes:', error);
             }
         }
 
-        function onNodeSelected() {
+        function toggleFleetNodeDropdown() {
+            const panel = document.getElementById('fleet-node-panel');
+            const caret = document.getElementById('fleet-node-caret');
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                caret.classList.add('rotate-180');
+            } else {
+                panel.classList.add('hidden');
+                caret.classList.remove('rotate-180');
+            }
+        }
+
+        function selectFleetNode(node) {
             const i18nFleet = window.I18N.fleet;
-            const select = document.getElementById('fleet-node-select');
             const dashboard = document.getElementById('fleet-node-dashboard');
-            
+            const label = document.getElementById('fleet-node-btn-label');
+            const panel = document.getElementById('fleet-node-panel');
+            const caret = document.getElementById('fleet-node-caret');
+
+            selectedFleetNode = node;
+            selectedFleetNodeId = node.id;
+            label.textContent = node.status === 'pending' ? node.name + ' (' + i18nFleet.pending_node + ')' : node.name;
+            panel.classList.add('hidden');
+            caret.classList.remove('rotate-180');
+
             if (fleetPollingInterval) clearInterval(fleetPollingInterval);
             if (fleetContainerPollingInterval) clearInterval(fleetContainerPollingInterval);
             if (fleetLLMContainerPollingInterval) clearInterval(fleetLLMContainerPollingInterval);
             if (fleetUpdatePollingInterval) clearInterval(fleetUpdatePollingInterval);
 
-            if (!select.value) {
-                dashboard.classList.add('hidden');
-                return;
-            }
-
-            const selectedOption = select.options[select.selectedIndex];
-            const node = JSON.parse(selectedOption.dataset.nodeInfo);
             dashboard.classList.remove('hidden');
 
             const statusEl = document.getElementById('node-stat-status');
@@ -1106,10 +1119,8 @@
         function switchFleetEngineView(engineId) {
             if (!engineId) return;
             activeFleetEngine = engineId;
-            const select = document.getElementById('fleet-node-select');
-            const selectedOption = select.options[select.selectedIndex];
-            const node = JSON.parse(selectedOption.dataset.nodeInfo);
-            fetchFleetModelsForEngine(activeFleetEngine, node.id);
+            if (!selectedFleetNode) return;
+            fetchFleetModelsForEngine(activeFleetEngine, selectedFleetNode.id);
         }
 
         async function fetchFleetModelsForEngine(engineId, nodeId) {
@@ -1209,9 +1220,8 @@
             const modelId = document.getElementById('fleet-pull-model-id').value.trim();
             const btn = document.getElementById('btn-fleet-execute-pull');
 
-            const select = document.getElementById('fleet-node-select');
-            const selectedOption = select.options[select.selectedIndex];
-            const node = JSON.parse(selectedOption.dataset.nodeInfo);
+            if (!selectedFleetNode) return;
+            const node = selectedFleetNode;
 
             if (!engine || !modelId) {
                 alert(i18nFleet.alert_pull_missing);
@@ -1292,6 +1302,15 @@
         }
 
         loadFleetNodes();
+    document.addEventListener('click', (e) => {
+        const dd = document.getElementById('fleet-node-dropdown');
+        const panel = document.getElementById('fleet-node-panel');
+        if (dd && panel && !dd.contains(e.target)) {
+            panel.classList.add('hidden');
+            const caret = document.getElementById('fleet-node-caret');
+            if (caret) caret.classList.remove('rotate-180');
+        }
+    });
     </script>
 </div>
 {{ end }}

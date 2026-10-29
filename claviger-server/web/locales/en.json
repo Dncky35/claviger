@@ -625,13 +625,9 @@
     "toolkit_done": "✅ Done",
     "toolkit_fail": "Toolkit Installation Failed on Node %s:\n\n%s"
   },
-  "tab_uninstall": {
-    "title": "App Management",
-    "subtitle": "Safely remove extensions and wipe their persistent data.",
-    "danger_zone": "Danger Zone",
-    "btn_uninstall": "🗑️ Uninstall & Wipe Data",
-    "btn_destroying": "⏳ Destroying...",
-    "btn_removed": "✅ Removed",
+  "tab_installed_apps": {
+    "title": "Installed Apps",
+    "subtitle": "Manage your installed applications and their settings.",
     "confirm_warn": "WARNING: This will permanently delete %s and ALL its configuration data. Are you absolutely sure?"
   }
 }

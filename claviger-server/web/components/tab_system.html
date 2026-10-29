@@ -66,6 +66,20 @@
         </div>
     </div>
 
+    <div class="bg-surface p-6 rounded-2xl border border-border shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-muted-foreground text-xs font-bold uppercase tracking-wider">Live Telemetry Graph</h3>
+            <span class="text-[10px] text-muted-foreground font-mono">real-time</span>
+        </div>
+        <canvas id="sys-telemetry-chart" class="w-full" height="180"></canvas>
+        <div class="flex gap-4 mt-3 text-[11px] font-mono text-muted-foreground">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary"></span>CPU</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-success"></span>RAM</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-warning"></span>Net ↓</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-destructive"></span>Net ↑</span>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         
         <div class="bg-surface rounded-2xl border border-border shadow-sm col-span-1 p-6">
@@ -241,7 +255,58 @@
             }
         }
         
-        async function fetchSystemData() {
+         const cpuHistory = [], ramHistory = [], netDownHistory = [], netUpHistory = [];
+         const MAX_POINTS = 60;
+         function pushHistory(arr, val) { arr.push(val); if (arr.length > MAX_POINTS) arr.shift(); }
+
+         function drawTelemetryChart() {
+             const canvas = document.getElementById('sys-telemetry-chart');
+             if (!canvas) return;
+             const ctx = canvas.getContext('2d');
+             const dpr = window.devicePixelRatio || 1;
+             const rect = canvas.getBoundingClientRect();
+             const w = rect.width || canvas.clientWidth || 600;
+             const h = 180;
+             canvas.width = w * dpr;
+             canvas.height = h * dpr;
+             canvas.style.width = w + 'px';
+             canvas.style.height = h + 'px';
+             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+             ctx.clearRect(0, 0, w, h);
+
+             // grid
+             ctx.strokeStyle = 'rgba(154,166,178,0.12)';
+             ctx.lineWidth = 1;
+             for (let i = 1; i < 4; i++) {
+                 ctx.beginPath();
+                 ctx.moveTo(0, (h / 4) * i);
+                 ctx.lineTo(w, (h / 4) * i);
+                 ctx.stroke();
+             }
+
+             function drawSeries(data, color, scaleMax) {
+                 if (data.length < 2) return;
+                 ctx.beginPath();
+                 ctx.strokeStyle = color;
+                 ctx.lineWidth = 2;
+                 ctx.lineJoin = 'round';
+                 data.forEach((v, i) => {
+                     const x = (i / (MAX_POINTS - 1)) * w;
+                     const y = h - (Math.min(v, scaleMax) / scaleMax) * (h - 8) - 4;
+                     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                 });
+                 ctx.stroke();
+             }
+
+             drawSeries(cpuHistory, '#789C98', 100);
+             drawSeries(ramHistory, '#83A992', 100);
+
+             const netMax = Math.max(1, ...netDownHistory, ...netUpHistory) * 1.2;
+             drawSeries(netDownHistory, '#D6B477', netMax);
+             drawSeries(netUpHistory, '#CD8585', netMax);
+         }
+
+         async function fetchSystemData() {
             try {
                 const sysRes = await fetch('/api/system');
                 if (sysRes.ok) {
@@ -265,23 +330,31 @@
                     safeSet('sys-os', sys.os_name);
                     safeSet('sys-uptime', sys.uptime);
 
-                    const currentTimestamp = Date.now();
-                    const currentRx = parseInt(sys.net_rx_bytes) || 0;
-                    const currentTx = parseInt(sys.net_tx_bytes) || 0;
-                    
-                    if (lastTimestamp > 0) {
-                        const timeDiffSeconds = (currentTimestamp - lastTimestamp) / 1000;
-                        const rxSpeedMB = ((currentRx - lastRxBytes) / timeDiffSeconds) / (1024 * 1024);
-                        const txSpeedMB = ((currentTx - lastTxBytes) / timeDiffSeconds) / (1024 * 1024);
-                        
-                        safeSet('sys-net-down', Math.max(0, rxSpeedMB).toFixed(2) + ' MB/s');
-                        safeSet('sys-net-up', Math.max(0, txSpeedMB).toFixed(2) + ' MB/s');
-                    }
-                    
-                    lastRxBytes = currentRx; 
-                    lastTxBytes = currentTx; 
-                    lastTimestamp = currentTimestamp;
-                }
+                     const currentTimestamp = Date.now();
+                     const currentRx = parseInt(sys.net_rx_bytes) || 0;
+                     const currentTx = parseInt(sys.net_tx_bytes) || 0;
+                     
+                     let rxSpeedMB = 0;
+                     let txSpeedMB = 0;
+                     if (lastTimestamp > 0) {
+                         const timeDiffSeconds = (currentTimestamp - lastTimestamp) / 1000;
+                         rxSpeedMB = Math.max(0, ((currentRx - lastRxBytes) / timeDiffSeconds) / (1024 * 1024));
+                         txSpeedMB = Math.max(0, ((currentTx - lastTxBytes) / timeDiffSeconds) / (1024 * 1024));
+                         
+                         safeSet('sys-net-down', rxSpeedMB.toFixed(2) + ' MB/s');
+                         safeSet('sys-net-up', txSpeedMB.toFixed(2) + ' MB/s');
+                     }
+                     
+                     lastRxBytes = currentRx; 
+                     lastTxBytes = currentTx; 
+                     lastTimestamp = currentTimestamp;
+
+                     pushHistory(cpuHistory, parseFloat(sys.cpu_percent) || 0);
+                     pushHistory(ramHistory, parseFloat(sys.ram_percent) || 0);
+                     pushHistory(netDownHistory, rxSpeedMB);
+                     pushHistory(netUpHistory, txSpeedMB);
+                     drawTelemetryChart();
+                 }
             } catch (err) { console.error("Error fetching system info:", err); }
         }
 
@@ -442,6 +515,7 @@
             fetchSystemTasks();
             fetchSystemData();
             setInterval(fetchSystemData, 3000);
+            window.addEventListener('resize', drawTelemetryChart);
             setInterval(fetchUpdateStatus, 600000);
         });
     </script>

@@ -624,13 +624,9 @@
     "toolkit_done": "✅ Onarıldı",
     "toolkit_fail": "%s Numaralı Düğümde Araç Seti Kurulumu Başarısız Oldu:\n\n%s"
   },
-  "tab_uninstall": {
-    "title": "Uygulama Yönetimi",
-    "subtitle": "Uzantıları ve kalıcı verilerini güvenle kaldırın.",
-    "danger_zone": "Tehlikeli Bölge",
-    "btn_uninstall": "🗑️ Kaldır ve Verileri Sil",
-    "btn_destroying": "⏳ Kaldırılıyor...",
-    "btn_removed": "✅ Kaldırıldı",
+  "tab_installed_apps": {
+    "title": "Yüklü Uygulamalar",
+    "subtitle": "Yüklü uygulamalarınızı ve ayarlarınızı yönetin.",
     "confirm_warn": "UYARI: Bu işlem %s uygulamasını ve TÜM yapılandırma verilerini kalıcı olarak silecektir. Devam edilsin mi?"
   }
 }

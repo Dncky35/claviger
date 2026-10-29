@@ -172,6 +172,13 @@ func RunStart() {
 	// log.Println("Starting Cloudrocean Heartbeat Engine...")
 	// go api.StartHeartbeatLoop(db, nodeID, apiToken, daemonVersion)
 
+	// Run migrations before starting any workers that depend on schema
+	if err := storage.RunMigrations(db); err != nil {
+		log.Fatalf("Fatal: Database migration failed: %v", err)
+	}
+
+	security.EnsureJWTSecret(db)
+
 	// Create a context for the whole app
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -184,8 +191,6 @@ func RunStart() {
 	watchdogEngine := watchdog.NewEngine(watchdogCfg)
 	watchdogEngine.Start(ctx)
 
-	security.EnsureJWTSecret(db)
-
 	// 4. Start the IP Watchdog (It will safely idle until turned on in the UI)
 	go network.RunIPWatchdog(ctx, db, 5*time.Minute)
 
@@ -197,15 +202,6 @@ func RunStart() {
 		log.Printf("⚠️ Docker Engine Warning: %v\n(Containers tab will be disabled until Docker is installed)", err)
 	} else {
 		defer dockerEngine.Close()
-	}
-
-	// ---------------------------------------------------------
-	// 3.75 Migrations
-	// ----------------------------------------------------------
-
-	// 1. Run Migrations
-	if err := storage.RunMigrations(db); err != nil {
-		log.Fatalf("Fatal: Database migration failed: %v", err)
 	}
 
 	// 2. Start Background Catalog Sync (Every 12 Hours)
@@ -406,9 +402,6 @@ func RunStart() {
 
 	// 2. Set globally for the lifecycle
 	system.SetBackupKey(aesKey)
-
-	db = storage.InitDB()
-	defer db.Close()
 
 	scheduler.Start(db)
 
