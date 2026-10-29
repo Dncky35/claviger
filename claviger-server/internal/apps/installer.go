@@ -5,9 +5,11 @@ import (
 	"claviger-server/internal/hardware"
 	"claviger-server/internal/types"
 	"claviger-server/storage"
+	"crypto/rand"
 	"database/sql"
 	"fmt"
 	"html/template"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +25,16 @@ import (
 type TemplateData struct {
 	DynamicPort int
 	CustomToken string
+}
+
+func generateSecurePassword(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		b[i] = charset[n.Int64()]
+	}
+	return string(b)
 }
 
 // Install runs docker-compose for a specific app, assigning dynamic ports relative to hub_port.
@@ -102,7 +114,8 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 	}
 
 	// 3b. CUSTOM TOKEN FETCHING
-	if appID == "cloudflared" {
+	switch appID {
+	case "cloudflared":
 		token := storage.GetConfig(db, "cloudflare_tunnel_token")
 		if token == "" {
 			return fmt.Errorf("cloudflared requires a tunnel token, but none was found in the database")
@@ -110,6 +123,20 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 
 		data.CustomToken = token // ✅ Add the token to the template data
 		needsTemplate = true     // ✅ Flag that we need to run the parser
+	case "nextcloud":
+		// Auto-generate credentials for Nextcloud
+		adminUser := "admin"
+		adminPass := generateSecurePassword(16)
+		dbPass := generateSecurePassword(24)
+
+		// Create the .env file content
+		envContent := fmt.Sprintf("ADMIN_USER=%s\nADMIN_PASSWORD=%s\nDB_PASSWORD=%s\n", adminUser, adminPass, dbPass)
+		envPath := filepath.Join(appDir, ".env")
+
+		// Write the .env file BEFORE Docker Compose boots up
+		if err := os.WriteFile(envPath, []byte(envContent), 0644); err != nil {
+			return fmt.Errorf("failed to write nextcloud .env file: %v", err)
+		}
 	}
 
 	// 3c. EXECUTE TEMPLATE (If needed)
