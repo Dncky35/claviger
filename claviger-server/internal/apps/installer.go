@@ -135,6 +135,17 @@ func Install(db *sql.DB, appID string, isCustom bool) error {
 		return fmt.Errorf("failed to write compose file: %v", err)
 	}
 
+	// 4b. NEW: Write the schema.json for the App Orchestrator
+	if manifest.ConfigFile != nil && *manifest.ConfigFile != "" {
+		schemaPath := filepath.Join(appDir, "schema.json")
+		if err := os.WriteFile(schemaPath, []byte(*manifest.ConfigFile), 0644); err != nil {
+			return fmt.Errorf("failed to write schema.json: %v", err)
+		}
+	} else {
+		// Clean up any stale schema file just in case it was left behind
+		os.Remove(filepath.Join(appDir, "schema.json"))
+	}
+
 	cmd := exec.Command("docker", "compose", "up", "-d")
 	cmd.Dir = appDir
 

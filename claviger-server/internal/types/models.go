@@ -4,17 +4,18 @@ import "time"
 
 // AppManifest defines the universal schema used by Claviger's runner
 type AppManifest struct {
-	ID               string `json:"app_id"`
-	CatalogType      string `json:"catalog_type,omitempty"`
-	Name             string `json:"name"`
-	Category         string `json:"category"`
-	Description      string `json:"description,omitempty"`
-	Icon             string `json:"icon,omitempty"`
-	HasCustomSetup   bool   `json:"has_custom_setup"`
-	NeedsDynamicPort bool   `json:"needs_dynamic_port"`
-	SetupPort        int    `json:"setup_port"`
-	ComposeYAML      string `json:"compose_yaml"`
-	VersionTag       string `json:"version_tag,omitempty"`
+	ID               string  `json:"app_id"`
+	CatalogType      string  `json:"catalog_type,omitempty"`
+	Name             string  `json:"name"`
+	Category         string  `json:"category"`
+	Description      string  `json:"description,omitempty"`
+	Icon             string  `json:"icon,omitempty"`
+	HasCustomSetup   bool    `json:"has_custom_setup"`
+	NeedsDynamicPort bool    `json:"needs_dynamic_port"`
+	SetupPort        int     `json:"setup_port"`
+	ComposeYAML      string  `json:"compose_yaml"`
+	ConfigFile       *string `json:"config_file"`
+	VersionTag       string  `json:"version_tag,omitempty"`
 }
 
 // RemoteApp represents an entry synced from cloudrocean.com in SQLite
@@ -29,6 +30,7 @@ type RemoteApp struct {
 	HasCustomSetup   bool      `db:"has_custom_setup"`
 	SetupPort        int       `db:"setup_port"`
 	ComposeYAML      string    `db:"compose_yaml"`
+	ConfigFile       *string   `db:"config_file" json:"config_file"` // FIXED: Added db tag for consistency
 	VersionTag       string    `db:"version_tag"`
 	UpdatedAt        time.Time `db:"updated_at"`
 }
@@ -46,6 +48,7 @@ func (r *RemoteApp) ToManifest() AppManifest {
 		HasCustomSetup:   r.HasCustomSetup,
 		SetupPort:        r.SetupPort,
 		ComposeYAML:      r.ComposeYAML,
+		ConfigFile:       r.ConfigFile, // FIXED: Now properly passes the schema payload
 		VersionTag:       r.VersionTag,
 	}
 }

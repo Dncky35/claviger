@@ -56,6 +56,37 @@ func RunMigrations(db *sql.DB) error {
 		}
 
 		log.Println("✅ [Storage] Database schema successfully updated to v1")
+		currentVersion = 1
+	}
+
+	// Migration 1 -> 2: Add config_file column for App Orchestrator JSON schemas
+	if currentVersion < 2 {
+		log.Println("🔄 [Storage] Migrating database to schema v2 (Adding config_file)...")
+		tx, err := db.Begin()
+		if err != nil {
+			return fmt.Errorf("failed to start migration v2 transaction: %w", err)
+		}
+
+		alterRemoteAppsTable := `
+		ALTER TABLE remote_apps
+		ADD COLUMN config_file TEXT;`
+
+		if _, err := tx.Exec(alterRemoteAppsTable); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to add config_file to remote_apps: %w", err)
+		}
+
+		// Bump schema version to 2
+		if _, err := tx.Exec("PRAGMA user_version = 2;"); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to update user_version to 2: %w", err)
+		}
+
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("failed to commit migration v2 transaction: %w", err)
+		}
+
+		log.Println("✅ [Storage] Database schema successfully updated to v2")
 	}
 
 	return nil

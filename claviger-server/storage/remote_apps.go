@@ -20,12 +20,13 @@ func UpsertRemoteApps(db *sql.DB, catalog map[string][]types.AppManifest) error 
 		return fmt.Errorf("failed to clear remote_apps cache: %w", err)
 	}
 
+	// ADDED: config_file to columns and an extra ? to VALUES
 	stmt, err := tx.Prepare(`
 		INSERT INTO remote_apps (
 			id, catalog_type, name, category, description, icon, 
 			needs_dynamic_port, has_custom_setup, setup_port, compose_yaml, 
-			version_tag, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+			version_tag, config_file, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 	`)
 	if err != nil {
 		tx.Rollback()
@@ -38,6 +39,7 @@ func UpsertRemoteApps(db *sql.DB, catalog map[string][]types.AppManifest) error 
 	// Iterate over each catalog_type slice ("default", "llm", "homelab", etc.)
 	for catalogType, appList := range catalog {
 		for _, app := range appList {
+			// ADDED: app.ConfigFile to Exec arguments
 			_, err = stmt.Exec(
 				app.ID,
 				catalogType,
@@ -50,6 +52,7 @@ func UpsertRemoteApps(db *sql.DB, catalog map[string][]types.AppManifest) error 
 				app.SetupPort,
 				app.ComposeYAML,
 				app.VersionTag,
+				app.ConfigFile,
 				now,
 			)
 			if err != nil {
@@ -64,9 +67,10 @@ func UpsertRemoteApps(db *sql.DB, catalog map[string][]types.AppManifest) error 
 
 // GetRemoteApps fetches all cached remote apps from SQLite
 func GetRemoteApps(db *sql.DB) (map[string]types.AppManifest, error) {
+	// ADDED: config_file to SELECT query
 	rows, err := db.Query(`
 		SELECT id, catalog_type, name, category, description, icon, 
-		       needs_dynamic_port, has_custom_setup, setup_port, compose_yaml, version_tag 
+		       needs_dynamic_port, has_custom_setup, setup_port, compose_yaml, version_tag, config_file 
 		FROM remote_apps;
 	`)
 	if err != nil {
@@ -78,6 +82,7 @@ func GetRemoteApps(db *sql.DB) (map[string]types.AppManifest, error) {
 
 	for rows.Next() {
 		var manifest types.AppManifest
+		// ADDED: &manifest.ConfigFile to Scan
 		err := rows.Scan(
 			&manifest.ID,
 			&manifest.CatalogType,
@@ -90,6 +95,7 @@ func GetRemoteApps(db *sql.DB) (map[string]types.AppManifest, error) {
 			&manifest.SetupPort,
 			&manifest.ComposeYAML,
 			&manifest.VersionTag,
+			&manifest.ConfigFile,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan remote app row: %w", err)
@@ -105,14 +111,16 @@ func GetRemoteApps(db *sql.DB) (map[string]types.AppManifest, error) {
 
 // GetRemoteAppByID fetches a single remote app from SQLite
 func GetRemoteAppByID(db *sql.DB, appID string) (types.AppManifest, bool, error) {
+	// ADDED: config_file to SELECT query
 	row := db.QueryRow(`
 		SELECT id, catalog_type, name, category, description, icon, 
-		       needs_dynamic_port, has_custom_setup, setup_port, compose_yaml, version_tag 
+		       needs_dynamic_port, has_custom_setup, setup_port, compose_yaml, version_tag, config_file 
 		FROM remote_apps 
 		WHERE id = ?;
 	`, appID)
 
 	var manifest types.AppManifest
+	// ADDED: &manifest.ConfigFile to Scan
 	err := row.Scan(
 		&manifest.ID,
 		&manifest.CatalogType,
@@ -125,6 +133,7 @@ func GetRemoteAppByID(db *sql.DB, appID string) (types.AppManifest, bool, error)
 		&manifest.SetupPort,
 		&manifest.ComposeYAML,
 		&manifest.VersionTag,
+		&manifest.ConfigFile,
 	)
 
 	if err != nil {
